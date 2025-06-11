@@ -5,20 +5,23 @@ public class TriggerDto {
     public String packageNvr;
     public String oshScanId;
     public String sourceCodeUrl;
-    public String googleExcelSheetUrl;
+    public String inputReportFilePath;
     public String jiraLink;
     public String hostname;
+    public String projectName;
+    public String projectVersion;
+    public String falsePositivesUrl;
     public Settings workflowSettings;
 
     public TriggerDto() {
     }
 
-    public TriggerDto(String packageName, String packageNvr, String oshScanId, String sourceCodeUrl, String googleExcelSheetUrl, String jiraLink, String hostname, Settings workflowSettings) {
+    public TriggerDto(String packageName, String packageNvr, String oshScanId, String sourceCodeUrl, String inputReportFilePath, String jiraLink, String hostname, Settings workflowSettings) {
         this.packageName = packageName;
         this.packageNvr = packageNvr;
         this.oshScanId = oshScanId;
         this.sourceCodeUrl = sourceCodeUrl;
-        this.googleExcelSheetUrl = googleExcelSheetUrl;
+        this.inputReportFilePath = inputReportFilePath;
         this.jiraLink = jiraLink;
         this.hostname = hostname;
         this.workflowSettings = workflowSettings;
@@ -31,7 +34,7 @@ public class TriggerDto {
                 ", packageNvr='" + packageNvr + '\'' +
                 ", oshScanId=" + oshScanId +
                 ", sourceCodeUrl='" + sourceCodeUrl + '\'' +
-                ", googleExcelSheetUrl='" + googleExcelSheetUrl + '\'' +
+                ", inputReportFilePath='" + inputReportFilePath + '\'' +
                 ", jiraLink='" + jiraLink + '\'' +
                 ", hostname='" + hostname + '\'' +
                 ", workflowSettings=" + workflowSettings +

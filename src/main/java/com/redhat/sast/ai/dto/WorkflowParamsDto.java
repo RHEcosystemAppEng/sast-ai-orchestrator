@@ -20,6 +20,8 @@ public class WorkflowParamsDto {
     private boolean useKnownFalsePositiveFile;
     private String knownFalsePositiveUrl;
     private String inputReportFilePath;
+    private String projectName;
+    private String projectVersion;
 
     public String getLlmUrl() {
         return llmUrl;
@@ -140,4 +142,21 @@ public class WorkflowParamsDto {
     public void setInputReportFilePath(String inputReportFilePath) {
         this.inputReportFilePath = inputReportFilePath;
     }
+
+    public String getProjectName() { 
+        return projectName; 
+    }
+    
+    public void setProjectName(String projectName) { 
+        this.projectName = projectName; 
+    }
+    
+    public String getProjectVersion() { 
+        return projectVersion; 
+    }
+    
+    public void setProjectVersion(String projectVersion) { 
+        this.projectVersion = projectVersion; 
+    }
+
 }

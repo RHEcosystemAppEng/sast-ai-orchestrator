@@ -14,8 +14,10 @@ public class ObjectTransformer {
         workflow.setOshScanId(dto.oshScanId);
         workflow.setPackageNvr(dto.packageNvr);
         workflow.setSrcUrl(dto.sourceCodeUrl);
-        workflow.setgSheetUrl(dto.googleExcelSheetUrl);
+        workflow.setInputReportFilePath(dto.inputReportFilePath);
         workflow.setJiraUrl(dto.jiraLink);
+        workflow.setProjectName(dto.projectName);
+        workflow.setProjectVersion(dto.projectVersion);
         workflow.setActive(1);
         return workflow;
     }

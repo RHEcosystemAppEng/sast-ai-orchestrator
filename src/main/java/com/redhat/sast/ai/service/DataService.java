@@ -48,6 +48,15 @@ public class DataService {
         return workflow.getId();
     }
 
+    @Transactional
+    public void updateWorkflowStatus(long workflowId, String newStatus) {
+        WorkflowStatus status = workflowStatusRepository.find("workflow.id", workflowId).firstResult();
+        if (status != null) {
+            status.setStatus(newStatus);
+            workflowStatusRepository.persist(status);
+        }
+    }
+
     public WorkflowParamsDto getWorkflowParams(long workflowId, TriggerDto triggerDto) {
 
         Workflow workflow = workflowRepository.findById(workflowId);
@@ -58,7 +67,15 @@ public class DataService {
         params.setSrcRepoPath(workflow.getSrcUrl());
         params.setUseKnownFalsePositiveFile(Boolean.TRUE);
         params.setKnownFalsePositiveUrl(getKnownFalsePositivesUrl(workflow.getPackageName()));
-        params.setInputReportFilePath(workflow.getgSheetUrl());
+        params.setInputReportFilePath(workflow.getInputReportFilePath());
+        params.setProjectName(workflow.getProjectName());
+        params.setProjectVersion(workflow.getProjectVersion());
+
+        if (StringUtils.isNotEmpty(triggerDto.falsePositivesUrl)) {
+            params.setKnownFalsePositiveUrl(triggerDto.falsePositivesUrl);
+        } else {
+            params.setKnownFalsePositiveUrl(getKnownFalsePositivesUrl(workflow.getPackageName()));
+        }
 
         if (triggerDto.workflowSettings != null) {
             if (StringUtils.isNotEmpty(triggerDto.workflowSettings.llmUrl)) {

@@ -30,11 +30,17 @@ public class Workflow {
     @Column(name = "src_url")
     private String srcUrl;
 
-    @Column(name = "gsheet_url")
-    private String gSheetUrl;
+    @Column(name = "input_report_file_path")
+    private String inputReportFilePath;
 
     @Column(name = "jira_url")
     private String jiraUrl;
+
+    @Column(name = "project_name")
+    private String projectName;
+
+    @Column(name = "project_version")
+    private String projectVersion;
 
     @Column(name = "last_updated_at")
     private LocalDateTime lastUpdatedAt;
@@ -107,12 +113,12 @@ public class Workflow {
         this.srcUrl = srcUrl;
     }
 
-    public String getgSheetUrl() {
-        return gSheetUrl;
+    public String getInputReportFilePath() {
+        return inputReportFilePath;
     }
 
-    public void setgSheetUrl(String gSheetUrl) {
-        this.gSheetUrl = gSheetUrl;
+    public void setInputReportFilePath(String inputReportFilePath) {
+        this.inputReportFilePath = inputReportFilePath;
     }
 
     public String getJiraUrl() {
@@ -137,5 +143,21 @@ public class Workflow {
 
     public void setActive(int active) {
         this.active = active;
+    }
+
+    public String getProjectName() { 
+        return projectName; 
+    }
+    
+    public void setProjectName(String projectName) { 
+        this.projectName = projectName; 
+    }
+    
+    public String getProjectVersion() { 
+        return projectVersion; 
+    }
+    
+    public void setProjectVersion(String projectVersion) { 
+        this.projectVersion = projectVersion; 
     }
 }

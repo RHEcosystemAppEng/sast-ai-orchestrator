@@ -27,7 +27,7 @@ public class Workflow {
     @Column(name = "tekton_url")
     private String tektonUrl;
 
-    @Column(name = "src_url")
+    @Column(name = "src_code_url")
     private String srcUrl;
 
     @Column(name = "input_report_file_path")

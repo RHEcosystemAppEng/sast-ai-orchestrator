@@ -16,7 +16,7 @@ public class WorkflowParamsDto {
     private String critiqueLlmModelName;
     private String useCritiqueAsFinalResults;
 
-    private String srcRepoPath;
+    private String srcCodePath;
     private boolean useKnownFalsePositiveFile;
     private String knownFalsePositiveUrl;
     private String inputReportFilePath;
@@ -111,12 +111,12 @@ public class WorkflowParamsDto {
         this.useCritiqueAsFinalResults = useCritiqueAsFinalResults;
     }
 
-    public String getSrcRepoPath() {
-        return srcRepoPath;
+    public String getSrcCodePath() {
+        return srcCodePath;
     }
 
-    public void setSrcRepoPath(String srcRepoPath) {
-        this.srcRepoPath = srcRepoPath;
+    public void setSrcCodePath(String srcCodePath) {
+        this.srcCodePath = srcCodePath;
     }
 
     public boolean isUseKnownFalsePositivesFile() {

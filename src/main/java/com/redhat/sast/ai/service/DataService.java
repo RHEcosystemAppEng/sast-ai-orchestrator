@@ -64,7 +64,7 @@ public class DataService {
 
 
         WorkflowParamsDto params = new WorkflowParamsDto();
-        params.setSrcRepoPath(workflow.getSrcUrl());
+        params.setSrcCodePath(workflow.getSrcUrl());
         params.setUseKnownFalsePositivesFile(Boolean.TRUE);
         params.setKnownFalsePositivesUrl(getKnownFalsePositivesUrl(workflow.getPackageName()));
         params.setInputReportFilePath(workflow.getInputReportFilePath());

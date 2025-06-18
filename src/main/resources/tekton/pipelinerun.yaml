@@ -1,3 +1,5 @@
+# Not used by the orchestrator - keeping it for now for manual testing if needed.
+
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:

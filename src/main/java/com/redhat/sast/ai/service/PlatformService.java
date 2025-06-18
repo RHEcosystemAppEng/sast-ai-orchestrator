@@ -57,9 +57,9 @@ public class PlatformService {
         LOG.infof("Initiating PipelineRun: %s for Pipeline: %s in namespace: %s", pipelineRunName, pipelineName, namespace);
 
         List<Param> pipelineParams = new ArrayList<>();
-        pipelineParams.add(new ParamBuilder().withName("sourceCodeUrl").withNewValue(params.getSrcRepoPath()).build());
+        pipelineParams.add(new ParamBuilder().withName("SOURCE_CODE_URL").withNewValue(params.getSrcRepoPath()).build());
+        pipelineParams.add(new ParamBuilder().withName("KNOWN_FALSE_POSITIVES_URL").withNewValue(params.getKnownFalsePositivesUrl()).build());
         pipelineParams.add(new ParamBuilder().withName("INPUT_REPORT_FILE_PATH").withNewValue(params.getInputReportFilePath()).build());
-        pipelineParams.add(new ParamBuilder().withName("falsePositivesUrl").withNewValue(params.getKnownFalsePositiveUrl()).build());
         pipelineParams.add(new ParamBuilder().withName("PROJECT_NAME").withNewValue(params.getProjectName()).build());
         pipelineParams.add(new ParamBuilder().withName("PROJECT_VERSION").withNewValue(params.getProjectVersion()).build());
 

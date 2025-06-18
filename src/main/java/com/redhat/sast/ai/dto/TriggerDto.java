@@ -10,7 +10,7 @@ public class TriggerDto {
     public String hostname;
     public String projectName;
     public String projectVersion;
-    public String falsePositivesUrl;
+    public String knownFalsePositivesUrl;
     public Settings workflowSettings;
 
     public TriggerDto() {

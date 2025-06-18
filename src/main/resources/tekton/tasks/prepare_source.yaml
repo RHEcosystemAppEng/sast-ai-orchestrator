@@ -4,7 +4,7 @@ metadata:
   name: prepare-source
 spec:
   params:
-    - name: sourceCodeUrl
+    - name: SOURCE_CODE_URL
       type: string
       description: Source code URL (SRPM or Git repo)
   workspaces:
@@ -23,7 +23,7 @@ spec:
       script: |
         #!/usr/bin/env sh
         set -ex
-        SRC_URL="$(params.sourceCodeUrl)"
+        SRC_URL="$(params.SOURCE_CODE_URL)"
         WORKDIR="$(workspaces.source-workspace.path)"
         echo ">> Working directory: $WORKDIR"
 

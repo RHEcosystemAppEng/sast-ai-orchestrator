@@ -65,16 +65,16 @@ public class DataService {
 
         WorkflowParamsDto params = new WorkflowParamsDto();
         params.setSrcRepoPath(workflow.getSrcUrl());
-        params.setUseKnownFalsePositiveFile(Boolean.TRUE);
-        params.setKnownFalsePositiveUrl(getKnownFalsePositivesUrl(workflow.getPackageName()));
+        params.setUseKnownFalsePositivesFile(Boolean.TRUE);
+        params.setKnownFalsePositivesUrl(getKnownFalsePositivesUrl(workflow.getPackageName()));
         params.setInputReportFilePath(workflow.getInputReportFilePath());
         params.setProjectName(workflow.getProjectName());
         params.setProjectVersion(workflow.getProjectVersion());
 
-        if (StringUtils.isNotEmpty(triggerDto.falsePositivesUrl)) {
-            params.setKnownFalsePositiveUrl(triggerDto.falsePositivesUrl);
+        if (StringUtils.isNotEmpty(triggerDto.knownFalsePositivesUrl)) {
+            params.setKnownFalsePositivesUrl(triggerDto.knownFalsePositivesUrl);
         } else {
-            params.setKnownFalsePositiveUrl(getKnownFalsePositivesUrl(workflow.getPackageName()));
+            params.setKnownFalsePositivesUrl(getKnownFalsePositivesUrl(workflow.getPackageName()));
         }
 
         if (triggerDto.workflowSettings != null) {

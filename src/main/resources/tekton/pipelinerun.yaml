@@ -9,10 +9,10 @@ spec:
     podTemplate:
       hostNetwork: true  
   params:
-    - name: sourceCodeUrl
+    - name: SOURCE_CODE_URL
       value: "source/code/url"
-    - name: falsePositivesUrl
-      value: "false/positives/url"
+    - name: KNOWN_FALSE_POSITIVES_URL
+      value: "known/false/positives/url"
     - name: LLM_URL
       value: ""
     - name: LLM_MODEL_NAME

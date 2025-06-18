@@ -4,10 +4,10 @@ metadata:
   name: sast-ai-workflow-pipeline
 spec:
   params:
-    - name: sourceCodeUrl
+    - name: SOURCE_CODE_URL
       type: string
       description: "Source code URL (RPM package or Git repository URL)"
-    - name: falsePositivesUrl
+    - name: KNOWN_FALSE_POSITIVES_URL
       type: string
       description: "GitLab repository URL for known false positives (optional)"
     - name: LLM_URL
@@ -45,12 +45,12 @@ spec:
       taskRef:
         name: validate-urls
       params:
-        - name: sourceCodeUrl
-          value: "$(params.sourceCodeUrl)"
+        - name: SOURCE_CODE_URL
+          value: "$(params.SOURCE_CODE_URL)"
         - name: INPUT_REPORT_FILE_PATH
           value: "$(params.INPUT_REPORT_FILE_PATH)"
-        - name: falsePositivesUrl
-          value: "$(params.falsePositivesUrl)"
+        - name: KNOWN_FALSE_POSITIVES_URL
+          value: "$(params.KNOWN_FALSE_POSITIVES_URL)"
       workspaces:
         - name: google-sa-json-ws
           workspace: google-sa-json-ws
@@ -60,8 +60,8 @@ spec:
       taskRef:
         name: prepare-source
       params:
-        - name: sourceCodeUrl
-          value: "$(params.sourceCodeUrl)"
+        - name: SOURCE_CODE_URL
+          value: "$(params.SOURCE_CODE_URL)"
       workspaces:
         - name: source-workspace
           workspace: shared-workspace
@@ -72,8 +72,8 @@ spec:
       taskRef:
         name: fetch-false-positives
       params:
-        - name: falsePositivesUrl
-          value: "$(params.falsePositivesUrl)"
+        - name: KNOWN_FALSE_POSITIVES_URL
+          value: "$(params.KNOWN_FALSE_POSITIVES_URL)"
       workspaces:
         - name: false-positives-workspace
           workspace: shared-workspace

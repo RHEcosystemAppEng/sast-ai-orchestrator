@@ -119,19 +119,19 @@ public class WorkflowParamsDto {
         this.srcRepoPath = srcRepoPath;
     }
 
-    public boolean isUseKnownFalsePositiveFile() {
+    public boolean isUseKnownFalsePositivesFile() {
         return useKnownFalsePositiveFile;
     }
 
-    public void setUseKnownFalsePositiveFile(boolean useKnownFalsePositiveFile) {
+    public void setUseKnownFalsePositivesFile(boolean useKnownFalsePositiveFile) {
         this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
     }
 
-    public String getKnownFalsePositiveUrl() {
+    public String getKnownFalsePositivesUrl() {
         return knownFalsePositiveUrl;
     }
 
-    public void setKnownFalsePositiveUrl(String knownFalsePositiveUrl) {
+    public void setKnownFalsePositivesUrl(String knownFalsePositiveUrl) {
         this.knownFalsePositiveUrl = knownFalsePositiveUrl;
     }
 

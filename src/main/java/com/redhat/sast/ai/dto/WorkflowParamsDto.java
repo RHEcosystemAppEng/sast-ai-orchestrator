@@ -16,10 +16,12 @@ public class WorkflowParamsDto {
     private String critiqueLlmModelName;
     private String useCritiqueAsFinalResults;
 
-    private String srcRepoPath;
+    private String srcCodePath;
     private boolean useKnownFalsePositiveFile;
     private String knownFalsePositiveUrl;
     private String inputReportFilePath;
+    private String projectName;
+    private String projectVersion;
 
     public String getLlmUrl() {
         return llmUrl;
@@ -109,27 +111,27 @@ public class WorkflowParamsDto {
         this.useCritiqueAsFinalResults = useCritiqueAsFinalResults;
     }
 
-    public String getSrcRepoPath() {
-        return srcRepoPath;
+    public String getSrcCodePath() {
+        return srcCodePath;
     }
 
-    public void setSrcRepoPath(String srcRepoPath) {
-        this.srcRepoPath = srcRepoPath;
+    public void setSrcCodePath(String srcCodePath) {
+        this.srcCodePath = srcCodePath;
     }
 
-    public boolean isUseKnownFalsePositiveFile() {
+    public boolean isUseKnownFalsePositivesFile() {
         return useKnownFalsePositiveFile;
     }
 
-    public void setUseKnownFalsePositiveFile(boolean useKnownFalsePositiveFile) {
+    public void setUseKnownFalsePositivesFile(boolean useKnownFalsePositiveFile) {
         this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
     }
 
-    public String getKnownFalsePositiveUrl() {
+    public String getKnownFalsePositivesUrl() {
         return knownFalsePositiveUrl;
     }
 
-    public void setKnownFalsePositiveUrl(String knownFalsePositiveUrl) {
+    public void setKnownFalsePositivesUrl(String knownFalsePositiveUrl) {
         this.knownFalsePositiveUrl = knownFalsePositiveUrl;
     }
 
@@ -140,4 +142,21 @@ public class WorkflowParamsDto {
     public void setInputReportFilePath(String inputReportFilePath) {
         this.inputReportFilePath = inputReportFilePath;
     }
+
+    public String getProjectName() { 
+        return projectName; 
+    }
+    
+    public void setProjectName(String projectName) { 
+        this.projectName = projectName; 
+    }
+    
+    public String getProjectVersion() { 
+        return projectVersion; 
+    }
+    
+    public void setProjectVersion(String projectVersion) { 
+        this.projectVersion = projectVersion; 
+    }
+
 }

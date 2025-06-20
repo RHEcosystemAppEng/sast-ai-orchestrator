@@ -19,6 +19,6 @@ public class WorkflowService {
         Long workflowId = dataService.saveTriggerInfo(triggerDto);
         WorkflowParamsDto workflowParams = dataService.getWorkflowParams(workflowId, triggerDto);
 
-        platformService.startSastAIWorkflow(workflowParams);
+        platformService.startSastAIWorkflow(workflowId, workflowParams);
     }
 }

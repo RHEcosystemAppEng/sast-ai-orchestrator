@@ -1,14 +1,15 @@
 package com.redhat.sast.api.v1.resource;
 
+import java.util.List;
+
+import com.redhat.sast.api.service.PackageService;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 import com.redhat.sast.api.v1.dto.response.PackageSummaryDto;
-import com.redhat.sast.api.service.PackageService;
+
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-
-import java.util.List;
 
 @Path("/packages")
 @Produces(MediaType.APPLICATION_JSON)
@@ -19,14 +20,14 @@ public class PackageResource {
 
     @GET
     public Response getAllPackages(
-            @QueryParam("page") @DefaultValue("0") int page,
-            @QueryParam("size") @DefaultValue("50") int size) {
+            @QueryParam("page") @DefaultValue("0") int page, @QueryParam("size") @DefaultValue("50") int size) {
         try {
             List<PackageSummaryDto> packages = packageService.getAllPackages(page, size);
             return Response.ok(packages).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Error retrieving packages: " + e.getMessage()).build();
+                    .entity("Error retrieving packages: " + e.getMessage())
+                    .build();
         }
     }
 
@@ -38,7 +39,8 @@ public class PackageResource {
             return Response.ok(summary).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Error retrieving package summary: " + e.getMessage()).build();
+                    .entity("Error retrieving package summary: " + e.getMessage())
+                    .build();
         }
     }
 
@@ -53,7 +55,8 @@ public class PackageResource {
             return Response.ok(jobs).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Error retrieving package jobs: " + e.getMessage()).build();
+                    .entity("Error retrieving package jobs: " + e.getMessage())
+                    .build();
         }
     }
-} 
+}

@@ -1,31 +1,30 @@
 package com.redhat.sast.api.v1.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class PackageSummaryDto {
-    
+
     @JsonProperty("packageName")
     private String packageName;
-    
+
     @JsonProperty("totalAnalyses")
     private Integer totalAnalyses;
-    
+
     @JsonProperty("lastAnalysisDate")
     private LocalDateTime lastAnalysisDate;
-    
+
     @JsonProperty("completedAnalyses")
     private Integer completedAnalyses;
-    
+
     @JsonProperty("failedAnalyses")
     private Integer failedAnalyses;
-    
+
     @JsonProperty("runningAnalyses")
     private Integer runningAnalyses;
 
-    public PackageSummaryDto() {
-    }
+    public PackageSummaryDto() {}
 
     public String getPackageName() {
         return packageName;
@@ -74,4 +73,4 @@ public class PackageSummaryDto {
     public void setRunningAnalyses(Integer runningAnalyses) {
         this.runningAnalyses = runningAnalyses;
     }
-} 
+}

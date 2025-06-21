@@ -1,9 +1,9 @@
 package com.redhat.sast.api.model;
 
-import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 import java.util.List;
+
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "job_batch")
@@ -135,4 +135,4 @@ public class JobBatch {
     public void setJobs(List<Job> jobs) {
         this.jobs = jobs;
     }
-} 
+}

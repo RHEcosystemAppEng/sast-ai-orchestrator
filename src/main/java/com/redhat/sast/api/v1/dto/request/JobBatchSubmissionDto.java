@@ -3,15 +3,14 @@ package com.redhat.sast.api.v1.dto.request;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class JobBatchSubmissionDto {
-    
+
     @JsonProperty("sourceUrl")
     private String sourceUrl;
-    
+
     @JsonProperty("submittedBy")
     private String submittedBy;
 
-    public JobBatchSubmissionDto() {
-    }
+    public JobBatchSubmissionDto() {}
 
     public JobBatchSubmissionDto(String sourceUrl, String submittedBy) {
         this.sourceUrl = sourceUrl;
@@ -33,4 +32,4 @@ public class JobBatchSubmissionDto {
     public void setSubmittedBy(String submittedBy) {
         this.submittedBy = submittedBy;
     }
-} 
+}

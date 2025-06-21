@@ -3,8 +3,8 @@ package com.redhat.sast.api.enums;
 public enum JobStatus {
     PENDING,
     SCHEDULED,
-    RUNNING, 
+    RUNNING,
     COMPLETED,
     FAILED,
     CANCELLED
-} 
+}

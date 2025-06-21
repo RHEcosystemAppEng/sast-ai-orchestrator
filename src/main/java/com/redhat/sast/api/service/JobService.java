@@ -1,21 +1,23 @@
 package com.redhat.sast.api.service;
 
-import com.redhat.sast.api.v1.dto.request.JobCreationDto;
-import com.redhat.sast.api.v1.dto.response.JobResponseDto;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.eclipse.microprofile.context.ManagedExecutor;
+import org.jboss.logging.Logger;
+
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobSettings;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.repository.JobSettingsRepository;
+import com.redhat.sast.api.v1.dto.request.JobCreationDto;
+import com.redhat.sast.api.v1.dto.response.JobResponseDto;
+
 import io.quarkus.panache.common.Page;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.eclipse.microprofile.context.ManagedExecutor;
-import org.jboss.logging.Logger;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class JobService {
@@ -37,7 +39,7 @@ public class JobService {
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
         // First, create the job in the database (transactional)
         Job job = createJobInDatabase(jobCreationDto);
-        
+
         // Then start the job execution asynchronously (fire and forget)
         managedExecutor.execute(() -> {
             try {
@@ -54,7 +56,7 @@ public class JobService {
                 }
             }
         });
-        
+
         return convertToResponseDto(job);
     }
 
@@ -68,10 +70,11 @@ public class JobService {
             JobSettings settings = new JobSettings();
             settings.setJob(job);
             settings.setLlmModelName(jobCreationDto.getWorkflowSettings().getLlmModelName());
-            settings.setEmbeddingLlmModelName(jobCreationDto.getWorkflowSettings().getEmbeddingsLlmModelName());
+            settings.setEmbeddingLlmModelName(
+                    jobCreationDto.getWorkflowSettings().getEmbeddingsLlmModelName());
             settings.setSecretName(jobCreationDto.getWorkflowSettings().getSecretName());
             jobSettingsRepository.persist(settings);
-            
+
             // Manually set the JobSettings on the Job object to avoid lazy loading issues
             job.setJobSettings(settings);
         }
@@ -104,10 +107,9 @@ public class JobService {
     }
 
     public List<JobResponseDto> getAllJobs(String packageName, JobStatus status, int page, int size) {
-        return jobRepository.findJobsWithPagination(packageName, status, Page.of(page, size))
-            .stream()
-            .map(this::convertToResponseDto)
-            .collect(Collectors.toList());
+        return jobRepository.findJobsWithPagination(packageName, status, Page.of(page, size)).stream()
+                .map(this::convertToResponseDto)
+                .collect(Collectors.toList());
     }
 
     public JobResponseDto getJobById(Long jobId) {
@@ -124,11 +126,11 @@ public class JobService {
         if (job == null) {
             throw new IllegalArgumentException("Job not found with id: " + jobId);
         }
-        
+
         if (job.getStatus() == JobStatus.RUNNING || job.getStatus() == JobStatus.SCHEDULED) {
             job.setStatus(JobStatus.CANCELLED);
             jobRepository.persist(job);
-            
+
             // TODO: Implement actual job cancellation logic (e.g., cancel Tekton pipeline)
         } else {
             throw new IllegalStateException("Job cannot be cancelled in status: " + job.getStatus());
@@ -193,4 +195,4 @@ public class JobService {
         }
         return dto;
     }
-} 
+}

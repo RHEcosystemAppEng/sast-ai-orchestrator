@@ -1,59 +1,58 @@
 package com.redhat.sast.api.v1.dto.response;
 
+import java.time.LocalDateTime;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.redhat.sast.api.enums.JobStatus;
 
-import java.time.LocalDateTime;
-
 public class JobResponseDto {
-    
+
     @JsonProperty("jobId")
     private Long jobId;
-    
+
     @JsonProperty("projectName")
     private String projectName;
-    
+
     @JsonProperty("projectVersion")
     private String projectVersion;
-    
+
     @JsonProperty("packageName")
     private String packageName;
-    
+
     @JsonProperty("packageNvr")
     private String packageNvr;
-    
+
     @JsonProperty("oshScanId")
     private String oshScanId;
-    
+
     @JsonProperty("sourceCodeUrl")
     private String sourceCodeUrl;
-    
+
     @JsonProperty("jiraLink")
     private String jiraLink;
-    
+
     @JsonProperty("hostname")
     private String hostname;
-    
+
     @JsonProperty("status")
     private JobStatus status;
-    
+
     @JsonProperty("createdAt")
     private LocalDateTime createdAt;
-    
+
     @JsonProperty("startedAt")
     private LocalDateTime startedAt;
-    
+
     @JsonProperty("completedAt")
     private LocalDateTime completedAt;
-    
+
     @JsonProperty("tektonUrl")
     private String tektonUrl;
-    
+
     @JsonProperty("batchId")
     private Long batchId;
 
-    public JobResponseDto() {
-    }
+    public JobResponseDto() {}
 
     public Long getJobId() {
         return jobId;
@@ -174,4 +173,4 @@ public class JobResponseDto {
     public void setBatchId(Long batchId) {
         this.batchId = batchId;
     }
-} 
+}

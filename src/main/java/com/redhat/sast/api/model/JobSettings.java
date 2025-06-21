@@ -35,8 +35,7 @@ public class JobSettings {
     @Column(name = "secret_name")
     private String secretName;
 
-    public JobSettings() {
-    }
+    public JobSettings() {}
 
     public Long getId() {
         return id;
@@ -109,4 +108,4 @@ public class JobSettings {
     public void setSecretName(String secretName) {
         this.secretName = secretName;
     }
-} 
+}

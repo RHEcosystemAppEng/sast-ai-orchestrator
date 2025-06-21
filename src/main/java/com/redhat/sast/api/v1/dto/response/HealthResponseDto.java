@@ -1,21 +1,21 @@
 package com.redhat.sast.api.v1.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class HealthResponseDto {
-    
+
     @JsonProperty("status")
     private String status;
-    
+
     @JsonProperty("timestamp")
     private LocalDateTime timestamp;
-    
+
     @JsonProperty("version")
     private String version;
-    
+
     @JsonProperty("dependencies")
     private Map<String, String> dependencies;
 
@@ -54,4 +54,4 @@ public class HealthResponseDto {
     public void setDependencies(Map<String, String> dependencies) {
         this.dependencies = dependencies;
     }
-} 
+}

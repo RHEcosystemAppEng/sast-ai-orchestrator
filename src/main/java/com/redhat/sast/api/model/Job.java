@@ -1,10 +1,11 @@
 package com.redhat.sast.api.model;
 
+import java.time.LocalDateTime;
+
 import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.enums.JobStatus;
-import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "job")
@@ -248,4 +249,4 @@ public class Job {
     public void setJobSettings(JobSettings jobSettings) {
         this.jobSettings = jobSettings;
     }
-} 
+}

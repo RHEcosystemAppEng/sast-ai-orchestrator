@@ -1,37 +1,36 @@
 package com.redhat.sast.api.v1.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class JobBatchResponseDto {
-    
+
     @JsonProperty("batchId")
     private Long batchId;
-    
+
     @JsonProperty("sourceUrl")
     private String sourceUrl;
-    
+
     @JsonProperty("submittedBy")
     private String submittedBy;
-    
+
     @JsonProperty("submittedAt")
     private LocalDateTime submittedAt;
-    
+
     @JsonProperty("status")
     private String status;
-    
+
     @JsonProperty("totalJobs")
     private Integer totalJobs;
-    
+
     @JsonProperty("completedJobs")
     private Integer completedJobs;
-    
+
     @JsonProperty("failedJobs")
     private Integer failedJobs;
 
-    public JobBatchResponseDto() {
-    }
+    public JobBatchResponseDto() {}
 
     public Long getBatchId() {
         return batchId;
@@ -96,4 +95,4 @@ public class JobBatchResponseDto {
     public void setFailedJobs(Integer failedJobs) {
         this.failedJobs = failedJobs;
     }
-} 
+}

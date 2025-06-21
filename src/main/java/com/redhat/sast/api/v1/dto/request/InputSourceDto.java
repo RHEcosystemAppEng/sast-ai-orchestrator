@@ -4,15 +4,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.redhat.sast.api.enums.InputSourceType;
 
 public class InputSourceDto {
-    
+
     @JsonProperty("type")
     private InputSourceType type;
-    
+
     @JsonProperty("url")
     private String url;
 
-    public InputSourceDto() {
-    }
+    public InputSourceDto() {}
 
     public InputSourceDto(InputSourceType type, String url) {
         this.type = type;
@@ -34,4 +33,4 @@ public class InputSourceDto {
     public void setUrl(String url) {
         this.url = url;
     }
-} 
+}

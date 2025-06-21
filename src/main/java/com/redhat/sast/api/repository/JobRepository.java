@@ -1,12 +1,13 @@
 package com.redhat.sast.api.repository;
 
+import java.util.List;
+
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
+
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import io.quarkus.panache.common.Page;
 import jakarta.enterprise.context.ApplicationScoped;
-
-import java.util.List;
 
 @ApplicationScoped
 public class JobRepository implements PanacheRepository<Job> {
@@ -26,13 +27,12 @@ public class JobRepository implements PanacheRepository<Job> {
     public List<Job> findJobsWithPagination(String packageName, JobStatus status, Page page) {
         if (packageName != null && status != null) {
             return find("packageName = ?1 and status = ?2", packageName, status)
-                    .page(page).list();
+                    .page(page)
+                    .list();
         } else if (packageName != null) {
-            return find("packageName = ?1", packageName)
-                    .page(page).list();
+            return find("packageName = ?1", packageName).page(page).list();
         } else if (status != null) {
-            return find("status = ?1", status)
-                    .page(page).list();
+            return find("status = ?1", status).page(page).list();
         } else {
             return findAll().page(page).list();
         }
@@ -40,7 +40,7 @@ public class JobRepository implements PanacheRepository<Job> {
 
     public List<String> findDistinctPackageNames() {
         return getEntityManager()
-            .createQuery("SELECT DISTINCT j.packageName FROM Job j WHERE j.packageName IS NOT NULL", String.class)
-            .getResultList();
+                .createQuery("SELECT DISTINCT j.packageName FROM Job j WHERE j.packageName IS NOT NULL", String.class)
+                .getResultList();
     }
-} 
+}

@@ -3,42 +3,41 @@ package com.redhat.sast.api.v1.dto.request;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class JobCreationDto {
-    
+
     @JsonProperty("projectName")
     private String projectName;
-    
+
     @JsonProperty("projectVersion")
     private String projectVersion;
-    
+
     @JsonProperty("packageName")
     private String packageName;
-    
+
     @JsonProperty("packageNvr")
     private String packageNvr;
-    
+
     @JsonProperty("oshScanId")
     private String oshScanId;
-    
+
     @JsonProperty("packageSourceCodeUrl")
     private String packageSourceCodeUrl;
-    
+
     @JsonProperty("jiraLink")
     private String jiraLink;
-    
+
     @JsonProperty("hostname")
     private String hostname;
-    
+
     @JsonProperty("knownFalsePositivesUrl")
     private String knownFalsePositivesUrl;
-    
+
     @JsonProperty("inputSource")
     private InputSourceDto inputSource;
-    
+
     @JsonProperty("workflowSettings")
     private WorkflowSettingsDto workflowSettings;
 
-    public JobCreationDto() {
-    }
+    public JobCreationDto() {}
 
     public String getProjectName() {
         return projectName;
@@ -127,4 +126,4 @@ public class JobCreationDto {
     public void setWorkflowSettings(WorkflowSettingsDto workflowSettings) {
         this.workflowSettings = workflowSettings;
     }
-} 
+}

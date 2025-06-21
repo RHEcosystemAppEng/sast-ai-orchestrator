@@ -141,19 +141,14 @@
                 <version>2.43.0</version>
                 <configuration>
                     <java>
-                        <eclipseFormatter>
-                            <version>1.19.2</version>
-                        </eclipseFormatter>
+                        <palantirJavaFormat>
+                            <version>2.43.0</version>
+                        </palantirJavaFormat>
                         <removeUnusedImports/>
                         <importOrder>
                             <order>java,javax,org,com,</order>
                         </importOrder>
                     </java>
-                    <xml>
-                        <eclipseWtp>
-                            <type>XML</type>
-                        </eclipseWtp>
-                    </xml>
                 </configuration>
                 <executions>
                     <execution>

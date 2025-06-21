@@ -1,122 +1,77 @@
 package com.redhat.sast.ai.service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import com.redhat.sast.ai.enums.JobStatus;
+import com.redhat.sast.ai.model.Job;
+import com.redhat.sast.ai.platform.LlmSecretValues;
+import com.redhat.sast.ai.platform.PipelineRunWatcher;
+import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
+import io.fabric8.tekton.client.TektonClient;
+import io.fabric8.tekton.v1.*;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.context.ManagedExecutor;
+import org.jboss.logging.Logger;
+import jakarta.transaction.Transactional;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-
-import jakarta.annotation.PostConstruct;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.context.ManagedExecutor;
-import org.jboss.logging.Logger;
-
-import com.redhat.sast.ai.dto.WorkflowParamsDto;
-import com.redhat.sast.ai.utils.WorkflowStatus;
-
-import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
-import io.fabric8.knative.pkg.apis.Condition;
-import io.fabric8.kubernetes.client.Watcher; 
-import io.fabric8.kubernetes.client.WatcherException;
-import io.fabric8.kubernetes.client.utils.Serialization;
-import io.fabric8.tekton.client.TektonClient;
-import io.fabric8.tekton.v1.Pipeline;
-import io.fabric8.tekton.v1.Task;
-import io.fabric8.tekton.v1.PipelineRun;
-import io.fabric8.tekton.v1.PipelineRunBuilder;
-import io.fabric8.tekton.v1.WorkspaceBindingBuilder;
-import io.fabric8.tekton.v1.Param;
-import io.fabric8.tekton.v1.ParamBuilder;
 
 
 @ApplicationScoped
 public class PlatformService {
 
     private static final String PIPELINE_NAME = "sast-ai-workflow-pipeline";
-    private static final String TEKTON_RESOURCES_DIR = "tekton";
-    private static final String KIND_FIELD = "kind:";
-    private static final String KIND_TASK = "Task";
-    private static final String KIND_PIPELINE = "Pipeline";
-    private static final String SUCCEEDED_CONDITION = "Succeeded";
-    private static final String STATUS_TRUE = "True";
-    private static final String STATUS_FALSE = "False";
 
     private static final Logger LOG = Logger.getLogger(PlatformService.class);
 
     @Inject
     TektonClient tektonClient;
 
-    @Inject 
+    @Inject
     ManagedExecutor managedExecutor;
 
     @Inject
-    DataService dataService;
+    JobService jobService;
 
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
-    public void startSastAIWorkflow(long workflowId, WorkflowParamsDto params){
+    public void startSastAIWorkflow(Job job) {
         String pipelineRunName = PIPELINE_NAME + "-" + UUID.randomUUID().toString().substring(0, 5);
         LOG.infof("Initiating PipelineRun: %s for Pipeline: %s in namespace: %s", pipelineRunName, PIPELINE_NAME, namespace);
 
-        List<Param> pipelineParams = buildPipelineParams(params);
-        PipelineRun pipelineRun = buildPipelineRun(pipelineRunName, pipelineParams);
+        List<Param> pipelineParams = extractPipelineParams(job);
+        String llmSecretName = (job.getJobSettings() != null) ? job.getJobSettings().getSecretName() : "sast-ai-default-llm-creds";
+        PipelineRun pipelineRun = buildPipelineRun(pipelineRunName, pipelineParams, llmSecretName);
 
         try {
-            tektonClient.v1().pipelineRuns().inNamespace(namespace).resource(pipelineRun).create();
+            PipelineRun createdPipelineRun = tektonClient.v1().pipelineRuns().inNamespace(namespace).resource(pipelineRun).create();
             LOG.infof("Successfully created PipelineRun: %s", pipelineRunName);
 
-            dataService.updateWorkflowStatus(workflowId, WorkflowStatus.RUNNING);
-            managedExecutor.execute(() -> watchPipelineRun(workflowId, pipelineRunName));
+            // Set the Tekton URL on the job using cluster information from TektonClient
+            String tektonUrl = buildTektonUrlFromClient(createdPipelineRun);
+            updateJobTektonUrl(job.getId(), tektonUrl);
+            LOG.infof("Updated job %d with Tekton URL: %s", job.getId(), tektonUrl);
+
+            jobService.updateJobStatus(job.getId(), JobStatus.RUNNING);
+            managedExecutor.execute(() -> watchPipelineRun(job.getId(), pipelineRunName));
         } catch (Exception e) {
             LOG.errorf(e, "Failed to create PipelineRun %s in namespace %s", pipelineRunName, namespace);
             throw new RuntimeException("Failed to start Tekton pipeline", e);
         }
     }
 
-    private void watchPipelineRun(long workflowId, String pipelineRunName) {
+    private void watchPipelineRun(long jobId, String pipelineRunName) {
         LOG.infof("Starting watcher for PipelineRun: %s", pipelineRunName);
         final CompletableFuture<Void> future = new CompletableFuture<>();
-        try (io.fabric8.kubernetes.client.Watch watch = tektonClient.v1().pipelineRuns().inNamespace(namespace).withName(pipelineRunName).watch(new Watcher<>() {
-            @Override
-            public void eventReceived(Action action, PipelineRun resource) {
-                LOG.infof("Watcher event: %s for PipelineRun: %s", action, resource.getMetadata().getName());
-                if (resource.getStatus() != null && resource.getStatus().getConditions() != null) {
-                    for (Condition condition : resource.getStatus().getConditions()) {
-                        if (SUCCEEDED_CONDITION.equals(condition.getType())) {
-                            if (STATUS_TRUE.equalsIgnoreCase(condition.getStatus())) {
-                                LOG.infof("PipelineRun %s succeeded.", pipelineRunName);
-                                dataService.updateWorkflowStatus(workflowId, WorkflowStatus.COMPLETED);
-                                future.complete(null);
-                                return;
-                            } else if (STATUS_FALSE.equalsIgnoreCase(condition.getStatus())) {
-                                LOG.errorf("PipelineRun %s failed. Reason: %s, Message: %s", pipelineRunName, condition.getReason(), condition.getMessage());
-                                dataService.updateWorkflowStatus(workflowId, "FAILED");
-                                future.complete(null);
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
-
-            @Override
-            public void onClose(WatcherException cause) {
-                if (cause != null) {
-                    LOG.errorf(cause, "Watcher for %s closed due to an error.", pipelineRunName);
-                    future.completeExceptionally(cause);
-                } else {
-                    LOG.warnf("Watcher for %s closed cleanly without a final status.", pipelineRunName);
-                    future.complete(null);
-                }
-            }
-        })) {
+        try (var ignoredWatch = tektonClient.v1().pipelineRuns()
+                .inNamespace(namespace)
+                .withName(pipelineRunName)
+                .watch(new PipelineRunWatcher(pipelineRunName, jobId, future, jobService))) {
             future.join();
             LOG.infof("Watcher for PipelineRun %s is closing.", pipelineRunName);
         } catch (Exception e) {
@@ -124,155 +79,193 @@ public class PlatformService {
         }
     }
 
-    @PostConstruct
-    public void init() {
-        var classLoader = Thread.currentThread().getContextClassLoader();
-        var tektonFolder = classLoader.getResource(TEKTON_RESOURCES_DIR);
-
-        if (tektonFolder == null) {
-            LOG.errorf("No '%s' folder found in src/main/resources.", TEKTON_RESOURCES_DIR);
-            return;
-        }
-
+    private String buildTektonUrlFromClient(PipelineRun pipelineRun) {
         try {
-            Path tektonBasePath = Paths.get(tektonFolder.toURI());
-            try (var files = Files.walk(tektonBasePath)) {
-                files.filter(Files::isRegularFile).forEach(filePath -> {
-                    try {
-                        Path relativePath = tektonBasePath.relativize(filePath);
-                        String resourcePath = "tekton/" + relativePath.toString().replace('\\', '/');
-                        LOG.debugf("Processing resource: %s", resourcePath);
-
-                        String fileContent = new String(Files.readString(filePath));
-                        if (!fileContent.contains(KIND_FIELD)) {
-                            return;
-                        }
-
-                        String kind = fileContent.lines()
-                            .filter(line -> line.trim().startsWith(KIND_FIELD))
-                            .map(line -> line.split(":", 2)[1].trim())
-                            .findFirst()
-                            .orElse("Unknown");
-
-                        switch (kind) {
-                            case KIND_TASK:
-                                applyTask(resourcePath);
-                                break;
-                            case KIND_PIPELINE:
-                                createPipeline(resourcePath);
-                                break;
-                            default:
-                                LOG.debugf("Ignoring resource of kind '%s' from file: %s", kind, resourcePath);
-                                break;
-                        }
-
-                    } catch (Exception e) {
-                        LOG.error(e.getMessage(), e);
-                    }
-                });
+            // Get the Kubernetes cluster URL from the client
+            String masterUrl = tektonClient.getMasterUrl().toString();
+            // Remove trailing slash if present
+            if (masterUrl.endsWith("/")) {
+                masterUrl = masterUrl.substring(0, masterUrl.length() - 1);
             }
+            
+            // Construct the Kubernetes API URL for the PipelineRun resource
+            String pipelineRunUrl = String.format("%s/apis/tekton.dev/v1/namespaces/%s/pipelineruns/%s", 
+                                                 masterUrl, 
+                                                 pipelineRun.getMetadata().getNamespace(), 
+                                                 pipelineRun.getMetadata().getName());
+            
+            LOG.infof("Constructed Tekton URL: %s", pipelineRunUrl);
+            return pipelineRunUrl;
         } catch (Exception e) {
-            LOG.error(e.getMessage(), e);
+            LOG.errorf(e, "Failed to construct Tekton URL for PipelineRun: %s", pipelineRun.getMetadata().getName());
+            // Return a fallback URL if construction fails
+            return String.format("tekton://namespaces/%s/pipelineruns/%s", 
+                                pipelineRun.getMetadata().getNamespace(), 
+                                pipelineRun.getMetadata().getName());
         }
     }
 
-    private void applyTask(String resourcePath){
-        try (var resourceStream = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
-            if (resourceStream == null) {
-                throw new IOException("Resource not found: " + resourcePath);
-            }
-
-            Task task = Serialization.unmarshal(resourceStream, Task.class);
-            task.getMetadata().setNamespace(namespace);
-            task = tektonClient.v1().tasks().inNamespace(namespace).resource(task).serverSideApply();
-            LOG.debug("Tekton task created: " + task.getMetadata().getName());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+    @Transactional
+    public void updateJobTektonUrl(Long jobId, String tektonUrl) {
+        try {
+            jobService.updateJobTektonUrl(jobId, tektonUrl);
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to update Tekton URL for job ID: %d", jobId);
         }
     }
 
-    private void createPipeline(String resourcePath){
-        try (var resourceStream = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
-            if (resourceStream == null) {
-                throw new IOException("Resource not found: " + resourcePath);
+    private LlmSecretValues getLlmSecretValues(String secretName) {
+        try {
+            if (secretName == null || secretName.trim().isEmpty()) {
+                LOG.warnf("Secret name is null or empty");
+                return LlmSecretValues.empty();
             }
-
-            Pipeline pipeline = Serialization.unmarshal(resourceStream, Pipeline.class);
-            pipeline.getMetadata().setNamespace(namespace);
-            pipeline = tektonClient.v1().pipelines().inNamespace(namespace).resource(pipeline).serverSideApply();
-            LOG.debug("Tekton pipeline created: " + pipeline.getMetadata().getName());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            
+            // Use the underlying Kubernetes client from TektonClient to access secrets
+            Secret secret = tektonClient.adapt(io.fabric8.kubernetes.client.KubernetesClient.class).secrets().inNamespace(namespace).withName(secretName).get();
+            if (secret == null) {
+                LOG.warnf("Secret '%s' not found in namespace '%s'", secretName, namespace);
+                return LlmSecretValues.empty();
+            }
+            
+            if (secret.getData() == null) {
+                LOG.warnf("Secret '%s' has no data", secretName);
+                return LlmSecretValues.empty();
+            }
+            
+            // Extract and decode all values in one pass
+            String llmUrl = getDecodedSecretValue(secret, "llm_url");
+            String llmApiKey = getDecodedSecretValue(secret, "llm_api_key");
+            String embeddingsUrl = getDecodedSecretValue(secret, "embeddings_llm_url");
+            String embeddingsApiKey = getDecodedSecretValue(secret, "embeddings_llm_api_key");
+            
+            return new LlmSecretValues(llmUrl, llmApiKey, embeddingsUrl, embeddingsApiKey);
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to read secret '%s' from namespace '%s'", secretName, namespace);
+            return LlmSecretValues.empty();
         }
     }
     
-    private List<Param> buildPipelineParams(WorkflowParamsDto p) {
+    private String getDecodedSecretValue(Secret secret, String key) {
+        try {
+            if (!secret.getData().containsKey(key)) {
+                LOG.debugf("Secret '%s' does not contain key '%s'", secret.getMetadata().getName(), key);
+                return "";
+            }
+            
+            String encodedValue = secret.getData().get(key);
+            return new String(java.util.Base64.getDecoder().decode(encodedValue));
+        } catch (Exception e) {
+            LOG.warnf(e, "Failed to decode secret value for key '%s'", key);
+            return "";
+        }
+    }
+
+    private List<Param> extractPipelineParams(Job job) {
         List<Param> params = new ArrayList<>();
-        params.add(new ParamBuilder().withName("SOURCE_CODE_URL")
-                                     .withNewValue(p.getSrcCodePath())
-                                     .build());
-        params.add(new ParamBuilder().withName("KNOWN_FALSE_POSITIVES_URL")
-                                     .withNewValue(p.getKnownFalsePositivesUrl())
-                                     .build());
+
+        // Basic job parameters
+        params.add(new ParamBuilder().withName("REPO_REMOTE_URL")
+                .withNewValue(job.getPackageSourceCodeUrl())
+                .build());
+        params.add(new ParamBuilder().withName("FALSE_POSITIVES_URL")
+                .withNewValue(job.getKnownFalsePositivesUrl())
+                .build());
         params.add(new ParamBuilder().withName("INPUT_REPORT_FILE_PATH")
-                                     .withNewValue(p.getInputReportFilePath())
-                                     .build());
+                .withNewValue(job.getInputSourceUrl())
+                .build());
         params.add(new ParamBuilder().withName("PROJECT_NAME")
-                                     .withNewValue(p.getProjectName())
-                                     .build());
+                .withNewValue(job.getProjectName())
+                .build());
         params.add(new ParamBuilder().withName("PROJECT_VERSION")
-                                     .withNewValue(p.getProjectVersion())
-                                     .build());
-        params.add(new ParamBuilder().withName("LLM_URL")
-                                     .withNewValue(p.getLlmUrl())
-                                     .build());
-        params.add(new ParamBuilder().withName("LLM_MODEL_NAME")
-                                     .withNewValue(p.getLlmModelName())
-                                     .build());
-        params.add(new ParamBuilder().withName("EMBEDDINGS_LLM_URL")
-                                     .withNewValue(p.getEmbeddingsLlmUrl())
-                                     .build());
-        params.add(new ParamBuilder().withName("EMBEDDINGS_LLM_MODEL_NAME")
-                                     .withNewValue(p.getEmbeddingsLlmModelName())
-                                     .build());
+                .withNewValue(job.getProjectVersion())
+                .build());
+
+        // LLM settings from JobSettings and OCP secrets
+        if (job.getJobSettings() != null) {
+            String secretName = job.getJobSettings().getSecretName();
+            
+            // Read all LLM configuration from OCP secret in one call
+            LlmSecretValues llmSecretValues = getLlmSecretValues(secretName);
+            
+            // Add LLM parameters
+            params.add(new ParamBuilder().withName("LLM_URL")
+                    .withNewValue(llmSecretValues.llmUrl())
+                    .build());
+            params.add(new ParamBuilder().withName("LLM_MODEL_NAME")
+                    .withNewValue(job.getJobSettings().getLlmModelName())
+                    .build());
+            params.add(new ParamBuilder().withName("LLM_API_KEY")
+                    .withNewValue(llmSecretValues.llmApiKey())
+                    .build());
+            
+            // Add embeddings parameters
+            params.add(new ParamBuilder().withName("EMBEDDINGS_LLM_URL")
+                    .withNewValue(llmSecretValues.embeddingsUrl())
+                    .build());
+            params.add(new ParamBuilder().withName("EMBEDDINGS_LLM_MODEL_NAME")
+                    .withNewValue(job.getJobSettings().getEmbeddingLlmModelName())
+                    .build());
+            params.add(new ParamBuilder().withName("EMBEDDINGS_LLM_API_KEY")
+                    .withNewValue(llmSecretValues.embeddingsApiKey())
+                    .build());
+        } else {
+            // Add default empty values if no job settings
+            params.add(new ParamBuilder().withName("LLM_URL")
+                    .withNewValue("")
+                    .build());
+            params.add(new ParamBuilder().withName("LLM_MODEL_NAME")
+                    .withNewValue("")
+                    .build());
+            params.add(new ParamBuilder().withName("LLM_API_KEY")
+                    .withNewValue("")
+                    .build());
+            params.add(new ParamBuilder().withName("EMBEDDINGS_LLM_URL")
+                    .withNewValue("")
+                    .build());
+            params.add(new ParamBuilder().withName("EMBEDDINGS_LLM_MODEL_NAME")
+                    .withNewValue("")
+                    .build());
+            params.add(new ParamBuilder().withName("EMBEDDINGS_LLM_API_KEY")
+                    .withNewValue("")
+                    .build());
+        }
+
         return params;
     }
 
-    private PipelineRun buildPipelineRun(String pipelineRunName, List<Param> params) {
+    private PipelineRun buildPipelineRun(String pipelineRunName, List<Param> params, String llmSecretName) {
         return new PipelineRunBuilder().withNewMetadata()
-        .withName(pipelineRunName).withNamespace(namespace)
-            .endMetadata().withNewSpec().withNewPipelineRef()
-        .withName(PIPELINE_NAME).endPipelineRef()
-            .withWorkspaces(
-                new WorkspaceBindingBuilder()
-                    .withName("shared-workspace")
-                    .withNewPersistentVolumeClaim("sast-ai-workflow-pvc", false).build(),
-                new WorkspaceBindingBuilder()
-                    .withName("cache-workspace")
-                    .withNewPersistentVolumeClaim("sast-ai-cache-pvc", false).build(),
-                new WorkspaceBindingBuilder()
-                    .withName("gitlab-token-ws")
-                    .withSecret(new SecretVolumeSourceBuilder()
-                                    .withSecretName("gitlab-token-secret")
-                                    .build()).build(),
-                new WorkspaceBindingBuilder()
-                    .withName("llm-api-key-ws")
-                    .withSecret(new SecretVolumeSourceBuilder()
-                                    .withSecretName("llm-api-key-secret")
-                                    .build()).build(),
-                new WorkspaceBindingBuilder()
-                    .withName("embeddings-api-key-ws")
-                    .withSecret(new SecretVolumeSourceBuilder()
-                                    .withSecretName("embeddings-api-key-secret")
-                                    .build()).build(),
-                new WorkspaceBindingBuilder()
-                    .withName("google-sa-json-ws")
-                    .withSecret(new SecretVolumeSourceBuilder()
-                                    .withSecretName("google-service-account-secret")
-                                    .build()).build()
-            )
-            .withParams(params)
-        .endSpec()
-        .build();
+                .withName(pipelineRunName).withNamespace(namespace)
+                .endMetadata().withNewSpec().withNewPipelineRef()
+                .withName(PIPELINE_NAME).endPipelineRef()
+                .withWorkspaces(
+                        new WorkspaceBindingBuilder()
+                                .withName("shared-workspace")
+                                .withNewPersistentVolumeClaim("sast-ai-workflow-pvc", false).build(),
+                        new WorkspaceBindingBuilder()
+                                .withName("cache-workspace")
+                                .withNewPersistentVolumeClaim("sast-ai-cache-pvc", false).build(),
+                        new WorkspaceBindingBuilder()
+                                .withName("gitlab-token-ws")
+                                .withSecret(new SecretVolumeSourceBuilder()
+                                        .withSecretName("gitlab-token-secret")
+                                        .build()).build(),
+                        new WorkspaceBindingBuilder()
+                                .withName("llm-credentials-ws")
+                                .withSecret(new SecretVolumeSourceBuilder()
+                                        .withSecretName(llmSecretName != null ? llmSecretName : "sast-ai-default-llm-creds")
+                                        .build()).build(),
+                        new WorkspaceBindingBuilder()
+                                .withName("google-sa-json-ws")
+                                .withSecret(new SecretVolumeSourceBuilder()
+                                        .withSecretName("google-service-account-secret")
+                                        .build()).build()
+                )
+                .withParams(params)
+                .endSpec()
+                .build();
     }
+
+
 }

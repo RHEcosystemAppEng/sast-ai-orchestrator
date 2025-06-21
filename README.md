@@ -1,5 +1,7 @@
 # SAST-AI-Orchestrator
 
+[![Build and Publish Native Image](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/build-and-publish.yml/badge.svg)](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/build-and-publish.yml)
+
 > **AI-Powered Static Application Security Testing Orchestration Platform**
 
 A modern, cloud-native backend REST API built with Quarkus that orchestrates and manages [SAST-AI-Workflow](https://github.com/RHEcosystemAppEng/sast-ai-workflow) security scanning jobs across Kubernetes environments.

@@ -1,6 +1,8 @@
 # SAST-AI-Orchestrator
 
 [![Build and Publish Native Image](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/build-and-publish.yml/badge.svg)](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/build-and-publish.yml)
+[![Code Quality](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/code-quality.yml/badge.svg)](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/code-quality.yml)
+[![CodeQL](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/code-quality.yml/badge.svg?job=codeql)](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/code-quality.yml)
 
 > **AI-Powered Static Application Security Testing Orchestration Platform**
 

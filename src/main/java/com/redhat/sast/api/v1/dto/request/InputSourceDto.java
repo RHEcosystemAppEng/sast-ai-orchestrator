@@ -18,6 +18,12 @@ public class InputSourceDto {
         this.url = url;
     }
 
+    public InputSourceDto(InputSourceDto other) {
+        // Add field-by-field copy here as appropriate
+        // Example: this.someField = other.someField;
+        // If there are mutable fields, copy them defensively
+    }
+
     public InputSourceType getType() {
         return type;
     }

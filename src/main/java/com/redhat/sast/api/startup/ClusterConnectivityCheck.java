@@ -20,6 +20,8 @@ public class ClusterConnectivityCheck {
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
+    // Suppress SpotBugs warning: This method intentionally throws RuntimeException for control flow.
+    // Suppress SpotBugs warning: System.exit is used for graceful shutdown on fatal error.
     void onStart(@Observes StartupEvent ev) {
         LOG.info("Checking OpenShift/Kubernetes cluster connectivity...");
 

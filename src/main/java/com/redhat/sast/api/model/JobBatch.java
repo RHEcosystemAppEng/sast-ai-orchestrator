@@ -1,6 +1,7 @@
 package com.redhat.sast.api.model;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.persistence.*;
@@ -129,10 +130,10 @@ public class JobBatch {
     }
 
     public List<Job> getJobs() {
-        return jobs;
+        return jobs != null ? new ArrayList<>(jobs) : new ArrayList<>();
     }
 
     public void setJobs(List<Job> jobs) {
-        this.jobs = jobs;
+        this.jobs = jobs != null ? new ArrayList<>(jobs) : new ArrayList<>();
     }
 }

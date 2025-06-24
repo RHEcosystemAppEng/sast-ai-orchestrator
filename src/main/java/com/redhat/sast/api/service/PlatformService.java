@@ -1,5 +1,6 @@
 package com.redhat.sast.api.service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -178,7 +179,7 @@ public class PlatformService {
             }
 
             String encodedValue = secret.getData().get(key);
-            return new String(java.util.Base64.getDecoder().decode(encodedValue));
+            return new String(java.util.Base64.getDecoder().decode(encodedValue), StandardCharsets.UTF_8);
         } catch (Exception e) {
             LOG.warnf(e, "Failed to decode secret value for key '%s'", key);
             return "";

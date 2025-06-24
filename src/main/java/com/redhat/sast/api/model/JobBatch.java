@@ -56,6 +56,19 @@ public class JobBatch {
         this.lastUpdatedAt = LocalDateTime.now();
     }
 
+    public JobBatch(JobBatch other) {
+        this.id = other.id;
+        this.sourceUrl = other.sourceUrl;
+        this.submittedBy = other.submittedBy;
+        this.submittedAt = other.submittedAt;
+        this.status = other.status;
+        this.totalJobs = other.totalJobs;
+        this.completedJobs = other.completedJobs;
+        this.failedJobs = other.failedJobs;
+        this.lastUpdatedAt = other.lastUpdatedAt;
+        this.jobs = other.jobs == null ? null : new ArrayList<>(other.jobs);
+    }
+
     // Getters and Setters
     public Long getId() {
         return id;

@@ -89,29 +89,6 @@ public class Job {
         this.lastUpdatedAt = LocalDateTime.now();
     }
 
-    public Job(Job other) {
-        this.id = other.id;
-        this.projectName = other.projectName;
-        this.projectVersion = other.projectVersion;
-        this.packageName = other.packageName;
-        this.packageNvr = other.packageNvr;
-        this.oshScanId = other.oshScanId;
-        this.packageSourceCodeUrl = other.packageSourceCodeUrl;
-        this.jiraLink = other.jiraLink;
-        this.hostname = other.hostname;
-        this.knownFalsePositivesUrl = other.knownFalsePositivesUrl;
-        this.inputSourceType = other.inputSourceType;
-        this.inputSourceUrl = other.inputSourceUrl;
-        this.status = other.status;
-        this.createdAt = other.createdAt;
-        this.startedAt = other.startedAt;
-        this.completedAt = other.completedAt;
-        this.tektonUrl = other.tektonUrl;
-        this.lastUpdatedAt = other.lastUpdatedAt;
-        this.jobBatch = other.jobBatch == null ? null : new JobBatch();
-        this.jobSettings = other.jobSettings == null ? null : new JobSettings();
-    }
-
     // Getters and Setters
     public Long getId() {
         return id;

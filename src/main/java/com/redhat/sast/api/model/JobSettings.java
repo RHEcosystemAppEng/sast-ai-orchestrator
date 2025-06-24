@@ -37,18 +37,6 @@ public class JobSettings {
 
     public JobSettings() {}
 
-    public JobSettings(JobSettings other) {
-        this.id = other.id;
-        this.job = other.job;
-        this.llmUrl = other.llmUrl;
-        this.llmModelName = other.llmModelName;
-        this.llmApiKey = other.llmApiKey;
-        this.embeddingLlmUrl = other.embeddingLlmUrl;
-        this.embeddingLlmModelName = other.embeddingLlmModelName;
-        this.embeddingLlmApiKey = other.embeddingLlmApiKey;
-        this.secretName = other.secretName;
-    }
-
     public Long getId() {
         return id;
     }

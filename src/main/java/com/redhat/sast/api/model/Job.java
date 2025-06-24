@@ -108,8 +108,8 @@ public class Job {
         this.completedAt = other.completedAt;
         this.tektonUrl = other.tektonUrl;
         this.lastUpdatedAt = other.lastUpdatedAt;
-        this.jobBatch = other.jobBatch == null ? null : new JobBatch(other.jobBatch);
-        this.jobSettings = other.jobSettings == null ? null : new JobSettings(other.jobSettings);
+        this.jobBatch = other.jobBatch == null ? null : new JobBatch();
+        this.jobSettings = other.jobSettings == null ? null : new JobSettings();
     }
 
     // Getters and Setters
@@ -258,18 +258,18 @@ public class Job {
     }
 
     public JobBatch getJobBatch() {
-        return jobBatch == null ? null : new JobBatch(jobBatch);
+        return jobBatch == null ? null : new JobBatch();
     }
 
     public void setJobBatch(JobBatch jobBatch) {
-        this.jobBatch = jobBatch == null ? null : new JobBatch(jobBatch);
+        this.jobBatch = jobBatch == null ? null : new JobBatch();
     }
 
     public JobSettings getJobSettings() {
-        return jobSettings == null ? null : new JobSettings(jobSettings);
+        return jobSettings == null ? null : new JobSettings();
     }
 
     public void setJobSettings(JobSettings jobSettings) {
-        this.jobSettings = jobSettings == null ? null : new JobSettings(jobSettings);
+        this.jobSettings = jobSettings == null ? null : new JobSettings();
     }
 }

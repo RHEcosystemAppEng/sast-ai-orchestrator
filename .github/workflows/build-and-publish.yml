@@ -1,4 +1,4 @@
-name: Build and Publish Native Image
+name: Build and Publish JVM Image
 
 on:
   push:
@@ -16,11 +16,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up GraalVM
-      uses: graalvm/setup-graalvm@v1
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
       with:
         java-version: '21'
-        distribution: 'graalvm-community'
+        distribution: 'temurin'
 
     - name: Cache Maven dependencies
       uses: actions/cache@v4
@@ -29,9 +29,9 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
 
-    - name: Build native executable
+    - name: Build JVM application
       run: |
-        ./mvnw clean package -Dnative -DskipTests -Dquarkus.native.container-build=true
+        ./mvnw clean package -DskipTests
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -54,10 +54,11 @@ jobs:
           type=sha,prefix={{branch}}-
 
     - name: Build and push Docker image
+      id: build
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./src/main/docker/Dockerfile.native
+        file: ./src/main/docker/Dockerfile.jvm
         push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}

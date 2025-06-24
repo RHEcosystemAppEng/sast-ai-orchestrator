@@ -1,6 +1,7 @@
 package com.redhat.sast.api.v1.resource;
 
 import java.util.List;
+import java.util.Locale;
 
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.service.JobService;
@@ -65,7 +66,7 @@ public class JobResource {
         try {
             JobStatus status = null;
             if (statusStr != null && !statusStr.isEmpty()) {
-                status = JobStatus.valueOf(statusStr.toUpperCase());
+                status = JobStatus.valueOf(statusStr.toUpperCase(Locale.ROOT));
             }
 
             List<JobResponseDto> jobs = jobService.getAllJobs(packageName, status, page, size);

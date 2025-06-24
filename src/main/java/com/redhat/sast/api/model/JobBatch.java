@@ -1,6 +1,7 @@
 package com.redhat.sast.api.model;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.persistence.*;
@@ -53,6 +54,19 @@ public class JobBatch {
     @PreUpdate
     public void preUpdate() {
         this.lastUpdatedAt = LocalDateTime.now();
+    }
+
+    public JobBatch(JobBatch other) {
+        this.id = other.id;
+        this.sourceUrl = other.sourceUrl;
+        this.submittedBy = other.submittedBy;
+        this.submittedAt = other.submittedAt;
+        this.status = other.status;
+        this.totalJobs = other.totalJobs;
+        this.completedJobs = other.completedJobs;
+        this.failedJobs = other.failedJobs;
+        this.lastUpdatedAt = other.lastUpdatedAt;
+        this.jobs = other.jobs == null ? null : new ArrayList<>(other.jobs);
     }
 
     // Getters and Setters
@@ -129,10 +143,10 @@ public class JobBatch {
     }
 
     public List<Job> getJobs() {
-        return jobs;
+        return jobs != null ? new ArrayList<>(jobs) : new ArrayList<>();
     }
 
     public void setJobs(List<Job> jobs) {
-        this.jobs = jobs;
+        this.jobs = jobs != null ? new ArrayList<>(jobs) : new ArrayList<>();
     }
 }

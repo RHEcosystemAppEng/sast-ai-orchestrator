@@ -37,6 +37,18 @@ public class JobSettings {
 
     public JobSettings() {}
 
+    public JobSettings(JobSettings other) {
+        this.id = other.id;
+        this.job = other.job == null ? null : new Job(other.job);
+        this.llmUrl = other.llmUrl;
+        this.llmModelName = other.llmModelName;
+        this.llmApiKey = other.llmApiKey;
+        this.embeddingLlmUrl = other.embeddingLlmUrl;
+        this.embeddingLlmModelName = other.embeddingLlmModelName;
+        this.embeddingLlmApiKey = other.embeddingLlmApiKey;
+        this.secretName = other.secretName;
+    }
+
     public Long getId() {
         return id;
     }
@@ -46,11 +58,11 @@ public class JobSettings {
     }
 
     public Job getJob() {
-        return job;
+        return job == null ? null : new Job(job);
     }
 
     public void setJob(Job job) {
-        this.job = job;
+        this.job = job == null ? null : new Job(job);
     }
 
     public String getLlmUrl() {

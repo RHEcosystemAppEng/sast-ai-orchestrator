@@ -44,7 +44,7 @@ public class JobBatchService {
 
         JobBatchResponseDto response = convertToResponseDto(batch);
 
-        startAsyncProcessing(batch.getId(), submissionDto.getSourceUrl());
+        launchBatchProcessing(batch.getId(), submissionDto.getSourceUrl());
 
         return response;
     }
@@ -62,16 +62,16 @@ public class JobBatchService {
         return batch;
     }
 
-    private void startAsyncProcessing(Long batchId, String sheetsUrl) {
+    private void launchBatchProcessing(Long batchId, String sheetsUrl) {
         // Start async processing
-        managedExecutor.execute(() -> processBatchAsync(batchId, sheetsUrl));
+        managedExecutor.execute(() -> executeBatchProcessing(batchId, sheetsUrl));
     }
 
     /**
      * Asynchronously processes a batch by parsing input files and creating individual jobs
      */
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
-    public void processBatchAsync(Long batchId, String sheetsUrl) {
+    public void executeBatchProcessing(Long batchId, String sheetsUrl) {
         try {
             LOG.infof("Starting async processing for batch ID: %d", batchId);
 

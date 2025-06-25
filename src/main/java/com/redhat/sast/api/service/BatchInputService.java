@@ -45,7 +45,7 @@ public class BatchInputService {
             if (isSarifFile(inputSourceUrl)) {
                 throw new IOException(
                         "SARIF file detection: Input appears to be a SARIF file, which is not yet supported. "
-                                + "Currently only Google Sheets are supported. URL: " + inputSourceUrl);
+                                + "Currently only Google Sheets are supported for now. URL: " + inputSourceUrl);
             }
 
             return convertGoogleSheetsToCsv(inputSourceUrl);
@@ -61,7 +61,7 @@ public class BatchInputService {
      * @throws IOException if URL format is invalid
      */
     private String convertGoogleSheetsToCsv(String sheetsUrl) throws IOException {
-        // Extract sheet ID from various Google Sheets URL formats
+        // Extract sheet ID
         Matcher sheetIdMatcher = SHEET_ID_PATTERN.matcher(sheetsUrl);
         if (!sheetIdMatcher.find()) {
             throw new IOException("Invalid Google Sheets URL format. URL: " + sheetsUrl);
@@ -99,7 +99,6 @@ public class BatchInputService {
             return true;
         }
 
-        // Check for other common SARIF hosting patterns
         if (lowerUrl.contains("sarif") && (lowerUrl.startsWith("http://") || lowerUrl.startsWith("https://"))) {
             LOG.infof("Detected potential SARIF file by URL pattern: %s", url);
             return true;
@@ -184,10 +183,12 @@ public class BatchInputService {
 
             // Parse the extracted table content
             try (CSVParser parser = CSVFormat.DEFAULT
-                    .withFirstRecordAsHeader()
-                    .withIgnoreHeaderCase()
-                    .withTrim()
-                    .withSkipHeaderRecord(false)
+                    .builder()
+                    .setHeader()
+                    .setIgnoreHeaderCase(true)
+                    .setTrim(true)
+                    .setSkipHeaderRecord(false)
+                    .build()
                     .parse(new StringReader(tableContent.toString()))) {
 
                 LOG.infof("Table headers found: %s", parser.getHeaderNames());
@@ -224,13 +225,25 @@ public class BatchInputService {
 
     /**
      * Finds where the actual data table starts in the input lines
-     * Expected columns: projectName, packageName, sourceCodeUrl, projectVersion, packageNvr, inputSourceUrl, knownFalsePositivesUrl, jiraLink, hostname, oshScanId
+     * Expected columns: projectName, packageName, sourceCodeUrl, projectVersion,
+     * packageNvr, inputSourceUrl, knownFalsePositivesUrl, jiraLink, hostname, oshScanId
      * @param lines Array of input lines
      * @return Row index where table starts, or NO_VALID_BATCH_TABLE_FOUND if not found
      */
     private int findTableStartRow(String[] lines) {
         // Exact column names we expect to find (case-sensitive)
-        String[] requiredColumns = {"projectName", "packageName", "sourceCodeUrl", "projectVersion", "packageNvr", "inputSourceUrl", "knownFalsePositivesUrl", "jiraLink", "hostname", "oshScanId"};
+        String[] requiredColumns = {
+            "projectName",
+            "packageName",
+            "sourceCodeUrl",
+            "projectVersion",
+            "packageNvr",
+            "inputSourceUrl",
+            "knownFalsePositivesUrl",
+            "jiraLink",
+            "hostname",
+            "oshScanId"
+        };
 
         LOG.infof("Looking for table with required columns: %s", String.join(", ", requiredColumns));
 
@@ -257,7 +270,7 @@ public class BatchInputService {
                                         .limit(8) // Show first 8 columns for readability
                                         .toArray(String[]::new)));
 
-                // Check if the line contains all our required columns (exact match)
+                // Check if the line contains all our required columns
                 int foundRequired = 0;
                 for (String column : columns) {
                     String cleanColumn = column.trim();

@@ -232,7 +232,6 @@ public class BatchInputService {
      * @return Row index where table starts, or NO_VALID_BATCH_TABLE_FOUND if not found
      */
     private int findTableStartRow(String[] lines) {
-        // Exact column names we expect to find (case-sensitive)
         String[] requiredColumns = {
             "projectName",
             "packageName",
@@ -251,7 +250,6 @@ public class BatchInputService {
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i].trim();
 
-            // Skip empty lines
             if (line.isEmpty()) {
                 continue;
             }
@@ -271,7 +269,7 @@ public class BatchInputService {
                                         .limit(8) // Show first 8 columns for readability
                                         .toArray(String[]::new)));
 
-                // Check if the line contains all our required columns
+                // Check if the line contains all required columns
                 int foundRequired = 0;
                 for (String column : columns) {
                     String cleanColumn = column.trim();
@@ -358,7 +356,7 @@ public class BatchInputService {
                 record, "knownFalsePositivesUrl", "known_false_positives_url", "Known False Positives URL"));
         job.setOshScanId(getFieldValue(record, "oshScanId", "osh_scan_id", "OSH Scan ID"));
 
-        // Create input source - default to GOOGLE_SHEET type for batch processing
+        // Create input source, default to GOOGLE_SHEET type for batch processing
         String inputSourceUrl = getFieldValue(record, "inputSourceUrl", "input_source_url", "Input Source URL");
         if (inputSourceUrl == null || inputSourceUrl.trim().isEmpty()) {
             inputSourceUrl = job.getPackageSourceCodeUrl();
@@ -370,7 +368,7 @@ public class BatchInputService {
         // Create default workflow settings for batch jobs to ensure LLM secrets are loaded
         WorkflowSettingsDto workflowSettings = new WorkflowSettingsDto();
         workflowSettings.setSecretName("sast-ai-default-llm-creds");
-        // Model names are optional - if not set, they will fallback to secret values
+        // Model names are optional, if not set they will fallback to secret values
         job.setWorkflowSettings(workflowSettings);
 
         // Validate required fields
@@ -395,7 +393,7 @@ public class BatchInputService {
                     }
                 }
             } catch (IllegalArgumentException e) {
-                // Column doesn't exist, try next one
+                // Column doesn't exist, try the next one
             }
         }
         return null;

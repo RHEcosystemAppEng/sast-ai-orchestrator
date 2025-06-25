@@ -58,7 +58,6 @@ public class JobBatch {
         this.lastUpdatedAt = LocalDateTime.now();
     }
 
-    // Getters and Setters
     public Long getId() {
         return id;
     }

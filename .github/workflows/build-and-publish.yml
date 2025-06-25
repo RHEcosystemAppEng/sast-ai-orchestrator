@@ -2,7 +2,7 @@ name: Build and Publish JVM Image
 
 on:
   workflow_run:
-    workflows: ["Code Quality"]
+    workflows: ["Code Quality Checks", "Security Analysis"]
     types:
       - completed
     branches: [ main ]

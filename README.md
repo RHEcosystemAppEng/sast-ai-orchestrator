@@ -2,7 +2,7 @@
 
 [![Build and Publish Native Image](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/build-and-publish.yml/badge.svg)](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/build-and-publish.yml)
 [![Code Quality & Tests](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/code-quality.yml/badge.svg)](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/code-quality.yml)
-[![Security Analysis](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/code-quality.yml/badge.svg?job=codeql)](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/code-quality.yml)
+[![Security Analysis](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/security-analysis.yml/badge.svg)](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/security-analysis.yml)
 
 > **AI-Powered Static Application Security Testing Orchestration Platform**
 
@@ -62,12 +62,6 @@ docker build -f src/main/docker/Dockerfile.jvm -t sast-ai-orchestrator:jvm .
 
 # Native Mode (Ultra-fast startup, low memory)
 docker build -f src/main/docker/Dockerfile.native -t sast-ai-orchestrator:native .
-```
-
-### Kubernetes Deployment
-```bash
-# Deploy to your Kubernetes cluster
-kubectl apply -f k8s/
 ```
 
 ## Configuration

@@ -21,6 +21,12 @@ public class WorkflowSettingsDto {
         this.secretName = secretName;
     }
 
+    public WorkflowSettingsDto(WorkflowSettingsDto other) {
+        // Add field-by-field copy here as appropriate
+        // Example: this.someField = other.someField;
+        // If there are mutable fields, copy them defensively
+    }
+
     public String getLlmModelName() {
         return llmModelName;
     }

@@ -1,6 +1,7 @@
 package com.redhat.sast.api.v1.dto.response;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -48,10 +49,10 @@ public class HealthResponseDto {
     }
 
     public Map<String, String> getDependencies() {
-        return dependencies;
+        return dependencies != null ? new HashMap<>(dependencies) : new HashMap<>();
     }
 
     public void setDependencies(Map<String, String> dependencies) {
-        this.dependencies = dependencies;
+        this.dependencies = dependencies != null ? new HashMap<>(dependencies) : new HashMap<>();
     }
 }

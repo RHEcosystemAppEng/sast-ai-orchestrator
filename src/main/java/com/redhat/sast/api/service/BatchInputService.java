@@ -20,6 +20,7 @@ import org.jboss.logging.Logger;
 import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.v1.dto.request.InputSourceDto;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
+import com.redhat.sast.api.v1.dto.request.WorkflowSettingsDto;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -365,6 +366,12 @@ public class BatchInputService {
 
         InputSourceDto inputSource = new InputSourceDto(InputSourceType.GOOGLE_SHEET, inputSourceUrl);
         job.setInputSource(inputSource);
+
+        // Create default workflow settings for batch jobs to ensure LLM secrets are loaded
+        WorkflowSettingsDto workflowSettings = new WorkflowSettingsDto();
+        workflowSettings.setSecretName("sast-ai-default-llm-creds");
+        // Model names are optional - if not set, they will fallback to secret values
+        job.setWorkflowSettings(workflowSettings);
 
         // Validate required fields
         if (job.getProjectName() == null || job.getPackageName() == null || job.getPackageSourceCodeUrl() == null) {

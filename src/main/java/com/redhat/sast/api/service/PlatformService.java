@@ -160,8 +160,11 @@ public class PlatformService {
             String llmApiKey = getDecodedSecretValue(secret, "llm_api_key");
             String embeddingsUrl = getDecodedSecretValue(secret, "embeddings_llm_url");
             String embeddingsApiKey = getDecodedSecretValue(secret, "embeddings_llm_api_key");
+            String llmModelName = getDecodedSecretValue(secret, "llm_model_name");
+            String embeddingsModelName = getDecodedSecretValue(secret, "embedding_llm_model_name");
 
-            return new LlmSecretValues(llmUrl, llmApiKey, embeddingsUrl, embeddingsApiKey);
+            return new LlmSecretValues(
+                    llmUrl, llmApiKey, embeddingsUrl, embeddingsApiKey, llmModelName, embeddingsModelName);
         } catch (Exception e) {
             LOG.errorf(e, "Failed to read secret '%s' from namespace '%s'", secretName, namespace);
             return LlmSecretValues.empty();
@@ -183,6 +186,16 @@ public class PlatformService {
             LOG.warnf(e, "Failed to decode secret value for key '%s'", key);
             return "";
         }
+    }
+
+    /**
+     * Gets model name with fallback: JobSettings first, then secret value
+     */
+    private String getModelNameWithFallback(String jobSettingsValue, String secretValue) {
+        if (jobSettingsValue != null && !jobSettingsValue.trim().isEmpty()) {
+            return jobSettingsValue;
+        }
+        return secretValue != null ? secretValue : "";
     }
 
     private List<Param> extractPipelineParams(Job job) {
@@ -217,28 +230,30 @@ public class PlatformService {
             // Read all LLM configuration from OCP secret in one call
             LlmSecretValues llmSecretValues = getLlmSecretValues(secretName);
 
-            // Add LLM parameters
+            // Add LLM parameters (URLs and API keys always from secret)
             params.add(new ParamBuilder()
                     .withName("LLM_URL")
                     .withNewValue(llmSecretValues.llmUrl())
                     .build());
             params.add(new ParamBuilder()
                     .withName("LLM_MODEL_NAME")
-                    .withNewValue(job.getJobSettings().getLlmModelName())
+                    .withNewValue(getModelNameWithFallback(
+                            job.getJobSettings().getLlmModelName(), llmSecretValues.llmModelName()))
                     .build());
             params.add(new ParamBuilder()
                     .withName("LLM_API_KEY")
                     .withNewValue(llmSecretValues.llmApiKey())
                     .build());
 
-            // Add embeddings parameters
+            // Add embeddings parameters (URLs and API keys always from secret)
             params.add(new ParamBuilder()
                     .withName("EMBEDDINGS_LLM_URL")
                     .withNewValue(llmSecretValues.embeddingsUrl())
                     .build());
             params.add(new ParamBuilder()
                     .withName("EMBEDDINGS_LLM_MODEL_NAME")
-                    .withNewValue(job.getJobSettings().getEmbeddingLlmModelName())
+                    .withNewValue(getModelNameWithFallback(
+                            job.getJobSettings().getEmbeddingLlmModelName(), llmSecretValues.embeddingsModelName()))
                     .build());
             params.add(new ParamBuilder()
                     .withName("EMBEDDINGS_LLM_API_KEY")

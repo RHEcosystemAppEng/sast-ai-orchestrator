@@ -3,6 +3,7 @@ package com.redhat.sast.api.v1.dto.response;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.redhat.sast.api.enums.BatchStatus;
 
 public class JobBatchResponseDto {
 
@@ -19,7 +20,7 @@ public class JobBatchResponseDto {
     private LocalDateTime submittedAt;
 
     @JsonProperty("status")
-    private String status;
+    private BatchStatus status;
 
     @JsonProperty("totalJobs")
     private Integer totalJobs;
@@ -64,11 +65,11 @@ public class JobBatchResponseDto {
         this.submittedAt = submittedAt;
     }
 
-    public String getStatus() {
+    public BatchStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(BatchStatus status) {
         this.status = status;
     }
 

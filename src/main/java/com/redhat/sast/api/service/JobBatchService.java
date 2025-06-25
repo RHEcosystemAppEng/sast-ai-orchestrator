@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.jboss.logging.Logger;
 
+import com.redhat.sast.api.enums.BatchStatus;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobBatch;
 import com.redhat.sast.api.repository.JobBatchRepository;
@@ -54,7 +55,7 @@ public class JobBatchService {
         JobBatch batch = new JobBatch();
         batch.setSourceUrl(submissionDto.getSourceUrl());
         batch.setSubmittedBy(submissionDto.getSubmittedBy());
-        batch.setStatus("PROCESSING");
+        batch.setStatus(BatchStatus.PROCESSING);
 
         jobBatchRepository.persist(batch);
         LOG.infof("Created new job batch with ID: %d for URL: %s", batch.getId(), submissionDto.getSourceUrl());
@@ -82,7 +83,7 @@ public class JobBatchService {
             List<JobCreationDto> jobDtos = batchInputService.parseInputToJobs(processedInputContent);
 
             if (jobDtos.isEmpty()) {
-                updateBatchStatusInNewTransaction(batchId, "COMPLETED_EMPTY", 0, 0, 0);
+                updateBatchStatusInNewTransaction(batchId, BatchStatus.COMPLETED_EMPTY, 0, 0, 0);
                 LOG.warnf("Batch %d completed with no valid jobs found in the Google Sheet", batchId);
                 return;
             }
@@ -94,7 +95,7 @@ public class JobBatchService {
 
         } catch (Exception e) {
             LOG.errorf(e, "Failed to process batch %d: %s", batchId, e.getMessage());
-            updateBatchStatusInNewTransaction(batchId, "FAILED", 0, 0, 0);
+            updateBatchStatusInNewTransaction(batchId, BatchStatus.FAILED, 0, 0, 0);
         }
     }
 
@@ -152,9 +153,9 @@ public class JobBatchService {
         }
 
         // Final status update
-        String finalStatus = (failedCount.get() == jobDtos.size())
-                ? "FAILED"
-                : (failedCount.get() > 0) ? "COMPLETED_WITH_ERRORS" : "COMPLETED";
+        BatchStatus finalStatus = (failedCount.get() == jobDtos.size())
+                ? BatchStatus.FAILED
+                : (failedCount.get() > 0) ? BatchStatus.COMPLETED_WITH_ERRORS : BatchStatus.COMPLETED;
 
         updateBatchStatusInNewTransaction(
                 batchId, finalStatus, jobDtos.size(), completedCount.get(), failedCount.get());
@@ -164,7 +165,7 @@ public class JobBatchService {
     }
 
     /**
-     * Sets job batch relationship in a new transaction to avoid context issues
+     * Sets job batch relationship in a new transaction (to avoid context issues)
      */
     @Transactional
     public void setJobBatchInNewTransaction(Long jobId, Long batchId) {
@@ -203,7 +204,7 @@ public class JobBatchService {
      */
     @Transactional
     public void updateBatchStatusInNewTransaction(
-            Long batchId, String status, int totalJobs, int completedJobs, int failedJobs) {
+            Long batchId, BatchStatus status, int totalJobs, int completedJobs, int failedJobs) {
         try {
             JobBatch batch = jobBatchRepository.findById(batchId);
             if (batch != null) {
@@ -243,7 +244,7 @@ public class JobBatchService {
     }
 
     @Transactional
-    public void updateBatchStatus(Long batchId, String status) {
+    public void updateBatchStatus(Long batchId, BatchStatus status) {
         JobBatch batch = jobBatchRepository.findById(batchId);
         if (batch != null) {
             batch.setStatus(status);
@@ -252,7 +253,7 @@ public class JobBatchService {
     }
 
     @Transactional
-    public void updateBatchStatus(Long batchId, String status, int totalJobs, int completedJobs, int failedJobs) {
+    public void updateBatchStatus(Long batchId, BatchStatus status, int totalJobs, int completedJobs, int failedJobs) {
         JobBatch batch = jobBatchRepository.findById(batchId);
         if (batch != null) {
             batch.setStatus(status);

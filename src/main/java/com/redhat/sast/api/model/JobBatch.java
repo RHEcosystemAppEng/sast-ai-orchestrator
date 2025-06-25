@@ -3,6 +3,8 @@ package com.redhat.sast.api.model;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.redhat.sast.api.enums.BatchStatus;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -22,8 +24,9 @@ public class JobBatch {
     @Column(name = "submitted_at", nullable = false)
     private LocalDateTime submittedAt;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private String status;
+    private BatchStatus status;
 
     @Column(name = "total_jobs")
     private Integer totalJobs;
@@ -44,7 +47,7 @@ public class JobBatch {
     public void prePersist() {
         this.submittedAt = LocalDateTime.now();
         this.lastUpdatedAt = LocalDateTime.now();
-        this.status = "PROCESSING";
+        this.status = BatchStatus.PROCESSING;
         this.totalJobs = 0;
         this.completedJobs = 0;
         this.failedJobs = 0;
@@ -88,11 +91,11 @@ public class JobBatch {
         this.submittedAt = submittedAt;
     }
 
-    public String getStatus() {
+    public BatchStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(BatchStatus status) {
         this.status = status;
     }
 

@@ -43,3 +43,9 @@ nb-configuration.xml
 /.quarkus/cli/plugins/
 # TLS Certificates
 .certs/
+
+# Helm
+Chart.lock
+charts/*.tgz
+charts/*.tar.gz
+.helmignore

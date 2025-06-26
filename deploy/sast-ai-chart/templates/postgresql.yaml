@@ -1,0 +1,8 @@
+{{- if .Values.postgresql.enabled }}
+# PostgreSQL is deployed via the bitnami/postgresql Helm chart dependency
+# Configuration is handled through values.yaml under the postgresql section
+# This template ensures the database is properly integrated with the application
+
+# Override the PostgreSQL service account to use our OpenShift-compatible one
+{{- $_ := set .Values.postgresql.serviceAccount "name" (include "sast-ai.postgresql.serviceAccountName" .) }}
+{{- end }} 

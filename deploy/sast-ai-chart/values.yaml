@@ -139,20 +139,22 @@ serviceAccount:
 rbac:
   # Specifies whether RBAC resources should be created
   create: true
-  # Rules for the SAST AI Orchestrator service account
+  
+  # Whether to create cluster-level roles (requires cluster admin in ArgoCD)
+  # Set to false for namespaced ArgoCD deployments
+  useClusterRole: false
+  
+  # Namespace-scoped rules (compatible with namespaced ArgoCD)
   rules:
-    # Core Kubernetes resources
-    - apiGroups: [""]
-      resources: ["namespaces"]
-      verbs: ["get", "list", "watch"]
+    # Core Kubernetes resources within the namespace
     - apiGroups: [""]
       resources: ["configmaps", "secrets", "pods", "services"]
       verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-    # Tekton resources for pipeline orchestration
+    # Tekton resources for pipeline orchestration (namespace-scoped)
     - apiGroups: ["tekton.dev"]
-      resources: ["pipelines", "pipelineruns", "tasks", "taskruns", "clustertasks"]
+      resources: ["pipelines", "pipelineruns", "tasks", "taskruns"]
       verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-    # Additional Tekton resources
+    # Additional Tekton resources (namespace-scoped)
     - apiGroups: ["tekton.dev"]
       resources: ["pipelineresources", "conditions", "runs"]
       verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
@@ -163,6 +165,17 @@ rbac:
     # PersistentVolumeClaims (for pipeline workspaces)
     - apiGroups: [""]
       resources: ["persistentvolumeclaims"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Cluster-level rules (only used when useClusterRole: true)
+  clusterRules:
+    # Core Kubernetes resources
+    - apiGroups: [""]
+      resources: ["namespaces"]
+      verbs: ["get", "list", "watch"]
+    # Cluster-level Tekton resources
+    - apiGroups: ["tekton.dev"]
+      resources: ["clustertasks"]
       verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
 ## ConfigMap for application configuration

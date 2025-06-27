@@ -7,6 +7,26 @@
 
 Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosystemAppEng/sast-ai-workflow) security scanning Tekton pipelines.
 
+## API Endpoints
+
+#### Health & Monitoring
+- `GET /api/v1/health` - Application health status
+
+#### Job Management
+- `POST /api/v1/jobs/simple` - Create a new security scanning job
+- `GET /api/v1/jobs` - List all jobs (with filtering & pagination)  
+- `GET /api/v1/jobs/{id}` - Get specific job details
+- `POST /api/v1/jobs/{id}:cancel` - Cancel a running job
+
+#### Job Batches
+- `POST /api/v1/job-batches` - Submit batch processing jobs
+- `GET /api/v1/job-batches` - List job batches
+- `GET /api/v1/job-batches/{id}` - Get batch details
+
+#### Package Analysis
+- `GET /api/v1/packages` - Package vulnerability summaries
+
+
 ## Quick Start
 
 ### Local Development
@@ -20,7 +40,12 @@ Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosy
 2. **Setup PostgreSQL**
    ```bash
    # Using Docker
-   docker run --name postgres -e POSTGRES_DB=sast-ai -e POSTGRES_USER=quarkus -e POSTGRES_PASSWORD=quarkus -p 5432:5432 -d postgres:13
+   docker run --name postgres \
+   -e POSTGRES_DB=sast-ai \
+   -e POSTGRES_USER=quarkus \
+   -e POSTGRES_PASSWORD=quarkus \
+   -p 5432:5432 \
+   -d postgres:13
    ```
 
 3. **Run the application**
@@ -32,26 +57,7 @@ Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosy
    ```
    http://localhost:8080/api/v1/health
    ```
-
-## API Endpoints
-
-### Health & Monitoring
-- `GET /api/v1/health` - Application health status
-
-### Job Management
-- `POST /api/v1/jobs/simple` - Create a new security scanning job
-- `GET /api/v1/jobs` - List all jobs (with filtering & pagination)  
-- `GET /api/v1/jobs/{id}` - Get specific job details
-- `POST /api/v1/jobs/{id}:cancel` - Cancel a running job
-
-### Job Batches
-- `POST /api/v1/job-batches` - Submit batch processing jobs
-- `GET /api/v1/job-batches` - List job batches
-- `GET /api/v1/job-batches/{id}` - Get batch details
-
-### Package Analysis
-- `GET /api/v1/packages` - Package vulnerability summaries
-
+   
 ## Deployment
 
 ### Docker Deployment

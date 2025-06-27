@@ -5,7 +5,7 @@
 
 > **AI-Powered SAST Orchestration Platform**
 
-REST API built with Quarkus that orchestrates and manages [SAST-AI-Workflow](https://github.com/RHEcosystemAppEng/sast-ai-workflow) security scanning Tekton pipelines.
+Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosystemAppEng/sast-ai-workflow) security scanning Tekton pipelines.
 
 ## Quick Start
 

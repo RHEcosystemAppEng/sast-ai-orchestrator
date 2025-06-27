@@ -17,9 +17,6 @@ spec:
     helm:
       valueFiles:
         - values.yaml
-      parameters:
-        - name: app.image.tag
-          value: "latest"
   destination:
     server: https://kubernetes.default.svc
     namespace: sast-ai

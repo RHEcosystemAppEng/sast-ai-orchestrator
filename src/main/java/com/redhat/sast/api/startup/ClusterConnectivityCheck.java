@@ -40,19 +40,17 @@ public class ClusterConnectivityCheck {
                 LOG.infof("   Cluster Version: %s", version.getGitVersion());
                 LOG.infof("   Target Namespace: %s", namespace);
 
-                // Optionally check if target namespace exists
+                // Check if target namespace is accessible (works with namespace-scoped permissions)
                 try {
-                    var targetNamespace =
-                            k8sClient.namespaces().withName(namespace).get();
-                    if (targetNamespace != null) {
-                        LOG.infof("   Namespace '%s' is accessible", namespace);
-                    } else {
-                        LOG.warnf("   Warning: Target namespace '%s' not found, but cluster is reachable", namespace);
-                    }
+                    // Instead of trying to get the namespace object, test if we can list resources in the namespace
+                    // This works with namespace-scoped permissions
+                    k8sClient.pods().inNamespace(namespace).list();
+                    LOG.infof("   Namespace '%s' is accessible", namespace);
                 } catch (Exception e) {
                     LOG.warnf(
-                            "   Warning: Could not verify namespace '%s' (may be a permissions issue): %s",
+                            "   Warning: Could not access namespace '%s' (may be a permissions issue): %s",
                             namespace, e.getMessage());
+                    LOG.infof("   Note: Application will continue with namespace-scoped permissions");
                 }
 
             } else {

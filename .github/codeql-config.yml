@@ -1,0 +1,12 @@
+name: "CodeQL Config"
+
+disable-default-path-filters: false
+
+paths-ignore:
+  - "**/*.md"
+  - "**/*.txt"
+  - "**/target/**"
+  - "**/.mvn/**"
+
+languages:
+  - java 

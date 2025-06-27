@@ -3,9 +3,9 @@
 [![CodeQL](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/codeql.yml/badge.svg)](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/codeql.yml)
 [![Build and Publish JVM Image](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/build-and-publish.yml/badge.svg?branch=main)](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/build-and-publish.yml)
 
-> **AI-Powered Static Application Security Testing Orchestration Platform**
+> **AI-Powered SAST Orchestration Platform**
 
-A modern, cloud-native backend REST API built with Quarkus that orchestrates and manages [SAST-AI-Workflow](https://github.com/RHEcosystemAppEng/sast-ai-workflow) security scanning jobs across Kubernetes environments.
+REST API built with Quarkus that orchestrates and manages [SAST-AI-Workflow](https://github.com/RHEcosystemAppEng/sast-ai-workflow) security scanning Tekton pipelines.
 
 ## Quick Start
 
@@ -13,7 +13,7 @@ A modern, cloud-native backend REST API built with Quarkus that orchestrates and
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/RHEcosystemAppEng/sast-ai-orchestrator.git
    cd sast-ai-orchestrator
    ```
 
@@ -58,9 +58,6 @@ A modern, cloud-native backend REST API built with Quarkus that orchestrates and
 ```bash
 # JVM Mode (Fast startup)
 docker build -f src/main/docker/Dockerfile.jvm -t sast-ai-orchestrator:jvm .
-
-# Native Mode (Ultra-fast startup, low memory)
-docker build -f src/main/docker/Dockerfile.native -t sast-ai-orchestrator:native .
 ```
 
 ### Kubernetes Deployment

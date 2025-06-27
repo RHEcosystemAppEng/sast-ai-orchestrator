@@ -1,4 +1,4 @@
-name: Code Quality Checks
+name: Build and Test
 
 on:
   push:
@@ -13,8 +13,8 @@ on:
       - '**.md'
 
 jobs:
-  code-quality:
-    name: Code Quality Analysis
+  build-and-test:
+    name: Build and Test Analysis
     runs-on: ubuntu-latest
     
     steps:

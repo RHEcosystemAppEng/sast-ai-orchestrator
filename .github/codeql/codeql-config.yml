@@ -1,0 +1,27 @@
+name: "SAST AI CodeQL Configuration"
+
+# Disable default path filters to ensure we scan what we want
+disable-default-path-filters: false
+
+# Paths to ignore during CodeQL analysis
+paths-ignore:
+  - "**/*.md"
+  - "**/*.txt"
+  - "**/*.yml"
+  - "**/*.yaml"
+  - "**/target/**"
+  - "**/.mvn/**"
+  - "**/deploy/**"
+
+# Paths to include (optional - if not specified, all paths are included except ignored ones)
+paths:
+  - "src/**"
+
+# Languages to analyze
+languages:
+  - java
+
+# Queries to run (using default security queries)
+queries:
+  - uses: security-extended
+  - uses: security-and-quality 

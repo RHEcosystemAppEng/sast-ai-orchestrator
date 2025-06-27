@@ -1,0 +1,20 @@
+# GitHub Advanced Security Code Scanning Configuration
+# This file explicitly defines which workflows handle code scanning
+# to prevent GitHub from automatically detecting CodeQL configurations
+
+# Only the security-analysis.yml workflow should handle CodeQL
+codeql:
+  # Specify which workflows are responsible for CodeQL analysis
+  workflows:
+    - "security-analysis.yml"
+  
+  # Disable automatic detection for other workflows
+  auto-detect: false
+
+# General code scanning settings
+settings:
+  # Disable automatic dependency review (we handle this in security-analysis.yml)
+  dependency-review: false
+  
+  # Only show alerts for high/critical severity issues by default
+  alert-threshold: "high" 

@@ -100,7 +100,7 @@ public class JobService {
         // Set input source
         if (jobCreationDto.getInputSource() != null) {
             job.setInputSourceType(jobCreationDto.getInputSource().getType());
-            job.setInputSourceUrl(jobCreationDto.getInputSource().getUrl());
+            job.setGSheetUrl(jobCreationDto.getInputSource().getUrl());
         }
 
         job.setStatus(JobStatus.PENDING);

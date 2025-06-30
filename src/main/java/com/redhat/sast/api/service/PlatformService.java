@@ -214,7 +214,7 @@ public class PlatformService {
                 .build());
         params.add(new ParamBuilder()
                 .withName("INPUT_REPORT_FILE_PATH")
-                .withNewValue(job.getInputSourceUrl())
+                .withNewValue(job.getgSheetUrl())
                 .build());
         params.add(new ParamBuilder()
                 .withName("PROJECT_NAME")

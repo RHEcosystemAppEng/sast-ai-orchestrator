@@ -25,7 +25,7 @@ import com.redhat.sast.api.v1.dto.request.WorkflowSettingsDto;
 import jakarta.enterprise.context.ApplicationScoped;
 
 /**
- * Service for processing batch input sources (Google Sheets or SARIF files)
+ * Service for processing batch input sources
  * and converting them into job creation requests.
  */
 @ApplicationScoped
@@ -41,19 +41,13 @@ public class BatchInputService {
 
     /**
      * Processes input source URL and converts to appropriate data format
-     * @param inputSourceUrl Original input source URL (Google Sheets, SARIF file)
-     * @return Processed data URL (e.g. CSV export URL for Google Sheets)
+     * @param gSheetUrl Original Google Sheet input source URL (batch submission)
+     * @return CSV export URL
      * @throws IOException if URL is invalid or if unsupported input type is detected
      */
-    public String processInputSource(String inputSourceUrl) throws IOException {
+    public String processInputSource(String gSheetUrl) throws IOException {
         try {
-            if (isSarifFile(inputSourceUrl)) {
-                throw new IllegalArgumentException(
-                        "SARIF file detection: Input appears to be a SARIF file, which is not yet supported. "
-                                + "Currently only Google Sheets are supported for now. URL: " + inputSourceUrl);
-            }
-
-            return convertGoogleSheetsToCsv(inputSourceUrl);
+            return convertGoogleSheetsToCsv(gSheetUrl);
         } catch (Exception e) {
             throw new IOException("Failed to process input source URL: " + e.getMessage(), e);
         }
@@ -80,47 +74,15 @@ public class BatchInputService {
     }
 
     /**
-     * Detects the type of input source (SARIF or Google Sheets)
-     * @param url Input URL to check
-     * @return true if URL appears to be a SARIF file
-     */
-    private boolean isSarifFile(String url) {
-        if (url == null || url.trim().isEmpty()) {
-            return false;
-        }
-
-        String lowerUrl = url.toLowerCase().trim();
-
-        // Check for SARIF extensions
-        if (lowerUrl.endsWith(".sarif") || lowerUrl.endsWith(".sarif.json")) {
-            LOG.infof("Detected SARIF file by extension: %s", url);
-            return true;
-        }
-
-        // Check for common SARIF hosting patterns
-        if (lowerUrl.contains("github.com") && lowerUrl.contains("/security/")) {
-            LOG.infof("Detected potential GitHub SARIF file: %s", url);
-            return true;
-        }
-
-        if (lowerUrl.contains("sarif") && (lowerUrl.startsWith("http://") || lowerUrl.startsWith("https://"))) {
-            LOG.infof("Detected potential SARIF file by URL pattern: %s", url);
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
      * Fetches input data from the processed URL
-     * @param dataUrl Processed data URL (e.g., CSV export URL for Google Sheets)
+     * @param csvUrl CSV export URL for Google Sheets original URL (batch submission)
      * @return Raw input data content
      * @throws IOException if fetching fails
      */
-    public String fetchInputData(String dataUrl) throws IOException {
+    public String fetchInputData(String csvUrl) throws IOException {
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(dataUrl))
+                    .uri(URI.create(csvUrl))
                     .header("User-Agent", "SAST-AI-Orchestrator/1.0")
                     .GET()
                     .timeout(Duration.ofSeconds(30))
@@ -142,7 +104,7 @@ public class BatchInputService {
                                 + ". Please verify the URL is correct and the source is accessible.";
                         break;
                 }
-                throw new IOException(errorMessage + " URL: " + dataUrl);
+                throw new IOException(errorMessage + " URL: " + csvUrl);
             }
 
             String inputContent = response.body();
@@ -150,14 +112,14 @@ public class BatchInputService {
             LOG.infof("Successfully fetched input data. Content length: %d characters", inputContent.length());
             return inputContent;
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to fetch input data from URL: %s", dataUrl);
+            LOG.errorf(e, "Failed to fetch input data from URL: %s", csvUrl);
             throw new IOException("Failed to fetch input data: " + e.getMessage(), e);
         }
     }
 
     /**
      * Parses input content into JobCreationDto objects with table detection
-     * @param csvContent Raw input content (e.g., CSV from Google Sheets)
+     * @param csvContent CSV content of Google Sheets original URL (batch submission)
      * @return List of job creation DTOs
      */
     public List<JobCreationDto> parse(String csvContent) throws IOException {
@@ -202,7 +164,7 @@ public class BatchInputService {
                         JobCreationDto job = createJobFromRecord(record);
                         if (job != null) {
                             jobs.add(job);
-                        }
+                       }
                     } catch (Exception e) {
                         LOG.warnf(
                                 e,
@@ -225,7 +187,7 @@ public class BatchInputService {
     /**
      * Finds where the actual data table starts in the input lines
      * Expected columns: projectName, packageName, sourceCodeUrl, projectVersion,
-     * packageNvr, inputSourceUrl, knownFalsePositivesUrl, jiraLink, hostname, oshScanId
+     * packageNvr, gSheetUrl, knownFalsePositivesUrl, jiraLink, hostname, oshScanId
      * @param lines Array of input lines
      * @return Row index where table starts, or NO_VALID_BATCH_TABLE_FOUND if not found
      */
@@ -236,7 +198,7 @@ public class BatchInputService {
             "sourceCodeUrl",
             "projectVersion",
             "packageNvr",
-            "inputSourceUrl",
+            "gSheetUrl",
             "knownFalsePositivesUrl",
             "jiraLink",
             "hostname",
@@ -319,7 +281,7 @@ public class BatchInputService {
     /**
      * Creates a JobCreationDto from an input record
      * Expected columns: projectName, projectVersion, packageName, packageNvr,
-     * sourceCodeUrl, inputSourceUrl, knownFalsePositivesUrl, jiraLink, hostname, oshScanId
+     * sourceCodeUrl, gSheetUrl, knownFalsePositivesUrl, jiraLink, hostname, oshScanId
      */
     private JobCreationDto createJobFromRecord(CSVRecord record) {
         // Skip records with missing required data
@@ -342,12 +304,12 @@ public class BatchInputService {
         job.setOshScanId(getFieldValue(record, "oshScanId", "osh_scan_id", "OSH Scan ID"));
 
         // Create input source, default to GOOGLE_SHEET type for batch processing
-        String inputSourceUrl = getFieldValue(record, "inputSourceUrl", "input_source_url", "Input Source URL");
-        if (inputSourceUrl == null || inputSourceUrl.trim().isEmpty()) {
-            inputSourceUrl = job.getPackageSourceCodeUrl();
+        String gSheetUrl = getFieldValue(record, "gSheetUrl", "google_sheet_url", "Google Sheet URL");
+        if (gSheetUrl == null || gSheetUrl.trim().isEmpty()) {
+            gSheetUrl = job.getPackageSourceCodeUrl();
         }
 
-        InputSourceDto inputSource = new InputSourceDto(InputSourceType.GOOGLE_SHEET, inputSourceUrl);
+        InputSourceDto inputSource = new InputSourceDto(InputSourceType.GOOGLE_SHEET, gSheetUrl);
         job.setInputSource(inputSource);
 
         // Create default workflow settings for batch jobs to ensure LLM secrets are loaded
@@ -359,7 +321,7 @@ public class BatchInputService {
         // Validate required fields
         if (job.getProjectName() == null || job.getPackageName() == null || job.getPackageSourceCodeUrl() == null) {
             throw new IllegalArgumentException(
-                    "Missing required fields: projectName, projectVersion, packageName, packageNvr, sourceCodeUrl, inputSourceUrl, knownFalsePositivesUrl, jiraLink, hostname, oshScanId are required");
+                    "Missing required fields: projectName, projectVersion, packageName, packageNvr, sourceCodeUrl, gSheetUrl, knownFalsePositivesUrl, jiraLink, hostname, oshScanId are required");
         }
 
         return job;

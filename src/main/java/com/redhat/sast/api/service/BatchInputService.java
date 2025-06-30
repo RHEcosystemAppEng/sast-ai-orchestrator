@@ -155,14 +155,14 @@ public class BatchInputService {
 
     /**
      * Parses input content into JobCreationDto objects with table detection
-     * @param inputContent Raw input content (e.g., CSV from Google Sheets)
+     * @param csvContent Raw input content (e.g., CSV from Google Sheets)
      * @return List of job creation DTOs
      */
-    public List<JobCreationDto> parseInputToJobs(String inputContent) throws IOException {
+    public List<JobCreationDto> parseInputToJobs(String csvContent) throws IOException {
         List<JobCreationDto> jobs = new ArrayList<>();
 
         try {
-            String[] lines = inputContent.split("\n");
+            String[] lines = csvContent.split("\n");
             int tableStartRow = findTableStartRow(lines);
 
             if (tableStartRow == NO_VALID_BATCH_TABLE_FOUND) {

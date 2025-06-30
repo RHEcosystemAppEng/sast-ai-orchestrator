@@ -15,6 +15,7 @@ import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 
 import io.quarkus.panache.common.Page;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -112,7 +113,7 @@ public class JobService {
                 .collect(Collectors.toList());
     }
 
-    public JobResponseDto getJobById(Long jobId) {
+    public JobResponseDto getJobById(@Nonnull Long jobId) {
         Job job = jobRepository.findById(jobId);
         if (job == null) {
             throw new IllegalArgumentException("Job not found with id: " + jobId);
@@ -121,7 +122,7 @@ public class JobService {
     }
 
     @Transactional
-    public void cancelJob(Long jobId) {
+    public void cancelJob(@Nonnull Long jobId) {
         Job job = jobRepository.findById(jobId);
         if (job == null) {
             throw new IllegalArgumentException("Job not found with id: " + jobId);
@@ -138,7 +139,7 @@ public class JobService {
     }
 
     @Transactional
-    public void updateJobStatus(Long jobId, JobStatus newStatus) {
+    public void updateJobStatus(@Nonnull Long jobId, @Nonnull JobStatus newStatus) {
         Job job = jobRepository.findById(jobId);
         if (job != null) {
             job.setStatus(newStatus);
@@ -152,7 +153,7 @@ public class JobService {
     }
 
     @Transactional
-    public void updateJobTektonUrl(Long jobId, String tektonUrl) {
+    public void updateJobTektonUrl(@Nonnull Long jobId, @Nonnull String tektonUrl) {
         Job job = jobRepository.findById(jobId);
         if (job != null) {
             job.setTektonUrl(tektonUrl);
@@ -163,7 +164,7 @@ public class JobService {
         }
     }
 
-    private void updateJobStatusToFailed(Long jobId, Exception cause) {
+    private void updateJobStatusToFailed(@Nonnull Long jobId, Exception cause) {
         try {
             // This will use the DataService's REQUIRES_NEW transaction
             // to safely update the job status
@@ -206,7 +207,7 @@ public class JobService {
     /**
      * Gets the Job entity by ID for batch processing
      */
-    public Job getJobEntityById(Long jobId) {
+    public Job getJobEntityById(@Nonnull Long jobId) {
         return jobRepository.findById(jobId);
     }
 
@@ -214,7 +215,7 @@ public class JobService {
      * Persists a Job entity for batch processing
      */
     @Transactional
-    public void persistJob(Job job) {
+    public void persistJob(@Nonnull Job job) {
         jobRepository.persist(job);
     }
 }

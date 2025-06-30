@@ -16,6 +16,7 @@ import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobBatchResponseDto;
 
 import io.quarkus.panache.common.Page;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -58,25 +59,26 @@ public class JobBatchService {
         batch.setStatus(BatchStatus.PROCESSING);
 
         jobBatchRepository.persist(batch);
-        LOG.infof("Created new job batch with ID: %d for URL: %s", batch.getId(), submissionDto.getBatchGoogleSheetUrl());
+        LOG.infof(
+                "Created new job batch with ID: %d for URL: %s", batch.getId(), submissionDto.getBatchGoogleSheetUrl());
 
         return batch;
     }
 
-    private void launchBatchProcessing(Long batchId, String sheetsUrl) {
+    private void launchBatchProcessing(@Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl) {
         // Start async processing
-        managedExecutor.execute(() -> executeBatchProcessing(batchId, sheetsUrl));
+        managedExecutor.execute(() -> executeBatchProcessing(batchId, batchGoogleSheetUrl));
     }
 
     /**
      * Asynchronously processes a batch by parsing input files and creating individual jobs
      */
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
-    public void executeBatchProcessing(Long batchId, String sheetsUrl) {
+    public void executeBatchProcessing(@Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl) {
         try {
             LOG.infof("Starting async processing for batch ID: %d", batchId);
 
-            String processedInputUrl = batchInputService.processInputSource(sheetsUrl);
+            String processedInputUrl = batchInputService.processInputSource(batchGoogleSheetUrl);
 
             String processedInputContent = batchInputService.fetchInputData(processedInputUrl);
 
@@ -102,7 +104,7 @@ public class JobBatchService {
     /**
      * Processes jobs sequentially, updating progress after each job
      */
-    private void processJobsSequentially(Long batchId, List<JobCreationDto> jobDtos) {
+    private void processJobsSequentially(@Nonnull Long batchId, List<JobCreationDto> jobDtos) {
         AtomicInteger completedCount = new AtomicInteger(0);
         AtomicInteger failedCount = new AtomicInteger(0);
 
@@ -168,7 +170,7 @@ public class JobBatchService {
      * Sets job batch relationship in a new transaction (to avoid context issues)
      */
     @Transactional
-    public void setJobBatchInNewTransaction(Long jobId, Long batchId) {
+    public void setJobBatchInNewTransaction(@Nonnull Long jobId, @Nonnull Long batchId) {
         try {
             Job job = jobService.getJobEntityById(jobId);
             JobBatch batch = jobBatchRepository.findById(batchId);
@@ -185,7 +187,7 @@ public class JobBatchService {
      * Updates batch progress in a new transaction
      */
     @Transactional
-    public void updateBatchProgressInNewTransaction(Long batchId, int completedJobs, int failedJobs) {
+    public void updateBatchProgressInNewTransaction(@Nonnull Long batchId, int completedJobs, int failedJobs) {
         try {
             JobBatch batch = jobBatchRepository.findById(batchId);
             if (batch != null) {
@@ -204,7 +206,7 @@ public class JobBatchService {
      */
     @Transactional
     public void updateBatchStatusInNewTransaction(
-            Long batchId, BatchStatus status, int totalJobs, int completedJobs, int failedJobs) {
+            @Nonnull Long batchId, @Nonnull BatchStatus status, int totalJobs, int completedJobs, int failedJobs) {
         try {
             JobBatch batch = jobBatchRepository.findById(batchId);
             if (batch != null) {
@@ -221,7 +223,7 @@ public class JobBatchService {
     }
 
     @Transactional
-    public void updateBatchTotalJobs(Long batchId, int totalJobs) {
+    public void updateBatchTotalJobs(@Nonnull Long batchId, int totalJobs) {
         JobBatch batch = jobBatchRepository.findById(batchId);
         if (batch != null) {
             batch.setTotalJobs(totalJobs);
@@ -235,7 +237,7 @@ public class JobBatchService {
                 .collect(Collectors.toList());
     }
 
-    public JobBatchResponseDto getBatchById(Long batchId) {
+    public JobBatchResponseDto getBatchById(@Nonnull Long batchId) {
         JobBatch batch = jobBatchRepository.findById(batchId);
         if (batch == null) {
             throw new IllegalArgumentException("Batch not found with id: " + batchId);
@@ -244,7 +246,7 @@ public class JobBatchService {
     }
 
     @Transactional
-    public void updateBatchStatus(Long batchId, BatchStatus status) {
+    public void updateBatchStatus(@Nonnull Long batchId, @Nonnull BatchStatus status) {
         JobBatch batch = jobBatchRepository.findById(batchId);
         if (batch != null) {
             batch.setStatus(status);
@@ -253,7 +255,8 @@ public class JobBatchService {
     }
 
     @Transactional
-    public void updateBatchStatus(Long batchId, BatchStatus status, int totalJobs, int completedJobs, int failedJobs) {
+    public void updateBatchStatus(
+            @Nonnull Long batchId, @Nonnull BatchStatus status, int totalJobs, int completedJobs, int failedJobs) {
         JobBatch batch = jobBatchRepository.findById(batchId);
         if (batch != null) {
             batch.setStatus(status);
@@ -264,7 +267,7 @@ public class JobBatchService {
         }
     }
 
-    private JobBatchResponseDto convertToResponseDto(JobBatch batch) {
+    private JobBatchResponseDto convertToResponseDto(@Nonnull JobBatch batch) {
         JobBatchResponseDto dto = new JobBatchResponseDto();
         dto.setBatchId(batch.getId());
         dto.setBatchGoogleSheetUrl(batch.getBatchGoogleSheetUrl());

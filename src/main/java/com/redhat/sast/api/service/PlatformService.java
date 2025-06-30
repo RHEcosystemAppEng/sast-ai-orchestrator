@@ -19,6 +19,7 @@ import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
 import io.fabric8.tekton.client.TektonClient;
 import io.fabric8.tekton.v1.*;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -42,7 +43,7 @@ public class PlatformService {
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
-    public void startSastAIWorkflow(Job job) {
+    public void startSastAIWorkflow(@Nonnull Job job) {
         String pipelineRunName =
                 PIPELINE_NAME + "-" + UUID.randomUUID().toString().substring(0, 5);
         LOG.infof(
@@ -76,7 +77,7 @@ public class PlatformService {
         }
     }
 
-    private void watchPipelineRun(long jobId, String pipelineRunName) {
+    private void watchPipelineRun(@Nonnull Long jobId, @Nonnull String pipelineRunName) {
         LOG.infof("Starting watcher for PipelineRun: %s", pipelineRunName);
         final CompletableFuture<Void> future = new CompletableFuture<>();
         try (var ignoredWatch = tektonClient
@@ -124,7 +125,7 @@ public class PlatformService {
     }
 
     @Transactional
-    public void updateJobTektonUrl(Long jobId, String tektonUrl) {
+    public void updateJobTektonUrl(@Nonnull Long jobId, @Nonnull String tektonUrl) {
         try {
             jobService.updateJobTektonUrl(jobId, tektonUrl);
         } catch (Exception e) {
@@ -199,7 +200,7 @@ public class PlatformService {
         return secretValue != null ? secretValue : "";
     }
 
-    private List<Param> extractPipelineParams(Job job) {
+    private List<Param> extractPipelineParams(@Nonnull Job job) {
         List<Param> params = new ArrayList<>();
 
         // Basic job parameters
@@ -286,7 +287,8 @@ public class PlatformService {
         return params;
     }
 
-    private PipelineRun buildPipelineRun(String pipelineRunName, List<Param> params, String llmSecretName) {
+    private PipelineRun buildPipelineRun(
+            @Nonnull String pipelineRunName, @Nonnull List<Param> params, String llmSecretName) {
         return new PipelineRunBuilder()
                 .withNewMetadata()
                 .withName(pipelineRunName)

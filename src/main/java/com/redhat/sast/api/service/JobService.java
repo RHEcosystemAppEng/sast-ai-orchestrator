@@ -195,4 +195,26 @@ public class JobService {
         }
         return dto;
     }
+
+    /**
+     * Gets the platform service instance for batch processing
+     */
+    public PlatformService getPlatformService() {
+        return platformService;
+    }
+
+    /**
+     * Gets the Job entity by ID for batch processing
+     */
+    public Job getJobEntityById(Long jobId) {
+        return jobRepository.findById(jobId);
+    }
+
+    /**
+     * Persists a Job entity for batch processing
+     */
+    @Transactional
+    public void persistJob(Job job) {
+        jobRepository.persist(job);
+    }
 }

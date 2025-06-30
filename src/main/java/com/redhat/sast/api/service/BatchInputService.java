@@ -74,7 +74,6 @@ public class BatchInputService {
 
         // Construct CSV export URL
         String csvUrl = String.format("https://docs.google.com/spreadsheets/d/%s/export?format=csv", sheetId);
-        LOG.infof("Converted Google Sheets URL to CSV: %s", csvUrl);
         return csvUrl;
     }
 

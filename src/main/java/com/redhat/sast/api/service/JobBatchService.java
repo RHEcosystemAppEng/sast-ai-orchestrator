@@ -46,7 +46,8 @@ public class JobBatchService {
 
         JobBatchResponseDto response = convertToResponseDto(batch);
 
-        launchBatchProcessing(batch.getId(), submissionDto.getBatchGoogleSheetUrl());
+        // Start async processing
+        managedExecutor.execute(() -> executeBatchProcessing(batch.getId(), submissionDto.getBatchGoogleSheetUrl()));
 
         return response;
     }
@@ -63,11 +64,6 @@ public class JobBatchService {
                 "Created new job batch with ID: %d for URL: %s", batch.getId(), submissionDto.getBatchGoogleSheetUrl());
 
         return batch;
-    }
-
-    private void launchBatchProcessing(@Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl) {
-        // Start async processing
-        managedExecutor.execute(() -> executeBatchProcessing(batchId, batchGoogleSheetUrl));
     }
 
     /**

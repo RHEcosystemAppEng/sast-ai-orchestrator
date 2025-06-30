@@ -31,8 +31,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 @ApplicationScoped
 public class BatchInputService {
 
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder() .followRedirects(HttpClient.Redirect.ALWAYS) 
-    .connectTimeout(Duration.ofSeconds(20)) .build();
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.ALWAYS)
+            .connectTimeout(Duration.ofSeconds(20))
+            .build();
     private static final Logger LOG = Logger.getLogger(BatchInputService.class);
     private static final Pattern SHEET_ID_PATTERN = Pattern.compile("/spreadsheets/d/([a-zA-Z0-9-_]+)");
     private static final int NO_VALID_BATCH_TABLE_FOUND = -1;
@@ -252,16 +254,16 @@ public class BatchInputService {
 
             // Parse this line as potential header
             try {
-                String[] columns = parseInputLine(line);
+                List<String> columns = parseInputLine(line);
 
                 // Debug: log what we found in this row
                 LOG.infof(
                         "Row %d has %d columns: %s",
                         i + 1,
-                        columns.length,
+                        columns.size(),
                         String.join(
                                 " | ",
-                                java.util.Arrays.stream(columns)
+                                columns.stream()
                                         .limit(8) // Show first 8 columns for readability
                                         .toArray(String[]::new)));
 
@@ -313,7 +315,7 @@ public class BatchInputService {
             return parser.getRecords().get(0).toList();
         }
     }
-    
+
     /**
      * Creates a JobCreationDto from an input record
      * Expected columns: projectName, projectVersion, packageName, packageNvr,

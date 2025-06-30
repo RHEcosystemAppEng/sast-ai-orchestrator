@@ -31,6 +31,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 @ApplicationScoped
 public class BatchInputService {
 
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder() .followRedirects(HttpClient.Redirect.ALWAYS) 
+    .connectTimeout(Duration.ofSeconds(20)) .build();
     private static final Logger LOG = Logger.getLogger(BatchInputService.class);
     private static final Pattern SHEET_ID_PATTERN = Pattern.compile("/spreadsheets/d/([a-zA-Z0-9-_]+)");
     private static final int NO_VALID_BATCH_TABLE_FOUND = -1;
@@ -116,11 +118,6 @@ public class BatchInputService {
      */
     public String fetchInputData(String dataUrl) throws IOException {
         try {
-            HttpClient client = HttpClient.newBuilder()
-                    .followRedirects(HttpClient.Redirect.ALWAYS)
-                    .connectTimeout(Duration.ofSeconds(20))
-                    .build();
-
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(dataUrl))
                     .header("User-Agent", "SAST-AI-Orchestrator/1.0")
@@ -128,23 +125,23 @@ public class BatchInputService {
                     .timeout(Duration.ofSeconds(30))
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() == 401) {
-                throw new IOException(
-                        "Access denied to input source. Please ensure the source is accessible: " + "URL: " + dataUrl);
-            }
-
-            if (response.statusCode() == 403) {
-                throw new IOException(
-                        "Input source access forbidden. The source may be private or have restricted access. "
-                                + "Please make it readable. URL: " + dataUrl);
-            }
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw new IOException("Failed to fetch input data. Status code: " + response.statusCode()
-                        + ". Please verify the URL is correct and the source is accessible. "
-                        + "URL: " + dataUrl);
+                String errorMessage;
+                switch (response.statusCode()) {
+                    case 401:
+                        errorMessage = "Access denied (401). Please ensure the source is accessible.";
+                        break;
+                    case 403:
+                        errorMessage = "Access forbidden (403). The source may be private or have restricted access.";
+                        break;
+                    default:
+                        errorMessage = "Failed to fetch input data. Status code: " + response.statusCode()
+                                + ". Please verify the URL is correct and the source is accessible.";
+                        break;
+                }
+                throw new IOException(errorMessage + " URL: " + dataUrl);
             }
 
             String inputContent = response.body();

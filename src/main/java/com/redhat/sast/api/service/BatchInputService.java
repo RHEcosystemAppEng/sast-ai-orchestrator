@@ -160,7 +160,7 @@ public class BatchInputService {
      * @param csvContent Raw input content (e.g., CSV from Google Sheets)
      * @return List of job creation DTOs
      */
-    public List<JobCreationDto> parseInputToJobs(String csvContent) throws IOException {
+    public List<JobCreationDto> parse(String csvContent) throws IOException {
         List<JobCreationDto> jobs = new ArrayList<>();
 
         try {

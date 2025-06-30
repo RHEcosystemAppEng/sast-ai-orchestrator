@@ -78,7 +78,7 @@ public class JobBatchService {
 
             String processedInputContent = batchInputService.fetchInputData(processedInputUrl);
 
-            List<JobCreationDto> jobDtos = batchInputService.parseInputToJobs(processedInputContent);
+            List<JobCreationDto> jobDtos = batchInputService.parse(processedInputContent);
 
             if (jobDtos.isEmpty()) {
                 updateBatchStatusInNewTransaction(batchId, BatchStatus.COMPLETED_EMPTY, 0, 0, 0);

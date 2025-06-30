@@ -307,26 +307,13 @@ public class BatchInputService {
      * @param line Input line to parse
      * @return Array of column values
      */
-    private String[] parseInputLine(String line) {
-        List<String> columns = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        boolean inQuotes = false;
+    private List<String> parseInputLine(String line) throws IOException {
 
-        for (char c : line.toCharArray()) {
-            if (c == '"') {
-                inQuotes = !inQuotes;
-            } else if (c == ',' && !inQuotes) {
-                columns.add(current.toString().trim());
-                current = new StringBuilder();
-            } else {
-                current.append(c);
-            }
+        try (CSVParser parser = CSVParser.parse(line, CSVFormat.DEFAULT)) {
+            return parser.getRecords().get(0).toList();
         }
-        columns.add(current.toString().trim());
-
-        return columns.toArray(new String[0]);
     }
-
+    
     /**
      * Creates a JobCreationDto from an input record
      * Expected columns: projectName, projectVersion, packageName, packageNvr,

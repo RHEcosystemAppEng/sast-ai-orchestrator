@@ -16,8 +16,8 @@ public class JobBatch {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "source_url", nullable = false)
-    private String sourceUrl;
+    @Column(name = "batch_google_sheet_url", nullable = false)
+    private String batchGoogleSheetUrl;
 
     @Column(name = "submitted_by")
     private String submittedBy;
@@ -67,12 +67,12 @@ public class JobBatch {
         this.id = id;
     }
 
-    public String getSourceUrl() {
-        return sourceUrl;
+    public String getBatchGoogleSheetUrl() {
+        return batchGoogleSheetUrl;
     }
 
-    public void setSourceUrl(String sourceUrl) {
-        this.sourceUrl = sourceUrl;
+    public void setBatchGoogleSheetUrl(String batchGoogleSheetUrl) {
+        this.batchGoogleSheetUrl = batchGoogleSheetUrl;
     }
 
     public String getSubmittedBy() {

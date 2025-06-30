@@ -4,25 +4,25 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class JobBatchSubmissionDto {
 
-    @JsonProperty("sourceUrl")
-    private String sourceUrl;
+    @JsonProperty("batchGoogleSheetUrl")
+    private String batchGoogleSheetUrl;
 
     @JsonProperty("submittedBy")
     private String submittedBy;
 
     public JobBatchSubmissionDto() {}
 
-    public JobBatchSubmissionDto(String sourceUrl, String submittedBy) {
-        this.sourceUrl = sourceUrl;
+    public JobBatchSubmissionDto(String batchGoogleSheetUrl, String submittedBy) {
+        this.batchGoogleSheetUrl = batchGoogleSheetUrl;
         this.submittedBy = submittedBy;
     }
 
-    public String getSourceUrl() {
-        return sourceUrl;
+    public String getBatchGoogleSheetUrl() {
+        return batchGoogleSheetUrl;
     }
 
-    public void setSourceUrl(String sourceUrl) {
-        this.sourceUrl = sourceUrl;
+    public void setBatchGoogleSheetUrl(String batchGoogleSheetUrl) {
+        this.batchGoogleSheetUrl = batchGoogleSheetUrl;
     }
 
     public String getSubmittedBy() {

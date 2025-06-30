@@ -10,8 +10,8 @@ public class JobBatchResponseDto {
     @JsonProperty("batchId")
     private Long batchId;
 
-    @JsonProperty("sourceUrl")
-    private String sourceUrl;
+    @JsonProperty("batchGoogleSheetUrl")
+    private String batchGoogleSheetUrl;
 
     @JsonProperty("submittedBy")
     private String submittedBy;
@@ -41,12 +41,12 @@ public class JobBatchResponseDto {
         this.batchId = batchId;
     }
 
-    public String getSourceUrl() {
-        return sourceUrl;
+    public String getBatchGoogleSheetUrl() {
+        return batchGoogleSheetUrl;
     }
 
-    public void setSourceUrl(String sourceUrl) {
-        this.sourceUrl = sourceUrl;
+    public void setBatchGoogleSheetUrl(String batchGoogleSheetUrl) {
+        this.batchGoogleSheetUrl = batchGoogleSheetUrl;
     }
 
     public String getSubmittedBy() {

@@ -45,7 +45,7 @@ public class JobBatchService {
 
         JobBatchResponseDto response = convertToResponseDto(batch);
 
-        launchBatchProcessing(batch.getId(), submissionDto.getSourceUrl());
+        launchBatchProcessing(batch.getId(), submissionDto.getBatchGoogleSheetUrl());
 
         return response;
     }
@@ -53,12 +53,12 @@ public class JobBatchService {
     @Transactional
     public JobBatch createInitialBatch(JobBatchSubmissionDto submissionDto) {
         JobBatch batch = new JobBatch();
-        batch.setSourceUrl(submissionDto.getSourceUrl());
+        batch.setBatchGoogleSheetUrl(submissionDto.getBatchGoogleSheetUrl());
         batch.setSubmittedBy(submissionDto.getSubmittedBy());
         batch.setStatus(BatchStatus.PROCESSING);
 
         jobBatchRepository.persist(batch);
-        LOG.infof("Created new job batch with ID: %d for URL: %s", batch.getId(), submissionDto.getSourceUrl());
+        LOG.infof("Created new job batch with ID: %d for URL: %s", batch.getId(), submissionDto.getBatchGoogleSheetUrl());
 
         return batch;
     }
@@ -267,7 +267,7 @@ public class JobBatchService {
     private JobBatchResponseDto convertToResponseDto(JobBatch batch) {
         JobBatchResponseDto dto = new JobBatchResponseDto();
         dto.setBatchId(batch.getId());
-        dto.setSourceUrl(batch.getSourceUrl());
+        dto.setBatchGoogleSheetUrl(batch.getBatchGoogleSheetUrl());
         dto.setSubmittedBy(batch.getSubmittedBy());
         dto.setSubmittedAt(batch.getSubmittedAt());
         dto.setStatus(batch.getStatus());

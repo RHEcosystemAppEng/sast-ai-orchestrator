@@ -44,7 +44,7 @@ public class BatchInputService {
     public String processInputSource(String inputSourceUrl) throws IOException {
         try {
             if (isSarifFile(inputSourceUrl)) {
-                throw new IOException(
+                throw new IllegalArgumentException(
                         "SARIF file detection: Input appears to be a SARIF file, which is not yet supported. "
                                 + "Currently only Google Sheets are supported for now. URL: " + inputSourceUrl);
             }

@@ -11,6 +11,9 @@ import com.redhat.sast.api.enums.BatchStatus;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobBatch;
 import com.redhat.sast.api.repository.JobBatchRepository;
+import com.redhat.sast.api.util.input.CsvJobParser;
+import com.redhat.sast.api.util.input.InputSourceResolver;
+import com.redhat.sast.api.util.input.RemoteContentFetcher;
 import com.redhat.sast.api.v1.dto.request.JobBatchSubmissionDto;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobBatchResponseDto;
@@ -33,7 +36,13 @@ public class JobBatchService {
     JobService jobService;
 
     @Inject
-    BatchInputService batchInputService;
+    InputSourceResolver inputSourceResolver;
+
+    @Inject
+    RemoteContentFetcher remoteContentFetcher;
+
+    @Inject
+    CsvJobParser csvJobParser;
 
     @Inject
     ManagedExecutor managedExecutor;
@@ -74,11 +83,11 @@ public class JobBatchService {
         try {
             LOG.infof("Starting async processing for batch ID: %d", batchId);
 
-            String processedInputUrl = batchInputService.processInputSource(batchGoogleSheetUrl);
+            String processedInputUrl = inputSourceResolver.resolve(batchGoogleSheetUrl);
 
-            String processedInputContent = batchInputService.fetchInputData(processedInputUrl);
+            String processedInputContent = remoteContentFetcher.fetch(processedInputUrl);
 
-            List<JobCreationDto> jobDtos = batchInputService.parse(processedInputContent);
+            List<JobCreationDto> jobDtos = csvJobParser.parse(processedInputContent);
 
             if (jobDtos.isEmpty()) {
                 updateBatchStatusInNewTransaction(batchId, BatchStatus.COMPLETED_EMPTY, 0, 0, 0);

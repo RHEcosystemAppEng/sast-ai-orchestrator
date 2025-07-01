@@ -3,6 +3,7 @@ package com.redhat.sast.api.service;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.time.Duration;
 
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.jboss.logging.Logger;
@@ -18,6 +19,8 @@ import com.redhat.sast.api.v1.dto.request.JobBatchSubmissionDto;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobBatchResponseDto;
 
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
 import io.quarkus.panache.common.Page;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -82,93 +85,84 @@ public class JobBatchService {
     public void executeBatchProcessing(@Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl) {
         try {
             LOG.infof("Starting async processing for batch ID: %d", batchId);
-
-            String processedInputUrl = inputSourceResolver.resolve(batchGoogleSheetUrl);
-
-            String processedInputContent = remoteContentFetcher.fetch(processedInputUrl);
-
-            List<JobCreationDto> jobDtos = csvJobParser.parse(processedInputContent);
-
+            List<JobCreationDto> jobDtos = fetchAndParseJobsFromSheet(batchGoogleSheetUrl);
+    
             if (jobDtos.isEmpty()) {
                 updateBatchStatusInNewTransaction(batchId, BatchStatus.COMPLETED_EMPTY, 0, 0, 0);
-                LOG.warnf("Batch %d completed with no valid jobs found in the Google Sheet", batchId);
                 return;
             }
-
+    
             updateBatchTotalJobs(batchId, jobDtos.size());
-            LOG.infof("Batch %d: Found %d jobs to process", batchId, jobDtos.size());
-
-            processJobsSequentially(batchId, jobDtos);
-
+            LOG.infof("Batch %d: Found %d jobs to process. Scheduling reactively.", batchId, jobDtos.size());
+    
+            processJobsReactively(batchId, jobDtos);
+    
         } catch (Exception e) {
             LOG.errorf(e, "Failed to process batch %d: %s", batchId, e.getMessage());
             updateBatchStatusInNewTransaction(batchId, BatchStatus.FAILED, 0, 0, 0);
         }
     }
-
+    
     /**
-     * Processes jobs sequentially, updating progress after each job
+     * Extracts the data fetching and parsing logic into a dedicated method.
      */
-    private void processJobsSequentially(@Nonnull Long batchId, List<JobCreationDto> jobDtos) {
-        AtomicInteger completedCount = new AtomicInteger(0);
-        AtomicInteger failedCount = new AtomicInteger(0);
-
-        for (int i = 0; i < jobDtos.size(); i++) {
-            JobCreationDto jobDto = jobDtos.get(i);
-
-            try {
-                LOG.infof("Processing job %d/%d for batch %d", i + 1, jobDtos.size(), batchId);
-
-                // Create individual job in database and start pipeline
-                Job createdJob = jobService.createJobInDatabase(jobDto);
-
-                setJobBatchInNewTransaction(createdJob.getId(), batchId);
-
-                // Start pipeline execution asynchronously
-                managedExecutor.execute(() -> {
-                    try {
-                        jobService.getPlatformService().startSastAIWorkflow(createdJob);
-                        LOG.infof("Successfully started pipeline for job %d in batch %d", createdJob.getId(), batchId);
-                    } catch (Exception e) {
-                        LOG.errorf(e, "Failed to start pipeline for job %d in batch %d", createdJob.getId(), batchId);
-                    }
-                });
-
-                completedCount.incrementAndGet();
-                LOG.infof("Successfully created job %d (ID: %d) for batch %d", i + 1, createdJob.getId(), batchId);
-
-            } catch (Exception e) {
-                failedCount.incrementAndGet();
-                LOG.errorf(
-                        e,
-                        "Failed to create job %d/%d for batch %d: %s",
-                        i + 1,
-                        jobDtos.size(),
-                        batchId,
-                        e.getMessage());
-            }
-
+    private List<JobCreationDto> fetchAndParseJobsFromSheet(String googleSheetUrl) throws Exception {
+        String processedInputUrl = inputSourceResolver.resolve(googleSheetUrl);
+        String processedInputContent = remoteContentFetcher.fetch(processedInputUrl);
+        return csvJobParser.parse(processedInputContent);
+    }
+    
+    /**
+     * Manages the entire reactive pipeline for processing a list of jobs.
+     */
+    private void processJobsReactively(Long batchId, List<JobCreationDto> jobDtos) {
+        final AtomicInteger completedCount = new AtomicInteger(0);
+        final AtomicInteger failedCount = new AtomicInteger(0);
+        final AtomicInteger processedCount = new AtomicInteger(0);
+    
+        Multi.createFrom().iterable(jobDtos)
+            .onItem().call(jobDto -> Uni.createFrom().nullItem().onItem().delayIt().by(Duration.ofSeconds(1)))
+            .subscribe().with(
+                jobDto -> handleSingleJob(jobDto, batchId, processedCount, completedCount, failedCount, jobDtos.size()),
+                failure -> {
+                    LOG.errorf(failure, "A critical error occurred in the batch processing stream for batch %d", batchId);
+                    finalizeBatch(batchId, jobDtos.size(), completedCount.get(), failedCount.get());
+                },
+                () -> {
+                    LOG.info("Reactive stream completed for batch " + batchId);
+                    finalizeBatch(batchId, jobDtos.size(), completedCount.get(), failedCount.get());
+                }
+            );
+    }
+    
+    /**
+     * Contains the logic for processing one single job from the stream.
+     */
+    private void handleSingleJob(JobCreationDto jobDto, Long batchId, AtomicInteger processedCount, AtomicInteger completedCount, AtomicInteger failedCount, int totalJobs) {
+        try {
+            LOG.infof("Processing job %d/%d for batch %d", processedCount.get() + 1, totalJobs, batchId);
+            Job createdJob = jobService.createJobInDatabase(jobDto);
+            setJobBatchInNewTransaction(createdJob.getId(), batchId);
+            managedExecutor.execute(() -> jobService.getPlatformService().startSastAIWorkflow(createdJob));
+            completedCount.incrementAndGet();
+        } catch (Exception e) {
+            failedCount.incrementAndGet();
+            LOG.errorf(e, "Failed to create job %d/%d for batch %d", processedCount.get() + 1, totalJobs, batchId);
+        } finally {
+            processedCount.incrementAndGet();
             updateBatchProgressInNewTransaction(batchId, completedCount.get(), failedCount.get());
-
-            try {
-                Thread.sleep(1000); // 1 second delay between job creations
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                LOG.warnf("Batch processing interrupted for batch %d", batchId);
-                break;
-            }
         }
-
-        // Final status update
-        BatchStatus finalStatus = (failedCount.get() == jobDtos.size())
-                ? BatchStatus.FAILED
-                : (failedCount.get() > 0) ? BatchStatus.COMPLETED_WITH_ERRORS : BatchStatus.COMPLETED;
-
-        updateBatchStatusInNewTransaction(
-                batchId, finalStatus, jobDtos.size(), completedCount.get(), failedCount.get());
-        LOG.infof(
-                "Batch %d processing completed. Status: %s, Total: %d, Completed: %d, Failed: %d",
-                batchId, finalStatus, jobDtos.size(), completedCount.get(), failedCount.get());
+    }
+    /**
+     * Sets the final status of the batch once all jobs have been processed.
+     */
+    private void finalizeBatch(Long batchId, int total, int completed, int failed) {
+        BatchStatus finalStatus = (failed == total) ? BatchStatus.FAILED
+                : (failed > 0) ? BatchStatus.COMPLETED_WITH_ERRORS
+                : BatchStatus.COMPLETED;
+        updateBatchStatusInNewTransaction(batchId, finalStatus, total, completed, failed);
+        LOG.infof("Batch %d processing finalized. Status: %s, Total: %d, Completed: %d, Failed: %d",
+                batchId, finalStatus, total, completed, failed);
     }
 
     /**

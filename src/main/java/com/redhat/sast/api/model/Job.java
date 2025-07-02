@@ -46,8 +46,8 @@ public class Job {
     @Column(name = "input_source_type")
     private InputSourceType inputSourceType;
 
-    @Column(name = "input_source_url")
-    private String inputSourceUrl;
+    @Column(name = "google_sheet_url")
+    private String gSheetUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -178,12 +178,12 @@ public class Job {
         this.inputSourceType = inputSourceType;
     }
 
-    public String getInputSourceUrl() {
-        return inputSourceUrl;
+    public String getgSheetUrl() {
+        return gSheetUrl;
     }
 
-    public void setInputSourceUrl(String inputSourceUrl) {
-        this.inputSourceUrl = inputSourceUrl;
+    public void setGSheetUrl(String gSheetUrl) {
+        this.gSheetUrl = gSheetUrl;
     }
 
     public JobStatus getStatus() {

@@ -2,7 +2,7 @@ name: Build and Publish JVM Image
 
 on:
   workflow_run:
-    workflows: ["Code Quality Checks", "Security Analysis"]
+    workflows: ["CodeQL"]
     types:
       - completed
     branches: [ main ]
@@ -15,6 +15,9 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: write
+      packages: write
     
     steps:
     - name: Checkout code
@@ -59,7 +62,7 @@ jobs:
 
     - name: Build and push Docker image
       id: build
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: .
         file: ./src/main/docker/Dockerfile.jvm
@@ -72,4 +75,40 @@ jobs:
 
     - name: Image digest
       if: github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main'
-      run: echo ${{ steps.build.outputs.digest }} 
+      run: echo ${{ steps.build.outputs.digest }}
+
+    - name: Update Helm chart values with new image tag
+      if: github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main'
+      run: |
+        # Extract the SHA-based tag from the metadata
+        IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | grep -E "main-[a-f0-9]{7}" | head -1 | cut -d: -f2)
+        echo "New image tag: $IMAGE_TAG"
+        
+        # Update the values.yaml file
+        sed -i "s/tag: \".*\"/tag: \"$IMAGE_TAG\"/" deploy/sast-ai-chart/values.yaml
+        
+        # Verify the change
+        echo "Updated values.yaml:"
+        grep -A 5 -B 5 "tag:" deploy/sast-ai-chart/values.yaml
+
+    - name: Commit and push updated Helm chart
+      if: github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Check if there are changes to commit
+        if git diff --quiet deploy/sast-ai-chart/values.yaml; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        
+        # Add the specific file and commit with a message that won't trigger workflows
+        git add deploy/sast-ai-chart/values.yaml
+        git commit -m "chore: update helm chart image tag [skip ci]
+
+        Update image tag to latest built version for ArgoCD deployment.
+        This commit is automated and should not trigger CI workflows."
+        
+        # Push the changes
+        git push origin main 

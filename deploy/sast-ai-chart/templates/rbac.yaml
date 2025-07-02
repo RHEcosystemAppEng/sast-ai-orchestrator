@@ -1,0 +1,75 @@
+{{- if .Values.rbac.create -}}
+{{- if .Values.rbac.useClusterRole }}
+# Cluster-level RBAC (requires cluster admin permissions in ArgoCD)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-cluster-role
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+rules:
+{{- with .Values.rbac.clusterRules }}
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-cluster-binding
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "sast-ai.fullname" . }}-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: {{ include "sast-ai.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+---
+{{- end }}
+# Namespace-scoped RBAC (works with namespaced ArgoCD)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-role
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+rules:
+{{- with .Values.rbac.rules }}
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-binding
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "sast-ai.fullname" . }}-role
+subjects:
+- kind: ServiceAccount
+  name: {{ include "sast-ai.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+{{- end }} 

@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sast-ai.fullname" . }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.hpa.enabled }}
+  replicas: {{ .Values.app.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "sast-ai.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with (include "sast-ai.annotations" .) }}
+        {{- . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "sast-ai.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "sast-ai.serviceAccountName" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.app.port }}
+              protocol: TCP
+          env:
+            # Database connection
+            - name: DB_HOST
+              value: {{ include "sast-ai.postgresql.host" . | quote }}
+            - name: DB_PORT
+              value: {{ include "sast-ai.postgresql.port" . | quote }}
+            - name: DB_NAME
+              value: {{ include "sast-ai.postgresql.database" . | quote }}
+            - name: DB_USERNAME
+              value: {{ include "sast-ai.postgresql.username" . | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sast-ai.postgresql.secretName" . }}
+                  key: {{ include "sast-ai.postgresql.secretKey" . }}
+            # Application environment variables
+            {{- range $key, $value := .Values.app.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- if .Values.app.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.app.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.app.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.app.readinessProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.app.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.configMap.create }}
+            - name: config
+              mountPath: /deployments/config
+              readOnly: true
+            {{- end }}
+      volumes:
+        {{- if .Values.configMap.create }}
+        - name: config
+          configMap:
+            name: {{ include "sast-ai.configMapName" . }}
+        {{- end }}
+      {{- with .Values.app.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.app.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.app.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }} 

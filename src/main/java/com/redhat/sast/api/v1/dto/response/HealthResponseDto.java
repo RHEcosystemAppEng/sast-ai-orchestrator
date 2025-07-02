@@ -20,8 +20,60 @@ public class HealthResponseDto {
     @JsonProperty("dependencies")
     private Map<String, String> dependencies;
 
+    @JsonProperty("component")
+    private String component;
+
+    @JsonProperty("message")
+    private String message;
+
     public HealthResponseDto() {
         this.timestamp = LocalDateTime.now();
+        this.dependencies = new HashMap<>();
+    }
+
+    private HealthResponseDto(String status, String component, String message) {
+        this();
+        this.status = status;
+        this.component = component;
+        this.message = message;
+    }
+
+    // Static factory methods for component health checks
+    public static HealthResponseDto up(String component) {
+        return new HealthResponseDto("UP", component, null);
+    }
+
+    public static HealthResponseDto up(String component, String message) {
+        return new HealthResponseDto("UP", component, message);
+    }
+
+    public static HealthResponseDto down(String component, String message) {
+        return new HealthResponseDto("DOWN", component, message);
+    }
+
+    // Static factory method for overall application health
+    public static HealthResponseDto overall() {
+        return new HealthResponseDto();
+    }
+
+    // Automatically determine overall health based on dependencies
+    public void determineOverallHealth() {
+        if (dependencies == null || dependencies.isEmpty()) {
+            this.status = "UP"; // No dependencies means healthy
+            return;
+        }
+
+        // Check if any dependency is DOWN
+        boolean hasDownDependency =
+                dependencies.values().stream().anyMatch(status -> status != null && status.startsWith("DOWN"));
+
+        this.status = hasDownDependency ? "DOWN" : "UP";
+    }
+
+    // Convenience method that determines health and returns this instance (for method chaining)
+    public HealthResponseDto withOverallHealth() {
+        determineOverallHealth();
+        return this;
     }
 
     public String getStatus() {
@@ -54,5 +106,40 @@ public class HealthResponseDto {
 
     public void setDependencies(Map<String, String> dependencies) {
         this.dependencies = dependencies != null ? new HashMap<>(dependencies) : new HashMap<>();
+    }
+
+    public String getComponent() {
+        return component;
+    }
+
+    public void setComponent(String component) {
+        this.component = component;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    // Helper method to add a component health check result to dependencies
+    public void addDependency(String componentName, String status) {
+        if (this.dependencies == null) {
+            this.dependencies = new HashMap<>();
+        }
+        this.dependencies.put(componentName, status);
+    }
+
+    // Helper method to add a component health check result from another HealthResponseDto
+    public void addDependency(HealthResponseDto componentHealth) {
+        if (componentHealth.getComponent() != null) {
+            String dependencyStatus = componentHealth.getStatus();
+            if (componentHealth.getMessage() != null) {
+                dependencyStatus += " - " + componentHealth.getMessage();
+            }
+            addDependency(componentHealth.getComponent(), dependencyStatus);
+        }
     }
 }

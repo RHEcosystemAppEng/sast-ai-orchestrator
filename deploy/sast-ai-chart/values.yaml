@@ -1,0 +1,236 @@
+# Default values for sast-ai.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## Application configuration
+app:
+  name: sast-ai
+  image:
+    repository: quay.io/ecosystem-appeng/sast-ai-orchestrator
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "main-7e7392b"
+  
+  # Number of replicas
+  replicas: 1
+  
+  # Container port
+  port: 8080
+  
+  # Environment variables
+  env:
+    # Quarkus configuration
+    QUARKUS_PROFILE: prod
+    QUARKUS_LOG_LEVEL: INFO
+    QUARKUS_HIBERNATE_ORM_LOG_SQL: false
+    QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: update
+    QUARKUS_KUBERNETES_CLIENT_TRUST_CERTS: false
+    # SAST AI specific configuration
+    SAST_AI_WORKFLOW_NAMESPACE: sast-ai
+    
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  # Liveness and readiness probes
+  livenessProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 8080
+    initialDelaySeconds: 90
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 5
+    
+  readinessProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 8080
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 15
+  
+  # Node selector, tolerations, and affinity
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  annotations: {}
+
+## OpenShift Route configuration (instead of Ingress)
+route:
+  enabled: true
+  host: ""  # If empty, OpenShift will generate a hostname
+  path: "/"
+  tls:
+    enabled: true
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  annotations: {}
+
+## PostgreSQL configuration
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "postgres"
+    username: "quarkus"
+    password: "quarkus"
+    database: "sast-ai"
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: ""
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+    # OpenShift compatibility
+    podSecurityContext:
+      enabled: false
+    containerSecurityContext:
+      enabled: false
+  # Use dedicated service account for PostgreSQL with anyuid SCC
+  serviceAccount:
+    create: false
+    name: ""  # Will be overridden in the postgresql template
+  # OpenShift compatibility settings
+  volumePermissions:
+    enabled: false
+  shmVolume:
+    chmod:
+      enabled: false
+
+## External PostgreSQL configuration (when postgresql.enabled is false)
+externalDatabase:
+  host: ""
+  port: 5432
+  database: "sast-ai"
+  username: "quarkus"
+  password: "quarkus"
+  existingSecret: ""
+  existingSecretPasswordKey: ""
+
+## ServiceAccount configuration
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "sast-ai-orchestrator-sa"
+
+## RBAC configuration - for SAST AI Orchestrator
+rbac:
+  # Specifies whether RBAC resources should be created
+  create: true
+  
+  # Whether to create cluster-level roles (requires cluster admin in ArgoCD)
+  # Set to false for namespaced ArgoCD deployments
+  useClusterRole: false
+  
+  # Namespace-scoped rules (compatible with namespaced ArgoCD)
+  rules:
+    # Core Kubernetes resources within the namespace
+    - apiGroups: [""]
+      resources: ["configmaps", "secrets", "pods", "services"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    # Tekton resources for pipeline orchestration (namespace-scoped)
+    - apiGroups: ["tekton.dev"]
+      resources: ["pipelines", "pipelineruns", "tasks", "taskruns"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    # Additional Tekton resources (namespace-scoped)
+    - apiGroups: ["tekton.dev"]
+      resources: ["pipelineresources", "conditions", "runs"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    # Events (for monitoring pipeline events)
+    - apiGroups: [""]
+      resources: ["events"]
+      verbs: ["get", "list", "watch"]
+    # PersistentVolumeClaims (for pipeline workspaces)
+    - apiGroups: [""]
+      resources: ["persistentvolumeclaims"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Cluster-level rules (only used when useClusterRole: true)
+  clusterRules:
+    # Core Kubernetes resources
+    - apiGroups: [""]
+      resources: ["namespaces"]
+      verbs: ["get", "list", "watch"]
+    # Cluster-level Tekton resources
+    - apiGroups: ["tekton.dev"]
+      resources: ["clustertasks"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+## ConfigMap for application configuration
+configMap:
+  create: true
+  data:
+    application.properties: |
+      # PostgreSQL setup
+      quarkus.datasource.db-kind=postgresql
+      quarkus.datasource.username=${DB_USERNAME}
+      quarkus.datasource.password=${DB_PASSWORD}
+      quarkus.datasource.jdbc.url=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      
+      # Hibernate ORM configuration
+      quarkus.hibernate-orm.database.generation=${QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION}
+      quarkus.hibernate-orm.log.sql=${QUARKUS_HIBERNATE_ORM_LOG_SQL}
+      
+      # SAST AI configuration
+      sast.ai.workflow.namespace=${SAST_AI_WORKFLOW_NAMESPACE}
+      
+      # Kubernetes client configuration
+      quarkus.kubernetes-client.trust-certs=${QUARKUS_KUBERNETES_CLIENT_TRUST_CERTS}
+      
+      # Logging configuration
+      quarkus.log.category."org.jboss.logging".level=${QUARKUS_LOG_LEVEL}
+
+## Horizontal Pod Autoscaler
+hpa:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+## Pod Disruption Budget
+pdb:
+  enabled: false
+  minAvailable: 1
+
+## Network Policy - disabled by default for simplicity
+networkPolicy:
+  enabled: false
+
+## Monitoring and observability
+monitoring:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+
+## Image pull secrets
+imagePullSecrets: []
+
+## Additional labels for all resources
+labels: {}
+
+## Additional annotations for all resources
+annotations: {} 

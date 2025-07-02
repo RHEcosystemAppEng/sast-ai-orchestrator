@@ -23,7 +23,7 @@ public class RemoteContentFetcher {
             .connectTimeout(Duration.ofSeconds(20))
             .build();
 
-
+            
     /**
      * Takes any public URL and fetches its raw string content.
      *
@@ -74,7 +74,7 @@ public class RemoteContentFetcher {
                 errorMessage = "Access denied (401 Unauthorized).";
                 break;
             case 403:
-                errorMessage = "Access forbidden (403 Forbidden). Please ensure the URL is public.";
+                errorMessage = "Access forbidden (403 Forbidden). Please ensure the URL is accessible.";
                 break;
             case 404:
                 errorMessage = "Not found (404). Please verify the URL is correct.";

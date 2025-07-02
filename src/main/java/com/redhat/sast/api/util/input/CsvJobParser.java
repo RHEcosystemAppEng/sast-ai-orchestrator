@@ -24,7 +24,7 @@ public class CsvJobParser {
 
     private static final Logger LOG = Logger.getLogger(CsvJobParser.class);
     private static final Set<String> REQUIRED_HEADERS = Set.of(
-        "projectname", "packagename"
+        "packageName", "packageNvr"
     );
 
     /**
@@ -101,17 +101,17 @@ public class CsvJobParser {
     private JobCreationDto createJobFromRecord(CSVRecord record, Map<String, Integer> headerMap) {
         JobCreationDto job = new JobCreationDto();
 
-        job.setProjectName(getFieldValue(record, headerMap, List.of("projectname", "project_name")));
-        job.setProjectVersion(getFieldValue(record, headerMap, List.of("projectversion", "project_version")));
-        job.setPackageName(getFieldValue(record, headerMap, List.of("packagename", "package_name")));
-        job.setPackageNvr(getFieldValue(record, headerMap, List.of("packagenvr", "package_nvr")));
-        job.setPackageSourceCodeUrl(getFieldValue(record, headerMap, List.of("sourcecodeurl", "source_code_url")));
-        job.setJiraLink(getFieldValue(record, headerMap, List.of("jiralink", "jira_link")));
+        job.setProjectName(getFieldValue(record, headerMap, List.of("projectName", "projectname", "project_name")));
+        job.setProjectVersion(getFieldValue(record, headerMap, List.of("projectVersion", "projectversion", "project_version")));
+        job.setPackageName(getFieldValue(record, headerMap, List.of("packageName", "packagename", "package_name")));
+        job.setPackageNvr(getFieldValue(record, headerMap, List.of("nvr", "packageNvr", "packagenvr", "package_nvr")));
+        job.setPackageSourceCodeUrl(getFieldValue(record, headerMap, List.of("sourceCodeUrl", "sourcecodeurl", "source_code_url")));
+        job.setJiraLink(getFieldValue(record, headerMap, List.of("jiraLink", "jiralink", "jira_link")));
         job.setHostname(getFieldValue(record, headerMap, List.of("hostname")));
-        job.setKnownFalsePositivesUrl(getFieldValue(record, headerMap, List.of("knownfalsepositivesurl", "known_false_positives_url")));
-        job.setOshScanId(getFieldValue(record, headerMap, List.of("oshscanid", "osh_scan_id")));
+        job.setKnownFalsePositivesUrl(getFieldValue(record, headerMap, List.of("knownFalsePositivesUrl", "knownfalsepositivesurl", "known_false_positives_url")));
+        job.setOshScanId(getFieldValue(record, headerMap, List.of("oshScanId", "oshscanid", "osh_scan_id")));
 
-        String gSheetUrl = getFieldValue(record, headerMap, List.of("gsheeturl", "google_sheet_url"));
+        String gSheetUrl = getFieldValue(record, headerMap, List.of("gSheetUrl", "gsheeturl", "google_sheet_url"));
         job.setInputSource(new InputSourceDto(InputSourceType.GOOGLE_SHEET, Optional.ofNullable(gSheetUrl).orElse(job.getPackageSourceCodeUrl())));
         WorkflowSettingsDto workflowSettings = new WorkflowSettingsDto();
         workflowSettings.setSecretName("sast-ai-default-llm-creds");
@@ -140,7 +140,7 @@ public class CsvJobParser {
     private void validateRequiredFields(JobCreationDto job, long recordNumber) {
         if (job.getProjectName() == null || job.getPackageName() == null || job.getPackageSourceCodeUrl() == null) {
             throw new IllegalArgumentException(String.format(
-                "Record %d is missing one or more required fields (projectName, packageName).", recordNumber
+                "Record %d is missing one or more required fields (packageNvr, packageName).", recordNumber
             ));
         }
     }

@@ -1,9 +1,9 @@
 package com.redhat.sast.api.service;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import java.time.Duration;
 
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.jboss.logging.Logger;
@@ -19,9 +19,9 @@ import com.redhat.sast.api.v1.dto.request.JobBatchSubmissionDto;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobBatchResponseDto;
 
+import io.quarkus.panache.common.Page;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
-import io.quarkus.panache.common.Page;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -86,23 +86,23 @@ public class JobBatchService {
         try {
             LOG.infof("Starting async processing for batch ID: %d", batchId);
             List<JobCreationDto> jobDtos = fetchAndParseJobsFromSheet(batchGoogleSheetUrl);
-    
+
             if (jobDtos.isEmpty()) {
                 updateBatchStatusInNewTransaction(batchId, BatchStatus.COMPLETED_EMPTY, 0, 0, 0);
                 return;
             }
-    
+
             updateBatchTotalJobs(batchId, jobDtos.size());
             LOG.infof("Batch %d: Found %d jobs to process. Scheduling reactively.", batchId, jobDtos.size());
-    
+
             processJobsReactively(batchId, jobDtos);
-    
+
         } catch (Exception e) {
             LOG.errorf(e, "Failed to process batch %d: %s", batchId, e.getMessage());
             updateBatchStatusInNewTransaction(batchId, BatchStatus.FAILED, 0, 0, 0);
         }
     }
-    
+
     /**
      * Extracts the data fetching and parsing logic into a dedicated method.
      */
@@ -111,75 +111,84 @@ public class JobBatchService {
         String processedInputContent = remoteContentFetcher.fetch(processedInputUrl);
         return csvJobParser.parse(processedInputContent);
     }
-    
+
     /**
      * Manages the entire reactive pipeline for processing a list of jobs.
      */
     private void processJobsReactively(Long batchId, List<JobCreationDto> jobDtos) {
         final AtomicInteger completedCount = new AtomicInteger(0);
         final AtomicInteger failedCount = new AtomicInteger(0);
-        final AtomicInteger processedCount = new AtomicInteger(0);
-    
-        Multi.createFrom().iterable(jobDtos)
-            .onItem().call(jobDto -> Uni.createFrom().nullItem().onItem().delayIt().by(Duration.ofSeconds(1)))
-            .subscribe().with(
-                jobDto -> handleSingleJob(jobDto, batchId, processedCount, completedCount, failedCount, jobDtos.size()),
-                failure -> {
-                    LOG.errorf(failure, "A critical error occurred in the batch processing stream for batch %d", batchId);
-                    finalizeBatch(batchId, jobDtos.size(), completedCount.get(), failedCount.get());
-                },
-                () -> {
-                    LOG.info("Reactive stream completed for batch " + batchId);
-                    finalizeBatch(batchId, jobDtos.size(), completedCount.get(), failedCount.get());
-                }
-            );
+
+        Multi.createFrom()
+                .iterable(jobDtos)
+                .onItem()
+                .call(jobDto -> Uni.createFrom().nullItem().onItem().delayIt().by(Duration.ofSeconds(1)))
+                .subscribe()
+                .with(
+                        jobDto -> {
+                            try {
+                                Job createdJob = createJobInNewTransaction(jobDto);
+                                Long jobId = createdJob.getId();
+
+                                associateJobToBatchInNewTransaction(jobId, batchId);
+
+                                managedExecutor.execute(
+                                        () -> jobService.getPlatformService().startSastAIWorkflow(createdJob));
+                                completedCount.incrementAndGet();
+
+                            } catch (Exception e) {
+                                failedCount.incrementAndGet();
+                                LOG.errorf(e, "Failed during processing of a single job for batch %d", batchId);
+                            } finally {
+                                updateBatchProgressInNewTransaction(batchId, completedCount.get(), failedCount.get());
+                            }
+                        },
+                        failure -> {
+                            LOG.errorf(
+                                    failure,
+                                    "A critical error occurred in the batch processing stream for batch %d",
+                                    batchId);
+                            finalizeBatch(batchId, jobDtos.size(), completedCount.get(), failedCount.get());
+                        },
+                        () -> {
+                            LOG.info("Reactive stream completed for batch " + batchId);
+                            finalizeBatch(batchId, jobDtos.size(), completedCount.get(), failedCount.get());
+                        });
     }
-    
+
     /**
-     * Contains the logic for processing one single job from the stream.
+     * Creates a Job in a new, isolated transaction.
      */
-    private void handleSingleJob(JobCreationDto jobDto, Long batchId, AtomicInteger processedCount, AtomicInteger completedCount, AtomicInteger failedCount, int totalJobs) {
-        try {
-            LOG.infof("Processing job %d/%d for batch %d", processedCount.get() + 1, totalJobs, batchId);
-            Job createdJob = jobService.createJobInDatabase(jobDto);
-            setJobBatchInNewTransaction(createdJob.getId(), batchId);
-            managedExecutor.execute(() -> jobService.getPlatformService().startSastAIWorkflow(createdJob));
-            completedCount.incrementAndGet();
-        } catch (Exception e) {
-            failedCount.incrementAndGet();
-            LOG.errorf(e, "Failed to create job %d/%d for batch %d", processedCount.get() + 1, totalJobs, batchId);
-        } finally {
-            processedCount.incrementAndGet();
-            updateBatchProgressInNewTransaction(batchId, completedCount.get(), failedCount.get());
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    public Job createJobInNewTransaction(JobCreationDto jobDto) {
+        return jobService.createJobInDatabase(jobDto);
+    }
+
+    /**
+     * Associates a Job to a JobBatch in its own isolated transaction.
+     */
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    public void associateJobToBatchInNewTransaction(Long jobId, Long batchId) {
+        Job job = jobService.getJobEntityById(jobId);
+        JobBatch batch = jobBatchRepository.findById(batchId);
+
+        if (job != null && batch != null) {
+            job.setJobBatch(batch);
+            jobService.persistJob(job);
         }
     }
+
     /**
      * Sets the final status of the batch once all jobs have been processed.
      */
     private void finalizeBatch(Long batchId, int total, int completed, int failed) {
-        BatchStatus finalStatus = (failed == total) ? BatchStatus.FAILED
-                : (failed > 0) ? BatchStatus.COMPLETED_WITH_ERRORS
-                : BatchStatus.COMPLETED;
+        BatchStatus finalStatus = (failed == total)
+                ? BatchStatus.FAILED
+                : (failed > 0) ? BatchStatus.COMPLETED_WITH_ERRORS : BatchStatus.COMPLETED;
         updateBatchStatusInNewTransaction(batchId, finalStatus, total, completed, failed);
-        LOG.infof("Batch %d processing finalized. Status: %s, Total: %d, Completed: %d, Failed: %d",
+        LOG.infof(
+                "Batch %d processing finalized. Status: %s, Total: %d, Completed: %d, Failed: %d",
                 batchId, finalStatus, total, completed, failed);
-    }
-
-    /**
-     * Sets job batch relationship in a new transaction (to avoid context issues)
-     */
-    @Transactional
-    public void setJobBatchInNewTransaction(@Nonnull Long jobId, @Nonnull Long batchId) {
-        try {
-            Job job = jobService.getJobEntityById(jobId);
-            JobBatch batch = jobBatchRepository.findById(batchId);
-            if (job != null && batch != null) {
-                job.setJobBatch(batch);
-                jobService.persistJob(job);
-            }
-        } catch (Exception e) {
-            LOG.errorf(e, "Failed to set batch relationship for job %d and batch %d", jobId, batchId);
-        }
     }
 
     /**

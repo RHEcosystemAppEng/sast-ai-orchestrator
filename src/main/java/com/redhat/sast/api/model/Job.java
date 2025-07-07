@@ -235,18 +235,18 @@ public class Job {
     }
 
     public JobBatch getJobBatch() {
-        return jobBatch == null ? null : new JobBatch();
+        return jobBatch;
     }
 
     public void setJobBatch(JobBatch jobBatch) {
-        this.jobBatch = jobBatch == null ? null : new JobBatch();
+        this.jobBatch = jobBatch;
     }
 
     public JobSettings getJobSettings() {
-        return jobSettings == null ? null : new JobSettings();
+        return jobSettings;
     }
 
     public void setJobSettings(JobSettings jobSettings) {
-        this.jobSettings = jobSettings == null ? null : new JobSettings();
+        this.jobSettings = jobSettings;
     }
 }

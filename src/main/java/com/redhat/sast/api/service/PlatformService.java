@@ -228,6 +228,7 @@ public class PlatformService {
         // LLM settings from JobSettings and OCP secrets
         if (job.getJobSettings() != null) {
             String secretName = job.getJobSettings().getSecretName();
+            LOG.infof("Job %d has JobSettings with secretName: '%s'", job.getId(), secretName);
 
             // Read all LLM configuration from OCP secret in one call
             LlmSecretValues llmSecretValues = getLlmSecretValues(secretName);
@@ -262,6 +263,7 @@ public class PlatformService {
                     .withNewValue(llmSecretValues.embeddingsApiKey())
                     .build());
         } else {
+            LOG.warnf("Job %d has NO JobSettings - using empty LLM values", job.getId());
             // Add default empty values if no job settings
             params.add(new ParamBuilder().withName("LLM_URL").withNewValue("").build());
             params.add(new ParamBuilder()

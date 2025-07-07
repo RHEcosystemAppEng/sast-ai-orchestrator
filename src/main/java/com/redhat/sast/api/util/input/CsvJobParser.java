@@ -1,11 +1,5 @@
 package com.redhat.sast.api.util.input;
 
-import com.redhat.sast.api.enums.InputSourceType;
-import com.redhat.sast.api.v1.dto.request.InputSourceDto;
-import com.redhat.sast.api.v1.dto.request.JobCreationDto;
-import com.redhat.sast.api.v1.dto.request.WorkflowSettingsDto;
-import jakarta.annotation.Nonnull;
-import jakarta.enterprise.context.ApplicationScoped;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -14,18 +8,25 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.jboss.logging.Logger;
 
+import com.redhat.sast.api.enums.InputSourceType;
+import com.redhat.sast.api.v1.dto.request.InputSourceDto;
+import com.redhat.sast.api.v1.dto.request.JobCreationDto;
+import com.redhat.sast.api.v1.dto.request.WorkflowSettingsDto;
+
+import jakarta.annotation.Nonnull;
+import jakarta.enterprise.context.ApplicationScoped;
+
 @ApplicationScoped
 public class CsvJobParser {
 
     private static final Logger LOG = Logger.getLogger(CsvJobParser.class);
-    private static final Set<String> REQUIRED_HEADERS = Set.of(
-        "packageName", "packageNvr"
-    );
+    private static final Set<String> REQUIRED_HEADERS = Set.of("packagename", "packagenvr");
 
     /**
      * Parses a raw CSV string into a list of JobCreationDto objects.
@@ -48,7 +49,9 @@ public class CsvJobParser {
 
             int headerRowIndex = findHeaderRow(records);
             if (headerRowIndex == -1) {
-                throw new IOException("Could not find a valid header row. Required columns include: " + String.join(", ", REQUIRED_HEADERS));
+                LOG.errorf("Header detection failed. Raw content was:\n%s", csvContent);
+                throw new IOException("Could not find a valid header row. Required columns include: "
+                        + String.join(", ", REQUIRED_HEADERS));
             }
 
             List<JobCreationDto> jobs = new ArrayList<>();
@@ -78,8 +81,8 @@ public class CsvJobParser {
     private int findHeaderRow(List<CSVRecord> records) {
         for (int i = 0; i < records.size(); i++) {
             Set<String> currentHeaders = records.get(i).stream()
-                .map(header -> header.trim().toLowerCase().replaceAll("\\s+", ""))
-                .collect(Collectors.toSet());
+                    .map(header -> header.trim().toLowerCase().replaceAll("\\s+", ""))
+                    .collect(Collectors.toSet());
 
             if (currentHeaders.containsAll(REQUIRED_HEADERS)) {
                 LOG.infof("Found valid header at row %d.", i + 1);
@@ -102,20 +105,41 @@ public class CsvJobParser {
         JobCreationDto job = new JobCreationDto();
 
         job.setProjectName(getFieldValue(record, headerMap, List.of("projectName", "projectname", "project_name")));
-        job.setProjectVersion(getFieldValue(record, headerMap, List.of("projectVersion", "projectversion", "project_version")));
+        job.setProjectVersion(
+                getFieldValue(record, headerMap, List.of("projectVersion", "projectversion", "project_version")));
         job.setPackageName(getFieldValue(record, headerMap, List.of("packageName", "packagename", "package_name")));
         job.setPackageNvr(getFieldValue(record, headerMap, List.of("nvr", "packageNvr", "packagenvr", "package_nvr")));
-        job.setPackageSourceCodeUrl(getFieldValue(record, headerMap, List.of("sourceCodeUrl", "sourcecodeurl", "source_code_url")));
+        job.setPackageSourceCodeUrl(
+                getFieldValue(record, headerMap, List.of("sourceCodeUrl", "sourcecodeurl", "source_code_url")));
         job.setJiraLink(getFieldValue(record, headerMap, List.of("jiraLink", "jiralink", "jira_link")));
         job.setHostname(getFieldValue(record, headerMap, List.of("hostname")));
-        job.setKnownFalsePositivesUrl(getFieldValue(record, headerMap, List.of("knownFalsePositivesUrl", "knownfalsepositivesurl", "known_false_positives_url")));
+        job.setKnownFalsePositivesUrl(getFieldValue(
+                record,
+                headerMap,
+                List.of("knownFalsePositivesUrl", "knownfalsepositivesurl", "known_false_positives_url")));
         job.setOshScanId(getFieldValue(record, headerMap, List.of("oshScanId", "oshscanid", "osh_scan_id")));
 
-        String gSheetUrl = getFieldValue(record, headerMap, List.of("gSheetUrl", "gsheeturl", "google_sheet_url"));
-        job.setInputSource(new InputSourceDto(InputSourceType.GOOGLE_SHEET, Optional.ofNullable(gSheetUrl).orElse(job.getPackageSourceCodeUrl())));
+        String gSheetUrl = getFieldValue(
+                record,
+                headerMap,
+                List.of(
+                        "gSheetUrl",
+                        "gsheeturl",
+                        "google_sheet_url",
+                        "inputSourceUrl",
+                        "inputsourceurl",
+                        "input_source_url"));
+        
+        LOG.infof("Parsed gSheetUrl for job: '%s'", gSheetUrl);
+        LOG.infof("Available headers: %s", headerMap.keySet());
+        
+        job.setInputSource(new InputSourceDto(
+                InputSourceType.GOOGLE_SHEET, Optional.ofNullable(gSheetUrl).orElse(job.getPackageSourceCodeUrl())));
         WorkflowSettingsDto workflowSettings = new WorkflowSettingsDto();
         workflowSettings.setSecretName("sast-ai-default-llm-creds");
         job.setWorkflowSettings(workflowSettings);
+        
+        LOG.infof("Set workflow settings with secretName: '%s'", workflowSettings.getSecretName());
 
         validateRequiredFields(job, record.getRecordNumber());
 
@@ -123,25 +147,27 @@ public class CsvJobParser {
     }
 
     private String getFieldValue(CSVRecord record, Map<String, Integer> headerMap, List<String> possibleNames) {
+        LOG.infof("Looking for field in possible names: %s", possibleNames);
         for (String name : possibleNames) {
             if (headerMap.containsKey(name)) {
                 int index = headerMap.get(name);
                 if (index < record.size()) {
                     String value = record.get(index);
                     if (value != null && !value.trim().isEmpty()) {
+                        LOG.infof("Found field '%s' with value: '%s'", name, value.trim());
                         return value.trim();
                     }
                 }
             }
         }
+        LOG.infof("No field found for possible names: %s", possibleNames);
         return null;
     }
 
     private void validateRequiredFields(JobCreationDto job, long recordNumber) {
-        if (job.getProjectName() == null || job.getPackageName() == null || job.getPackageSourceCodeUrl() == null) {
+        if (job.getPackageNvr() == null || job.getPackageName() == null) {
             throw new IllegalArgumentException(String.format(
-                "Record %d is missing one or more required fields (packageNvr, packageName).", recordNumber
-            ));
+                    "Record %d is missing one or more required fields (packageNvr, packageName).", recordNumber));
         }
     }
 

@@ -8,22 +8,21 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 
-import jakarta.annotation.Nonnull;
 import org.jboss.logging.Logger;
 
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class RemoteContentFetcher {
 
     private static final Logger LOG = Logger.getLogger(RemoteContentFetcher.class);
-    private static final String USER_AGENT = "SAST-AI-Orchestrator/1.0"; 
+    private static final String USER_AGENT = "SAST-AI-Orchestrator/1.0";
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.ALWAYS)
             .connectTimeout(Duration.ofSeconds(20))
             .build();
 
-            
     /**
      * Takes any public URL and fetches its raw string content.
      *

@@ -3,8 +3,8 @@ package com.redhat.sast.api.util.input;
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import jakarta.annotation.Nonnull;
 
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped

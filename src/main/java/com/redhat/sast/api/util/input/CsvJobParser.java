@@ -58,7 +58,7 @@ public class CsvJobParser {
             Map<String, Integer> headerMap = buildHeaderMap(records.get(headerRowIndex));
 
             for (int i = headerRowIndex + 1; i < records.size(); i++) {
-                CSVRecord record = records.get(i);
+            CSVRecord record = records.get(i);
                 if (isRecordEmpty(record)) {
                     continue;
                 }
@@ -129,16 +129,16 @@ public class CsvJobParser {
                         "inputSourceUrl",
                         "inputsourceurl",
                         "input_source_url"));
-        
+
         LOG.infof("Parsed gSheetUrl for job: '%s'", gSheetUrl);
         LOG.infof("Available headers: %s", headerMap.keySet());
-        
+
         job.setInputSource(new InputSourceDto(
                 InputSourceType.GOOGLE_SHEET, Optional.ofNullable(gSheetUrl).orElse(job.getPackageSourceCodeUrl())));
         WorkflowSettingsDto workflowSettings = new WorkflowSettingsDto();
         workflowSettings.setSecretName("sast-ai-default-llm-creds");
         job.setWorkflowSettings(workflowSettings);
-        
+
         LOG.infof("Set workflow settings with secretName: '%s'", workflowSettings.getSecretName());
 
         validateRequiredFields(job, record.getRecordNumber());

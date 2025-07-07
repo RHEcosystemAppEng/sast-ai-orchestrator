@@ -218,6 +218,22 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>com.rudikershaw.gitbuildhook</groupId>
+                <artifactId>git-build-hook-maven-plugin</artifactId>
+                <version>3.5.0</version> <executions>
+                    <execution>
+                        <goals>
+                            <goal>install</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <installHooks>
+                        <pre-commit>pre-commit</pre-commit>
+                    </installHooks>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

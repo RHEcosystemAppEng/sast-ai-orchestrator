@@ -68,8 +68,10 @@ public class JobService {
 
         // Create job settings if provided
         if (jobCreationDto.getWorkflowSettings() != null) {
-            LOG.infof("Creating JobSettings with secretName: '%s'", jobCreationDto.getWorkflowSettings().getSecretName());
-            
+            LOG.infof(
+                    "Creating JobSettings with secretName: '%s'",
+                    jobCreationDto.getWorkflowSettings().getSecretName());
+
             JobSettings settings = new JobSettings();
             settings.setJob(job);
             settings.setLlmModelName(jobCreationDto.getWorkflowSettings().getLlmModelName());
@@ -80,7 +82,7 @@ public class JobService {
 
             // Manually set the JobSettings on the Job object to avoid lazy loading issues
             job.setJobSettings(settings);
-            
+
             LOG.infof("Persisted JobSettings with secretName: '%s'", settings.getSecretName());
         }
 

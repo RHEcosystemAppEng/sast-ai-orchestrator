@@ -230,7 +230,7 @@
                 </executions>
                 <configuration>
                     <installHooks>
-                        <pre-commit>pre-commit</pre-commit>
+                        <pre-commit>githooks/pre-commit</pre-commit>
                     </installHooks>
                 </configuration>
             </plugin>

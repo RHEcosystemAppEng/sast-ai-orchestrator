@@ -7,7 +7,7 @@ echo "Running Spotless check before commit..."
   echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
   echo "!! SPOTLESS VIOLATIONS DETECTED"
   echo "!! Commit aborted."
-  echo "!! Run './mvnw spotless:apply' to fix them."
+  echo "!! Run 'mvn spotless:apply' to fix them."
   echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
   exit 1 # Abort the commit
 }

@@ -58,7 +58,7 @@ public class CsvJobParser {
             Map<String, Integer> headerMap = buildHeaderMap(records.get(headerRowIndex));
 
             for (int i = headerRowIndex + 1; i < records.size(); i++) {
-            CSVRecord record = records.get(i);
+                CSVRecord record = records.get(i);
                 if (isRecordEmpty(record)) {
                     continue;
                 }

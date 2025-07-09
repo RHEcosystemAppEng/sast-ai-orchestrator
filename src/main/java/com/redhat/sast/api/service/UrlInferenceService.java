@@ -85,10 +85,84 @@ public class UrlInferenceService {
         }
 
         String baseUrl = String.format(SOURCE_CODE_BASE_URL_TEMPLATE, rhelVersion);
-        String url = baseUrl + packageName + "/" + version + "/" + release + "/src/" + packageNvr
-                + SOURCE_CODE_SUFFIX;
+        String url = baseUrl + packageName + "/" + version + "/" + release + "/src/" + packageNvr + SOURCE_CODE_SUFFIX;
         LOG.infof("Inferred source code URL for NVR '%s': %s", packageNvr, url);
         return url;
+    }
+
+    /**
+     * Infers the project name from a package NVR.
+     * The project name is the same as the package name.
+     *
+     * @param packageNvr the package NVR (e.g., "systemd-257-9.el10")
+     * @return the inferred project name (e.g., "systemd") or null if NVR parsing fails
+     */
+    public String inferProjectName(String packageNvr) {
+        if (packageNvr == null || packageNvr.trim().isEmpty()) {
+            LOG.warnf("Cannot infer project name: packageNvr is null or empty");
+            return null;
+        }
+
+        String projectName = nvrParser.extractPackageName(packageNvr);
+        if (projectName == null) {
+            LOG.warnf("Cannot infer project name: failed to extract package name from NVR '%s'", packageNvr);
+            return null;
+        }
+
+        LOG.infof("Inferred project name for NVR '%s': %s", packageNvr, projectName);
+        return projectName;
+    }
+
+    /**
+     * Infers the project version from a package NVR.
+     * The project version is the version + "-" + release (without the .el part).
+     *
+     * @param packageNvr the package NVR (e.g., "systemd-257-9.el10")
+     * @return the inferred project version (e.g., "257-9") or null if NVR parsing fails
+     */
+    public String inferProjectVersion(String packageNvr) {
+        if (packageNvr == null || packageNvr.trim().isEmpty()) {
+            LOG.warnf("Cannot infer project version: packageNvr is null or empty");
+            return null;
+        }
+
+        String version = nvrParser.extractVersion(packageNvr);
+        String release = nvrParser.extractRelease(packageNvr);
+
+        if (version == null || release == null) {
+            LOG.warnf("Cannot infer project version: failed to extract version/release from NVR '%s'", packageNvr);
+            return null;
+        }
+
+        // Extract the release part before ".el" (e.g., "9.el10" -> "9")
+        String releaseWithoutEl = release.split("\\.el")[0];
+        String projectVersion = version + "-" + releaseWithoutEl;
+
+        LOG.infof("Inferred project version for NVR '%s': %s", packageNvr, projectVersion);
+        return projectVersion;
+    }
+
+    /**
+     * Infers the package name from a package NVR.
+     * The package name is the same as the project name.
+     *
+     * @param packageNvr the package NVR (e.g., "systemd-257-9.el10")
+     * @return the inferred package name (e.g., "systemd") or null if NVR parsing fails
+     */
+    public String inferPackageName(String packageNvr) {
+        if (packageNvr == null || packageNvr.trim().isEmpty()) {
+            LOG.warnf("Cannot infer package name: packageNvr is null or empty");
+            return null;
+        }
+
+        String packageName = nvrParser.extractPackageName(packageNvr);
+        if (packageName == null) {
+            LOG.warnf("Cannot infer package name: failed to extract package name from NVR '%s'", packageNvr);
+            return null;
+        }
+
+        LOG.infof("Inferred package name for NVR '%s': %s", packageNvr, packageName);
+        return packageName;
     }
 
     /**

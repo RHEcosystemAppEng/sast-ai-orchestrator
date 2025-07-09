@@ -109,28 +109,24 @@ public class CsvJobParser {
     private JobCreationDto createJobFromRecord(CSVRecord record, Map<String, Integer> headerMap) {
         JobCreationDto job = new JobCreationDto();
 
-        job.setProjectName(getFieldValue(record, headerMap, List.of("projectName", "projectname", "project_name")));
-        job.setProjectVersion(
-                getFieldValue(record, headerMap, List.of("projectVersion", "projectversion", "project_version")));
-        job.setPackageName(getFieldValue(record, headerMap, List.of("packageName", "packagename", "package_name")));
         job.setPackageNvr(getFieldValue(record, headerMap, List.of("nvr", "packageNvr", "packagenvr", "package_nvr")));
-        String sourceCodeUrl = urlInferenceService.inferSourceCodeUrl(job.getPackageNvr());
-
-        job.setPackageSourceCodeUrl(sourceCodeUrl);
+        
+        job.setProjectName(urlInferenceService.inferProjectName(job.getPackageNvr()));
+        job.setProjectVersion(urlInferenceService.inferProjectVersion(job.getPackageNvr()));
+        job.setPackageName(urlInferenceService.inferPackageName(job.getPackageNvr()));
+        job.setPackageSourceCodeUrl(urlInferenceService.inferSourceCodeUrl(job.getPackageNvr()));
+        job.setKnownFalsePositivesUrl(urlInferenceService.inferKnownFalsePositivesUrl(job.getPackageNvr()));
         job.setJiraLink(getFieldValue(record, headerMap, List.of("jiraLink", "jiralink", "jira_link")));
         job.setHostname(getFieldValue(record, headerMap, List.of("hostname")));
-
-        String knownFalsePositivesUrl = urlInferenceService.inferKnownFalsePositivesUrl(job.getPackageNvr());
-
-        job.setKnownFalsePositivesUrl(knownFalsePositivesUrl);
         job.setOshScanId(getFieldValue(record, headerMap, List.of("oshScanId", "oshscanid", "osh_scan_id")));
-
         String gSheetUrl = getFieldValue(
                 record,
                 headerMap,
                 List.of(
                         "gSheetUrl",
+                        "googlesheeturl",
                         "gsheeturl",
+                        "googleSheetUrl",
                         "google_sheet_url",
                         "inputSourceUrl",
                         "inputsourceurl",
@@ -171,9 +167,15 @@ public class CsvJobParser {
     }
 
     private void validateRequiredFields(JobCreationDto job, long recordNumber) {
-        if (job.getPackageNvr() == null || job.getPackageName() == null) {
+        if (job.getPackageNvr() == null || job.getPackageNvr().trim().isEmpty()) {
             throw new IllegalArgumentException(
-                    String.format("Record %d is missing a required field (nvr).", recordNumber));
+                    String.format("Record %d is missing required field 'nvr'.", recordNumber));
+        }
+        
+        // Verify that inference was successful
+        if (job.getPackageName() == null || job.getProjectName() == null || job.getProjectVersion() == null) {
+            throw new IllegalArgumentException(
+                    String.format("Record %d has invalid NVR '%s' - failed to infer parameters.", recordNumber, job.getPackageNvr()));
         }
     }
 

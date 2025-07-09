@@ -15,18 +15,23 @@ import org.apache.commons.csv.CSVRecord;
 import org.jboss.logging.Logger;
 
 import com.redhat.sast.api.enums.InputSourceType;
+import com.redhat.sast.api.service.UrlInferenceService;
 import com.redhat.sast.api.v1.dto.request.InputSourceDto;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.request.WorkflowSettingsDto;
 
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 @ApplicationScoped
 public class CsvJobParser {
 
     private static final Logger LOG = Logger.getLogger(CsvJobParser.class);
-    private static final Set<String> REQUIRED_HEADERS = Set.of("packagename", "packagenvr");
+    private static final Set<String> REQUIRED_HEADERS = Set.of("nvr");
+
+    @Inject
+    UrlInferenceService urlInferenceService;
 
     /**
      * Parses a raw CSV string into a list of JobCreationDto objects.
@@ -113,10 +118,10 @@ public class CsvJobParser {
                 getFieldValue(record, headerMap, List.of("sourceCodeUrl", "sourcecodeurl", "source_code_url")));
         job.setJiraLink(getFieldValue(record, headerMap, List.of("jiraLink", "jiralink", "jira_link")));
         job.setHostname(getFieldValue(record, headerMap, List.of("hostname")));
-        job.setKnownFalsePositivesUrl(getFieldValue(
-                record,
-                headerMap,
-                List.of("knownFalsePositivesUrl", "knownfalsepositivesurl", "known_false_positives_url")));
+        
+        String knownFalsePositivesUrl = urlInferenceService.inferKnownFalsePositivesUrl(job.getPackageNvr());
+
+        job.setKnownFalsePositivesUrl(knownFalsePositivesUrl);
         job.setOshScanId(getFieldValue(record, headerMap, List.of("oshScanId", "oshscanid", "osh_scan_id")));
 
         String gSheetUrl = getFieldValue(
@@ -167,7 +172,7 @@ public class CsvJobParser {
     private void validateRequiredFields(JobCreationDto job, long recordNumber) {
         if (job.getPackageNvr() == null || job.getPackageName() == null) {
             throw new IllegalArgumentException(String.format(
-                    "Record %d is missing one or more required fields (packageNvr, packageName).", recordNumber));
+                    "Record %d is missing a required field (nvr).", recordNumber));
         }
     }
 

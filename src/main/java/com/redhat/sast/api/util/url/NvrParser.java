@@ -38,6 +38,74 @@ public class NvrParser {
     }
 
     /**
+     * Extracts the version from an NVR string.
+     *
+     * @param nvr the NVR string (e.g., "systemd-257-9.el10")
+     * @return the version (e.g., "257") or null if parsing fails
+     */
+    public String extractVersion(String nvr) {
+        if (nvr == null || nvr.trim().isEmpty()) {
+            return null;
+        }
+
+        Matcher matcher = NVR_PATTERN.matcher(nvr.trim());
+        if (matcher.matches()) {
+            String versionRelease = matcher.group(2); // e.g., "257-9.el10"
+            // Split on first dash to separate version from release
+            int firstDash = versionRelease.indexOf('-');
+            if (firstDash > 0) {
+                return versionRelease.substring(0, firstDash); // e.g., "257"
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extracts the release from an NVR string.
+     *
+     * @param nvr the NVR string (e.g., "systemd-257-9.el10")
+     * @return the release (e.g., "9.el10") or null if parsing fails
+     */
+    public String extractRelease(String nvr) {
+        if (nvr == null || nvr.trim().isEmpty()) {
+            return null;
+        }
+
+        Matcher matcher = NVR_PATTERN.matcher(nvr.trim());
+        if (matcher.matches()) {
+            String versionRelease = matcher.group(2); // e.g., "257-9.el10"
+            // Split on first dash to separate version from release
+            int firstDash = versionRelease.indexOf('-');
+            if (firstDash > 0 && firstDash < versionRelease.length() - 1) {
+                return versionRelease.substring(firstDash + 1); // e.g., "9.el10"
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extracts the RHEL version from an NVR release string.
+     *
+     * @param nvr the NVR string (e.g., "systemd-257-9.el10")
+     * @return the RHEL version (e.g., "10") or null if parsing fails
+     */
+    public String extractRhelVersion(String nvr) {
+        String release = extractRelease(nvr);
+        if (release == null) {
+            return null;
+        }
+
+        // Look for pattern .elX where X is the version number
+        java.util.regex.Pattern elPattern = java.util.regex.Pattern.compile(".*\\.el(\\d+).*");
+        java.util.regex.Matcher matcher = elPattern.matcher(release);
+        if (matcher.matches()) {
+            return matcher.group(1); // Return just the number part
+        }
+
+        return null;
+    }
+
+    /**
      * Validates if a string follows the NVR format.
      *
      * @param nvr the string to validate

@@ -114,11 +114,12 @@ public class CsvJobParser {
                 getFieldValue(record, headerMap, List.of("projectVersion", "projectversion", "project_version")));
         job.setPackageName(getFieldValue(record, headerMap, List.of("packageName", "packagename", "package_name")));
         job.setPackageNvr(getFieldValue(record, headerMap, List.of("nvr", "packageNvr", "packagenvr", "package_nvr")));
-        job.setPackageSourceCodeUrl(
-                getFieldValue(record, headerMap, List.of("sourceCodeUrl", "sourcecodeurl", "source_code_url")));
+        String sourceCodeUrl = urlInferenceService.inferSourceCodeUrl(job.getPackageNvr());
+
+        job.setPackageSourceCodeUrl(sourceCodeUrl);
         job.setJiraLink(getFieldValue(record, headerMap, List.of("jiraLink", "jiralink", "jira_link")));
         job.setHostname(getFieldValue(record, headerMap, List.of("hostname")));
-        
+
         String knownFalsePositivesUrl = urlInferenceService.inferKnownFalsePositivesUrl(job.getPackageNvr());
 
         job.setKnownFalsePositivesUrl(knownFalsePositivesUrl);
@@ -171,8 +172,8 @@ public class CsvJobParser {
 
     private void validateRequiredFields(JobCreationDto job, long recordNumber) {
         if (job.getPackageNvr() == null || job.getPackageName() == null) {
-            throw new IllegalArgumentException(String.format(
-                    "Record %d is missing a required field (nvr).", recordNumber));
+            throw new IllegalArgumentException(
+                    String.format("Record %d is missing a required field (nvr).", recordNumber));
         }
     }
 

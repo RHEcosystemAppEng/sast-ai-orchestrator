@@ -22,6 +22,10 @@ public class UrlInferenceService {
             "https://gitlab.cee.redhat.com/osh/known-false-positives/-/raw/master/";
     private static final String KNOWN_FALSE_POSITIVES_FILE = "ignore.err";
 
+    private static final String SOURCE_CODE_BASE_URL_TEMPLATE =
+            "https://download.devel.redhat.com/brewroot/vol/rhel-%s/packages/";
+    private static final String SOURCE_CODE_SUFFIX = ".src.rpm";
+
     @Inject
     NvrParser nvrParser;
 
@@ -53,6 +57,37 @@ public class UrlInferenceService {
 
         String url = KNOWN_FALSE_POSITIVES_BASE_URL + packageName + "/" + KNOWN_FALSE_POSITIVES_FILE;
         LOG.infof("Inferred known false positives URL for NVR '%s': %s", packageNvr, url);
+        return url;
+    }
+
+    /**
+     * Infers the source code URL from a package NVR.
+     *
+     * Pattern: https://download.devel.redhat.com/brewroot/vol/rhel-{rhelVersion}/packages/{packageName}/{version}/{release}/src/{fullNvr}.src.rpm
+     *
+     * @param packageNvr the package NVR (e.g., "systemd-257-9.el10")
+     * @return the inferred source code URL or null if NVR parsing fails
+     */
+    public String inferSourceCodeUrl(String packageNvr) {
+        if (packageNvr == null || packageNvr.trim().isEmpty()) {
+            LOG.warnf("Cannot infer source code URL: packageNvr is null or empty");
+            return null;
+        }
+
+        String packageName = nvrParser.extractPackageName(packageNvr);
+        String version = nvrParser.extractVersion(packageNvr);
+        String release = nvrParser.extractRelease(packageNvr);
+        String rhelVersion = nvrParser.extractRhelVersion(packageNvr);
+
+        if (packageName == null || version == null || release == null || rhelVersion == null) {
+            LOG.warnf("Cannot infer source code URL: failed to extract package components from NVR '%s'", packageNvr);
+            return null;
+        }
+
+        String baseUrl = String.format(SOURCE_CODE_BASE_URL_TEMPLATE, rhelVersion);
+        String url = baseUrl + packageName + "/" + version + "/" + release + "/src/" + packageNvr
+                + SOURCE_CODE_SUFFIX;
+        LOG.infof("Inferred source code URL for NVR '%s': %s", packageNvr, url);
         return url;
     }
 

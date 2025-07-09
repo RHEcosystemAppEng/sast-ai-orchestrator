@@ -3,14 +3,15 @@ package com.redhat.sast.api.v1.dto.response;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.redhat.sast.api.enums.BatchStatus;
 
 public class JobBatchResponseDto {
 
     @JsonProperty("batchId")
     private Long batchId;
 
-    @JsonProperty("sourceUrl")
-    private String sourceUrl;
+    @JsonProperty("batchGoogleSheetUrl")
+    private String batchGoogleSheetUrl;
 
     @JsonProperty("submittedBy")
     private String submittedBy;
@@ -19,7 +20,7 @@ public class JobBatchResponseDto {
     private LocalDateTime submittedAt;
 
     @JsonProperty("status")
-    private String status;
+    private BatchStatus status;
 
     @JsonProperty("totalJobs")
     private Integer totalJobs;
@@ -40,12 +41,12 @@ public class JobBatchResponseDto {
         this.batchId = batchId;
     }
 
-    public String getSourceUrl() {
-        return sourceUrl;
+    public String getBatchGoogleSheetUrl() {
+        return batchGoogleSheetUrl;
     }
 
-    public void setSourceUrl(String sourceUrl) {
-        this.sourceUrl = sourceUrl;
+    public void setBatchGoogleSheetUrl(String batchGoogleSheetUrl) {
+        this.batchGoogleSheetUrl = batchGoogleSheetUrl;
     }
 
     public String getSubmittedBy() {
@@ -64,11 +65,11 @@ public class JobBatchResponseDto {
         this.submittedAt = submittedAt;
     }
 
-    public String getStatus() {
+    public BatchStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(BatchStatus status) {
         this.status = status;
     }
 

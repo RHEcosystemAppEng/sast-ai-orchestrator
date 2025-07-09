@@ -19,9 +19,10 @@ public class InputSourceDto {
     }
 
     public InputSourceDto(InputSourceDto other) {
-        // Add field-by-field copy here as appropriate
-        // Example: this.someField = other.someField;
-        // If there are mutable fields, copy them defensively
+        if (other != null) {
+            this.type = other.type;
+            this.url = other.url;
+        }
     }
 
     public InputSourceType getType() {

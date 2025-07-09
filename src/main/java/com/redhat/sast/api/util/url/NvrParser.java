@@ -96,9 +96,10 @@ public class NvrParser {
         }
 
         // Look for pattern .elX where X is the version number
-        java.util.regex.Pattern elPattern = java.util.regex.Pattern.compile(".*\\.el(\\d+).*");
-        java.util.regex.Matcher matcher = elPattern.matcher(release);
-        if (matcher.matches()) {
+        // Use a more specific pattern to avoid ReDoS vulnerability
+        Pattern elPattern = Pattern.compile("\\.el(\\d+)(?:\\.|$)");
+        Matcher matcher = elPattern.matcher(release);
+        if (matcher.find()) {
             return matcher.group(1); // Return just the number part
         }
 

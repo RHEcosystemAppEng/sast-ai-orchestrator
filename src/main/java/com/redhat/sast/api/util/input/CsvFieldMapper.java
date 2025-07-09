@@ -105,7 +105,7 @@ public class CsvFieldMapper {
         if (variations == null) {
             return false;
         }
-        
+
         return variations.stream().anyMatch(headerMap::containsKey);
     }
 }

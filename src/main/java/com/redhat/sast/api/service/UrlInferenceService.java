@@ -2,6 +2,7 @@ package com.redhat.sast.api.service;
 
 import org.jboss.logging.Logger;
 
+import com.redhat.sast.api.common.constants.UrlConstants;
 import com.redhat.sast.api.util.url.NvrParser;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -17,21 +18,22 @@ public class UrlInferenceService {
 
     private static final Logger LOG = Logger.getLogger(UrlInferenceService.class);
 
-    // URL patterns for different resources
-    private static final String KNOWN_FALSE_POSITIVES_BASE_URL =
-            "https://gitlab.cee.redhat.com/osh/known-false-positives/-/raw/master/";
-    private static final String KNOWN_FALSE_POSITIVES_FILE = "ignore.err";
-
-    private static final String SOURCE_CODE_BASE_URL_TEMPLATE =
-            "https://download.devel.redhat.com/brewroot/vol/rhel-%s/packages/";
-    private static final String SOURCE_CODE_SUFFIX = ".src.rpm";
-
     @Inject
     NvrParser nvrParser;
 
     // Public setter for testing purposes
     public void setNvrParser(NvrParser nvrParser) {
         this.nvrParser = nvrParser;
+    }
+
+    /**
+     * Validates the packageNvr parameter.
+     *
+     * @param packageNvr the package NVR to validate
+     * @return true if valid, false otherwise
+     */
+    private boolean isValidNvr(String packageNvr) {
+        return packageNvr != null && !packageNvr.trim().isEmpty();
     }
 
     /**
@@ -43,21 +45,19 @@ public class UrlInferenceService {
      * @return the inferred URL or null if NVR parsing fails
      */
     public String inferKnownFalsePositivesUrl(String packageNvr) {
-        if (packageNvr == null || packageNvr.trim().isEmpty()) {
+        if (!isValidNvr(packageNvr)) {
             LOG.warnf("Cannot infer known false positives URL: packageNvr is null or empty");
             return null;
         }
 
         String packageName = nvrParser.extractPackageName(packageNvr);
         if (packageName == null) {
-            LOG.warnf(
-                    "Cannot infer known false positives URL: failed to extract package name from NVR '%s'", packageNvr);
+            LOG.warnf("Failed to extract package name from NVR '%s'", packageNvr);
             return null;
         }
 
-        String url = KNOWN_FALSE_POSITIVES_BASE_URL + packageName + "/" + KNOWN_FALSE_POSITIVES_FILE;
-        LOG.infof("Inferred known false positives URL for NVR '%s': %s", packageNvr, url);
-        return url;
+        return UrlConstants.KNOWN_FALSE_POSITIVES_BASE_URL + packageName + "/"
+                + UrlConstants.KNOWN_FALSE_POSITIVES_FILE;
     }
 
     /**
@@ -69,7 +69,7 @@ public class UrlInferenceService {
      * @return the inferred source code URL or null if NVR parsing fails
      */
     public String inferSourceCodeUrl(String packageNvr) {
-        if (packageNvr == null || packageNvr.trim().isEmpty()) {
+        if (!isValidNvr(packageNvr)) {
             LOG.warnf("Cannot infer source code URL: packageNvr is null or empty");
             return null;
         }
@@ -80,36 +80,31 @@ public class UrlInferenceService {
         String rhelVersion = nvrParser.extractRhelVersion(packageNvr);
 
         if (packageName == null || version == null || release == null || rhelVersion == null) {
-            LOG.warnf("Cannot infer source code URL: failed to extract package components from NVR '%s'", packageNvr);
+            LOG.warnf("Failed to extract package components from NVR '%s'", packageNvr);
             return null;
         }
 
-        String baseUrl = String.format(SOURCE_CODE_BASE_URL_TEMPLATE, rhelVersion);
-        String url = baseUrl + packageName + "/" + version + "/" + release + "/src/" + packageNvr + SOURCE_CODE_SUFFIX;
-        LOG.infof("Inferred source code URL for NVR '%s': %s", packageNvr, url);
-        return url;
+        String baseUrl = String.format(UrlConstants.SOURCE_CODE_BASE_URL_TEMPLATE, rhelVersion);
+        return baseUrl + packageName + "/" + version + "/" + release + "/src/" + packageNvr
+                + UrlConstants.SOURCE_CODE_SUFFIX;
     }
 
     /**
      * Infers the project name from a package NVR.
-     * The project name is the same as the package name.
      *
      * @param packageNvr the package NVR (e.g., "systemd-257-9.el10")
      * @return the inferred project name (e.g., "systemd") or null if NVR parsing fails
      */
     public String inferProjectName(String packageNvr) {
-        if (packageNvr == null || packageNvr.trim().isEmpty()) {
+        if (!isValidNvr(packageNvr)) {
             LOG.warnf("Cannot infer project name: packageNvr is null or empty");
             return null;
         }
 
         String projectName = nvrParser.extractPackageName(packageNvr);
         if (projectName == null) {
-            LOG.warnf("Cannot infer project name: failed to extract package name from NVR '%s'", packageNvr);
-            return null;
+            LOG.warnf("Failed to extract project name from NVR '%s'", packageNvr);
         }
-
-        LOG.infof("Inferred project name for NVR '%s': %s", packageNvr, projectName);
         return projectName;
     }
 
@@ -121,7 +116,7 @@ public class UrlInferenceService {
      * @return the inferred project version (e.g., "257-9") or null if NVR parsing fails
      */
     public String inferProjectVersion(String packageNvr) {
-        if (packageNvr == null || packageNvr.trim().isEmpty()) {
+        if (!isValidNvr(packageNvr)) {
             LOG.warnf("Cannot infer project version: packageNvr is null or empty");
             return null;
         }
@@ -130,39 +125,24 @@ public class UrlInferenceService {
         String release = nvrParser.extractRelease(packageNvr);
 
         if (version == null || release == null) {
-            LOG.warnf("Cannot infer project version: failed to extract version/release from NVR '%s'", packageNvr);
+            LOG.warnf("Failed to extract version/release from NVR '%s'", packageNvr);
             return null;
         }
 
         // Extract the release part before ".el" (e.g., "9.el10" -> "9")
         String releaseWithoutEl = release.split("\\.el")[0];
-        String projectVersion = version + "-" + releaseWithoutEl;
-
-        LOG.infof("Inferred project version for NVR '%s': %s", packageNvr, projectVersion);
-        return projectVersion;
+        return version + "-" + releaseWithoutEl;
     }
 
     /**
      * Infers the package name from a package NVR.
-     * The package name is the same as the project name.
+     * Note: This is identical to inferProjectName() as package name and project name are the same.
      *
      * @param packageNvr the package NVR (e.g., "systemd-257-9.el10")
      * @return the inferred package name (e.g., "systemd") or null if NVR parsing fails
      */
     public String inferPackageName(String packageNvr) {
-        if (packageNvr == null || packageNvr.trim().isEmpty()) {
-            LOG.warnf("Cannot infer package name: packageNvr is null or empty");
-            return null;
-        }
-
-        String packageName = nvrParser.extractPackageName(packageNvr);
-        if (packageName == null) {
-            LOG.warnf("Cannot infer package name: failed to extract package name from NVR '%s'", packageNvr);
-            return null;
-        }
-
-        LOG.infof("Inferred package name for NVR '%s': %s", packageNvr, packageName);
-        return packageName;
+        return inferProjectName(packageNvr);
     }
 
     /**

@@ -6,14 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.jboss.logging.Logger;
 
+import com.redhat.sast.api.common.constants.ApplicationConstants;
 import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.service.UrlInferenceService;
 import com.redhat.sast.api.v1.dto.request.InputSourceDto;
@@ -28,7 +27,6 @@ import jakarta.inject.Inject;
 public class CsvJobParser {
 
     private static final Logger LOG = Logger.getLogger(CsvJobParser.class);
-    private static final Set<String> REQUIRED_HEADERS = Set.of("nvr");
 
     @Inject
     UrlInferenceService urlInferenceService;
@@ -55,8 +53,9 @@ public class CsvJobParser {
             int headerRowIndex = findHeaderRow(records);
             if (headerRowIndex == -1) {
                 LOG.errorf("Header detection failed. Raw content was:\n%s", csvContent);
-                throw new IOException("Could not find a valid header row. Required columns include: "
-                        + String.join(", ", REQUIRED_HEADERS));
+                throw new IOException(
+                        "Could not find a valid header row. Required columns: "
+                                + "'nvr' and at least one of ['googlesheeturl', 'gsheeturl', 'google_sheet_url', 'inputsourceurl', 'input_source_url']");
             }
 
             List<JobCreationDto> jobs = new ArrayList<>();
@@ -75,22 +74,20 @@ public class CsvJobParser {
                 }
             }
 
-            LOG.infof("Successfully parsed %d jobs from input content.", jobs.size());
+            LOG.infof("Successfully parsed %d jobs from CSV content", jobs.size());
             return jobs;
         } catch (IOException e) {
-            LOG.error("Failed to parse CSV content.", e);
+            LOG.error("Failed to parse CSV content", e);
             throw new IOException("Failed to parse CSV content: " + e.getMessage(), e);
         }
     }
 
     private int findHeaderRow(List<CSVRecord> records) {
         for (int i = 0; i < records.size(); i++) {
-            Set<String> currentHeaders = records.get(i).stream()
-                    .map(header -> header.trim().toLowerCase().replaceAll("\\s+", ""))
-                    .collect(Collectors.toSet());
+            Map<String, Integer> headerMap = buildHeaderMap(records.get(i));
 
-            if (currentHeaders.containsAll(REQUIRED_HEADERS)) {
-                LOG.infof("Found valid header at row %d.", i + 1);
+            if (CsvFieldMapper.hasAllRequiredFields(headerMap)) {
+                LOG.infof("Found valid header at row %d", i + 1);
                 return i;
             }
         }
@@ -109,73 +106,54 @@ public class CsvJobParser {
     private JobCreationDto createJobFromRecord(CSVRecord record, Map<String, Integer> headerMap) {
         JobCreationDto job = new JobCreationDto();
 
-        job.setPackageNvr(getFieldValue(record, headerMap, List.of("nvr", "packageNvr", "packagenvr", "package_nvr")));
-        
+        setBasicFields(job, record, headerMap);
+        setInferredFields(job);
+        setInputSource(job, record, headerMap);
+        setWorkflowSettings(job);
+
+        validateRequiredFields(job, record.getRecordNumber());
+        return job;
+    }
+
+    private void setBasicFields(JobCreationDto job, CSVRecord record, Map<String, Integer> headerMap) {
+        job.setPackageNvr(CsvFieldMapper.getFieldValue(record, headerMap, "nvr"));
+        job.setJiraLink(CsvFieldMapper.getFieldValue(record, headerMap, "jiraLink"));
+        job.setHostname(CsvFieldMapper.getFieldValue(record, headerMap, "hostname"));
+        job.setOshScanId(CsvFieldMapper.getFieldValue(record, headerMap, "oshScanId"));
+    }
+
+    private void setInferredFields(JobCreationDto job) {
         job.setProjectName(urlInferenceService.inferProjectName(job.getPackageNvr()));
         job.setProjectVersion(urlInferenceService.inferProjectVersion(job.getPackageNvr()));
         job.setPackageName(urlInferenceService.inferPackageName(job.getPackageNvr()));
         job.setPackageSourceCodeUrl(urlInferenceService.inferSourceCodeUrl(job.getPackageNvr()));
         job.setKnownFalsePositivesUrl(urlInferenceService.inferKnownFalsePositivesUrl(job.getPackageNvr()));
-        job.setJiraLink(getFieldValue(record, headerMap, List.of("jiraLink", "jiralink", "jira_link")));
-        job.setHostname(getFieldValue(record, headerMap, List.of("hostname")));
-        job.setOshScanId(getFieldValue(record, headerMap, List.of("oshScanId", "oshscanid", "osh_scan_id")));
-        String gSheetUrl = getFieldValue(
-                record,
-                headerMap,
-                List.of(
-                        "gSheetUrl",
-                        "googlesheeturl",
-                        "gsheeturl",
-                        "googleSheetUrl",
-                        "google_sheet_url",
-                        "inputSourceUrl",
-                        "inputsourceurl",
-                        "input_source_url"));
-
-        LOG.infof("Parsed gSheetUrl for job: '%s'", gSheetUrl);
-        LOG.infof("Available headers: %s", headerMap.keySet());
-
-        job.setInputSource(new InputSourceDto(
-                InputSourceType.GOOGLE_SHEET, Optional.ofNullable(gSheetUrl).orElse(job.getPackageSourceCodeUrl())));
-        WorkflowSettingsDto workflowSettings = new WorkflowSettingsDto();
-        workflowSettings.setSecretName("sast-ai-default-llm-creds");
-        job.setWorkflowSettings(workflowSettings);
-
-        LOG.infof("Set workflow settings with secretName: '%s'", workflowSettings.getSecretName());
-
-        validateRequiredFields(job, record.getRecordNumber());
-
-        return job;
     }
 
-    private String getFieldValue(CSVRecord record, Map<String, Integer> headerMap, List<String> possibleNames) {
-        LOG.infof("Looking for field in possible names: %s", possibleNames);
-        for (String name : possibleNames) {
-            if (headerMap.containsKey(name)) {
-                int index = headerMap.get(name);
-                if (index < record.size()) {
-                    String value = record.get(index);
-                    if (value != null && !value.trim().isEmpty()) {
-                        LOG.infof("Found field '%s' with value: '%s'", name, value.trim());
-                        return value.trim();
-                    }
-                }
-            }
-        }
-        LOG.infof("No field found for possible names: %s", possibleNames);
-        return null;
+    private void setInputSource(JobCreationDto job, CSVRecord record, Map<String, Integer> headerMap) {
+        String googleSheetUrl = CsvFieldMapper.getFieldValue(record, headerMap, "googleSheetUrl");
+
+        job.setInputSource(new InputSourceDto(
+                InputSourceType.GOOGLE_SHEET,
+                Optional.ofNullable(googleSheetUrl).orElse(job.getPackageSourceCodeUrl())));
+    }
+
+    private void setWorkflowSettings(JobCreationDto job) {
+        WorkflowSettingsDto workflowSettings = new WorkflowSettingsDto();
+        workflowSettings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
+        job.setWorkflowSettings(workflowSettings);
     }
 
     private void validateRequiredFields(JobCreationDto job, long recordNumber) {
         if (job.getPackageNvr() == null || job.getPackageNvr().trim().isEmpty()) {
             throw new IllegalArgumentException(
-                    String.format("Record %d is missing required field 'nvr'.", recordNumber));
+                    String.format("Record %d is missing required field 'nvr'", recordNumber));
         }
-        
+
         // Verify that inference was successful
         if (job.getPackageName() == null || job.getProjectName() == null || job.getProjectVersion() == null) {
-            throw new IllegalArgumentException(
-                    String.format("Record %d has invalid NVR '%s' - failed to infer parameters.", recordNumber, job.getPackageNvr()));
+            throw new IllegalArgumentException(String.format(
+                    "Record %d has invalid NVR '%s' - failed to infer parameters", recordNumber, job.getPackageNvr()));
         }
     }
 

@@ -16,7 +16,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 public class NvrParser {
 
     // Pattern to match NVR: package name followed by version (starts with digit)
-    // Use specific character classes to avoid ReDoS vulnerability
     private static final Pattern NVR_PATTERN = Pattern.compile("^([a-zA-Z0-9._+-]+?)-([0-9][a-zA-Z0-9.-]+)$");
 
     /**
@@ -97,7 +96,6 @@ public class NvrParser {
         }
 
         // Look for pattern .elX where X is the version number
-        // Use a more specific pattern to avoid ReDoS vulnerability
         Pattern elPattern = Pattern.compile("\\.el(\\d+)(?:\\.|$)");
         Matcher matcher = elPattern.matcher(release);
         if (matcher.find()) {

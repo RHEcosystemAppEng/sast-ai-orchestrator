@@ -1,6 +1,5 @@
 package com.redhat.sast.api.service;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -9,6 +8,7 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 import org.jboss.logging.Logger;
 
 import com.redhat.sast.api.enums.BatchStatus;
+import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobBatch;
 import com.redhat.sast.api.repository.JobBatchRepository;
@@ -20,8 +20,6 @@ import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobBatchResponseDto;
 
 import io.quarkus.panache.common.Page;
-import io.smallrye.mutiny.Multi;
-import io.smallrye.mutiny.Uni;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -81,7 +79,7 @@ public class JobBatchService {
     /**
      * Asynchronously processes a batch by parsing input files and creating individual jobs
      */
-    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    @Transactional
     public void executeBatchProcessing(@Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl) {
         try {
             LOG.debugf("Starting async processing for batch ID: %d", batchId);
@@ -94,9 +92,9 @@ public class JobBatchService {
 
             updateBatchTotalJobs(batchId, jobDtos.size());
             LOG.debug(String.format(
-                    "Batch %d: Found %d jobs to process. Scheduling reactively.", batchId, jobDtos.size()));
+                    "Batch %d: Found %d jobs to process. Starting sequential processing.", batchId, jobDtos.size()));
 
-            processJobsReactively(batchId, jobDtos);
+            processJobs(batchId, jobDtos);
 
         } catch (Exception e) {
             LOG.errorf(e, "Failed to process batch %d: %s", batchId, e.getMessage());
@@ -114,53 +112,43 @@ public class JobBatchService {
     }
 
     /**
-     * Manages the entire reactive pipeline for processing a list of jobs.
+     * Processes a list of jobs sequentially.
      */
-    private void processJobsReactively(Long batchId, List<JobCreationDto> jobDtos) {
+    private void processJobs(Long batchId, List<JobCreationDto> jobDtos) {
         final AtomicInteger completedCount = new AtomicInteger(0);
         final AtomicInteger failedCount = new AtomicInteger(0);
 
-        Multi.createFrom()
-                .iterable(jobDtos)
-                .onItem()
-                .call(jobDto -> Uni.createFrom().nullItem().onItem().delayIt().by(Duration.ofSeconds(1)))
-                .subscribe()
-                .with(
-                        jobDto -> {
-                            try {
-                                Job createdJob = createJobInNewTransaction(jobDto);
-                                Long jobId = createdJob.getId();
+        for (JobCreationDto jobDto : jobDtos) {
+            try {
+                Job createdJob = createJobInNewTransaction(jobDto);
+                Long jobId = createdJob.getId();
 
-                                associateJobToBatchInNewTransaction(jobId, batchId);
+                associateJobToBatchInNewTransaction(jobId, batchId);
 
-                                managedExecutor.execute(
-                                        () -> jobService.getPlatformService().startSastAIWorkflow(createdJob));
-                                completedCount.incrementAndGet();
+                // Update job status to RUNNING and create pipeline in the current transaction context
+                updateJobStatusInNewTransaction(jobId, JobStatus.RUNNING);
+                
+                // Create pipeline and update job with Tekton URL in main thread
+                String pipelineRunName = jobService.getPlatformService().createPipelineForJob(createdJob);
+                
+                // Start monitoring in a background thread
+                managedExecutor.execute(() -> jobService.getPlatformService().watchPipelineRun(jobId, pipelineRunName));
+                completedCount.incrementAndGet();
 
-                            } catch (Exception e) {
-                                failedCount.incrementAndGet();
-                                LOG.errorf(e, "Failed during processing of a single job for batch %d", batchId);
-                            } finally {
-                                updateBatchProgressInNewTransaction(batchId, completedCount.get(), failedCount.get());
-                            }
-                        },
-                        failure -> {
-                            LOG.errorf(
-                                    failure,
-                                    "A critical error occurred in the batch processing stream for batch %d",
-                                    batchId);
-                            finalizeBatch(batchId, jobDtos.size(), completedCount.get(), failedCount.get());
-                        },
-                        () -> {
-                            LOG.info("Reactive stream completed for batch " + batchId);
-                            finalizeBatch(batchId, jobDtos.size(), completedCount.get(), failedCount.get());
-                        });
+            } catch (Exception e) {
+                failedCount.incrementAndGet();
+                LOG.errorf(e, "Failed during processing of a single job for batch %d", batchId);
+            } finally {
+                updateBatchProgressInNewTransaction(batchId, completedCount.get(), failedCount.get());
+            }
+        }
+        finalizeBatch(batchId, jobDtos.size(), completedCount.get(), failedCount.get());
     }
 
     /**
      * Creates a Job in a new, isolated transaction.
      */
-    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    @Transactional
     public Job createJobInNewTransaction(JobCreationDto jobDto) {
         return jobService.createJobInDatabase(jobDto);
     }
@@ -168,7 +156,7 @@ public class JobBatchService {
     /**
      * Associates a Job to a JobBatch in its own isolated transaction.
      */
-    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    @Transactional
     public void associateJobToBatchInNewTransaction(Long jobId, Long batchId) {
         Job job = jobService.getJobEntityById(jobId);
         JobBatch batch = jobBatchRepository.findById(batchId);
@@ -177,6 +165,11 @@ public class JobBatchService {
             job.setJobBatch(batch);
             jobService.persistJob(job);
         }
+    }
+
+    @Transactional
+    public void updateJobStatusInNewTransaction(Long jobId, JobStatus status) {
+        jobService.updateJobStatus(jobId, status);
     }
 
     /**

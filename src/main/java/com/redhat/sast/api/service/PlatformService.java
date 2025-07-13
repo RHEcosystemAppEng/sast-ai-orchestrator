@@ -10,7 +10,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.jboss.logging.Logger;
 
-import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.platform.LlmSecretValues;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
@@ -69,7 +68,7 @@ public class PlatformService {
             updateJobTektonUrl(job.getId(), tektonUrl);
             LOG.infof("Updated job %d with Tekton URL: %s", job.getId(), tektonUrl);
 
-            jobService.updateJobStatus(job.getId(), JobStatus.RUNNING);
+            // Start monitoring the pipeline in a background thread
             managedExecutor.execute(() -> watchPipelineRun(job.getId(), pipelineRunName));
         } catch (Exception e) {
             LOG.errorf(e, "Failed to create PipelineRun %s in namespace %s", pipelineRunName, namespace);

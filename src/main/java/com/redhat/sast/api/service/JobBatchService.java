@@ -79,7 +79,6 @@ public class JobBatchService {
     /**
      * Asynchronously processes a batch by parsing input files and creating individual jobs
      */
-    @Transactional
     public void executeBatchProcessing(@Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl) {
         try {
             LOG.debugf("Starting async processing for batch ID: %d", batchId);
@@ -125,14 +124,7 @@ public class JobBatchService {
 
                 associateJobToBatchInNewTransaction(jobId, batchId);
 
-                // Update job status to RUNNING and create pipeline in the current transaction context
-                updateJobStatusInNewTransaction(jobId, JobStatus.RUNNING);
-                
-                // Create pipeline and update job with Tekton URL in main thread
-                String pipelineRunName = jobService.getPlatformService().createPipelineForJob(createdJob);
-                
-                // Start monitoring in a background thread
-                managedExecutor.execute(() -> jobService.getPlatformService().watchPipelineRun(jobId, pipelineRunName));
+                managedExecutor.execute(() -> jobService.getPlatformService().startSastAIWorkflow(createdJob));
                 completedCount.incrementAndGet();
 
             } catch (Exception e) {
@@ -148,7 +140,7 @@ public class JobBatchService {
     /**
      * Creates a Job in a new, isolated transaction.
      */
-    @Transactional
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public Job createJobInNewTransaction(JobCreationDto jobDto) {
         return jobService.createJobInDatabase(jobDto);
     }
@@ -156,7 +148,7 @@ public class JobBatchService {
     /**
      * Associates a Job to a JobBatch in its own isolated transaction.
      */
-    @Transactional
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public void associateJobToBatchInNewTransaction(Long jobId, Long batchId) {
         Job job = jobService.getJobEntityById(jobId);
         JobBatch batch = jobBatchRepository.findById(batchId);
@@ -167,7 +159,10 @@ public class JobBatchService {
         }
     }
 
-    @Transactional
+    /**
+     * Updates job status in a new transaction
+     */
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public void updateJobStatusInNewTransaction(Long jobId, JobStatus status) {
         jobService.updateJobStatus(jobId, status);
     }

@@ -123,7 +123,7 @@ public class PlatformService {
         }
     }
 
-    @Transactional
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public void updateJobTektonUrl(@Nonnull Long jobId, @Nonnull String tektonUrl) {
         try {
             jobService.updateJobTektonUrl(jobId, tektonUrl);

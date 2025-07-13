@@ -158,7 +158,7 @@ public class JobService {
         }
     }
 
-    @Transactional
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)    
     public void updateJobTektonUrl(@Nonnull Long jobId, @Nonnull String tektonUrl) {
         Job job = jobRepository.findById(jobId);
         if (job != null) {

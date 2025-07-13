@@ -3,9 +3,13 @@ package com.redhat.sast.api.util.input;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -53,26 +57,28 @@ public class CsvJobParser {
             int headerRowIndex = findHeaderRow(records);
             if (headerRowIndex == -1) {
                 LOG.errorf("Header detection failed. Raw content was:\n%s", csvContent);
-                throw new IOException(
-                        "Could not find a valid header row. Required columns: "
-                                + "'nvr' and at least one of ['googlesheeturl', 'gsheeturl', 'google_sheet_url', 'inputsourceurl', 'input_source_url']");
+                String requiredHeaders = CsvFieldMapper.getRequiredFieldVariations().entrySet().stream()
+                        .map(entry -> "'" + entry.getKey() + "' (variations: " + entry.getValue() + ")")
+                        .reduce((a, b) -> a + " and " + b)
+                        .orElse("none");
+                throw new IOException("Could not find a valid header row. Required columns: " + requiredHeaders);
             }
 
-            List<JobCreationDto> jobs = new ArrayList<>();
-            Map<String, Integer> headerMap = buildHeaderMap(records.get(headerRowIndex));
+            CSVRecord headerRecord = records.get(headerRowIndex);
 
-            for (int i = headerRowIndex + 1; i < records.size(); i++) {
-                CSVRecord record = records.get(i);
-                if (isRecordEmpty(record)) {
-                    continue;
-                }
-
-                try {
-                    jobs.add(createJobFromRecord(record, headerMap));
-                } catch (IllegalArgumentException e) {
-                    LOG.warnf("Skipping record at line %d: %s", record.getRecordNumber(), e.getMessage());
-                }
-            }
+            List<JobCreationDto> jobs = IntStream.range(headerRowIndex + 1, records.size())
+                    .mapToObj(records::get)
+                    .filter(Predicate.not(this::isRecordEmpty))
+                    .map(record -> {
+                        try {
+                            return createJobFromRecord(record, headerRecord);
+                        } catch (IllegalArgumentException e) {
+                            LOG.warnf("Skipping record at line %d: %s", record.getRecordNumber(), e.getMessage());
+                            return null;
+                        }
+                    })
+                    .filter(job -> job != null)
+                    .collect(Collectors.toList());
 
             LOG.infof("Successfully parsed %d jobs from CSV content", jobs.size());
             return jobs;
@@ -84,9 +90,9 @@ public class CsvJobParser {
 
     private int findHeaderRow(List<CSVRecord> records) {
         for (int i = 0; i < records.size(); i++) {
-            Map<String, Integer> headerMap = buildHeaderMap(records.get(i));
+            CSVRecord record = records.get(i);
 
-            if (CsvFieldMapper.hasAllRequiredFields(headerMap)) {
+            if (hasRequiredColumns(record)) {
                 LOG.infof("Found valid header at row %d", i + 1);
                 return i;
             }
@@ -94,32 +100,73 @@ public class CsvJobParser {
         return -1;
     }
 
-    private Map<String, Integer> buildHeaderMap(CSVRecord headerRecord) {
-        Map<String, Integer> headerMap = new java.util.HashMap<>();
-        for (int i = 0; i < headerRecord.size(); i++) {
-            String header = headerRecord.get(i).trim().toLowerCase().replaceAll("\\s+", "");
-            headerMap.put(header, i);
+    private boolean hasRequiredColumns(CSVRecord record) {
+        Map<String, Boolean> foundHeaders = new HashMap<>();
+
+        // Initialize all required headers as not found
+        for (String headerKey : CsvFieldMapper.getRequiredFieldVariations().keySet()) {
+            foundHeaders.put(headerKey, false);
         }
-        return headerMap;
+
+        // Check each column in the record
+        for (int i = 0; i < record.size(); i++) {
+            String header = record.get(i).trim().toLowerCase().replaceAll("\\s+", "");
+
+            // Check against all required headers and their variations
+            for (Map.Entry<String, List<String>> entry :
+                    CsvFieldMapper.getRequiredFieldVariations().entrySet()) {
+                if (entry.getValue().contains(header)) {
+                    foundHeaders.put(entry.getKey(), true);
+                    break;
+                }
+            }
+        }
+
+        // All required headers must be found
+        return foundHeaders.values().stream().allMatch(Boolean::booleanValue);
     }
 
-    private JobCreationDto createJobFromRecord(CSVRecord record, Map<String, Integer> headerMap) {
+    private JobCreationDto createJobFromRecord(CSVRecord record, CSVRecord headerRecord) {
         JobCreationDto job = new JobCreationDto();
 
-        setBasicFields(job, record, headerMap);
-        setInferredFields(job);
-        setInputSource(job, record, headerMap);
-        setWorkflowSettings(job);
+        int nvrIndex = findColumnIndex(headerRecord, "nvr");
+        int googleSheetIndex = findColumnIndex(headerRecord, "googleSheetUrl");
 
+        job.setPackageNvr(getFieldValue(record, nvrIndex));
+
+        setInferredFields(job);
+
+        String googleSheetUrl = getFieldValue(record, googleSheetIndex);
+        job.setInputSource(new InputSourceDto(
+                InputSourceType.GOOGLE_SHEET,
+                Optional.ofNullable(googleSheetUrl).orElse(job.getPackageSourceCodeUrl())));
+
+        setWorkflowSettings(job);
         validateRequiredFields(job, record.getRecordNumber());
         return job;
     }
 
-    private void setBasicFields(JobCreationDto job, CSVRecord record, Map<String, Integer> headerMap) {
-        job.setPackageNvr(CsvFieldMapper.getFieldValue(record, headerMap, "nvr"));
-        job.setJiraLink(CsvFieldMapper.getFieldValue(record, headerMap, "jiraLink"));
-        job.setHostname(CsvFieldMapper.getFieldValue(record, headerMap, "hostname"));
-        job.setOshScanId(CsvFieldMapper.getFieldValue(record, headerMap, "oshScanId"));
+    private int findColumnIndex(CSVRecord headerRecord, String targetField) {
+        List<String> fieldVariations = CsvFieldMapper.getFieldVariations(targetField);
+        if (fieldVariations.isEmpty()) {
+            return -1;
+        }
+
+        for (int i = 0; i < headerRecord.size(); i++) {
+            String header = headerRecord.get(i).trim().toLowerCase().replaceAll("\\s+", "");
+            if (fieldVariations.contains(header)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private String getFieldValue(CSVRecord record, int index) {
+        if (index >= 0 && index < record.size()) {
+            String value = record.get(index);
+            return (value != null && !value.trim().isEmpty()) ? value.trim() : null;
+        }
+        return null;
     }
 
     private void setInferredFields(JobCreationDto job) {
@@ -128,14 +175,6 @@ public class CsvJobParser {
         job.setPackageName(urlInferenceService.inferPackageName(job.getPackageNvr()));
         job.setPackageSourceCodeUrl(urlInferenceService.inferSourceCodeUrl(job.getPackageNvr()));
         job.setKnownFalsePositivesUrl(urlInferenceService.inferKnownFalsePositivesUrl(job.getPackageNvr()));
-    }
-
-    private void setInputSource(JobCreationDto job, CSVRecord record, Map<String, Integer> headerMap) {
-        String googleSheetUrl = CsvFieldMapper.getFieldValue(record, headerMap, "googleSheetUrl");
-
-        job.setInputSource(new InputSourceDto(
-                InputSourceType.GOOGLE_SHEET,
-                Optional.ofNullable(googleSheetUrl).orElse(job.getPackageSourceCodeUrl())));
     }
 
     private void setWorkflowSettings(JobCreationDto job) {

@@ -79,6 +79,17 @@ public class CsvFieldMapper {
     }
 
     /**
+     * Gets the required field variations as a map for header validation.
+     *
+     * @return map of required field names to their variations
+     */
+    public static Map<String, List<String>> getRequiredFieldVariations() {
+        return getRequiredFieldNames().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        fieldName -> fieldName, fieldName -> FIELD_VARIATIONS.get(fieldName)));
+    }
+
+    /**
      * Checks if all required fields have at least one variation present in the header map.
      *
      * @param headerMap the header-to-index mapping

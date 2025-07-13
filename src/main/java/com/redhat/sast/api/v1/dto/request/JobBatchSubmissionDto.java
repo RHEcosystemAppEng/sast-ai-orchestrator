@@ -2,9 +2,12 @@ package com.redhat.sast.api.v1.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class JobBatchSubmissionDto {
 
     @JsonProperty("batchGoogleSheetUrl")
+    @NotBlank(message = "Batch Google Sheet URL cannot be null or empty.")
     private String batchGoogleSheetUrl;
 
     @JsonProperty("submittedBy")

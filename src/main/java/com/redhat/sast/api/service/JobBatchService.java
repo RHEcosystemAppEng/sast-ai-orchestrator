@@ -59,7 +59,7 @@ public class JobBatchService {
         JobBatchResponseDto response = convertToResponseDto(batch);
 
         // Start async processing
-        managedExecutor.execute(() -> executeBatchProcessing(batch.getId(), submissionDto.getBatchGoogleSheetUrl()));
+        managedExecutor.execute(() -> executeBatchProcessing(batch.getId(), batch.getBatchGoogleSheetUrl()));
 
         return response;
     }
@@ -84,7 +84,7 @@ public class JobBatchService {
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public void executeBatchProcessing(@Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl) {
         try {
-            LOG.infof("Starting async processing for batch ID: %d", batchId);
+            LOG.debugf("Starting async processing for batch ID: %d", batchId);
             List<JobCreationDto> jobDtos = fetchAndParseJobsFromSheet(batchGoogleSheetUrl);
 
             if (jobDtos.isEmpty()) {
@@ -93,7 +93,8 @@ public class JobBatchService {
             }
 
             updateBatchTotalJobs(batchId, jobDtos.size());
-            LOG.infof("Batch %d: Found %d jobs to process. Scheduling reactively.", batchId, jobDtos.size());
+            LOG.debug(String.format(
+                    "Batch %d: Found %d jobs to process. Scheduling reactively.", batchId, jobDtos.size()));
 
             processJobsReactively(batchId, jobDtos);
 

@@ -7,6 +7,7 @@ import com.redhat.sast.api.v1.dto.request.JobBatchSubmissionDto;
 import com.redhat.sast.api.v1.dto.response.JobBatchResponseDto;
 
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -20,7 +21,7 @@ public class JobBatchResource {
     JobBatchService jobBatchService;
 
     @POST
-    public Response submitBatch(JobBatchSubmissionDto submissionDto) {
+    public Response submitBatch(@Valid JobBatchSubmissionDto submissionDto) {
         try {
             JobBatchResponseDto response = jobBatchService.submitBatch(submissionDto);
             return Response.status(Response.Status.CREATED).entity(response).build();

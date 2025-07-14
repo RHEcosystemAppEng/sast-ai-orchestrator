@@ -16,7 +16,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 public class NvrParser {
 
     // Pattern to match NVR: package name followed by version (starts with digit)
-    private static final Pattern NVR_PATTERN = Pattern.compile("^([a-zA-Z0-9._+-]+?)-([0-9][a-zA-Z0-9.-]+)$");
+    private static final Pattern NVR_PATTERN = Pattern.compile("^([a-zA-Z0-9._+]+?)-([0-9][a-zA-Z0-9.-]+)$");
 
     /**
      * Extracts the package name from an NVR string.

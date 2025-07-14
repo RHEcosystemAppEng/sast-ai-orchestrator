@@ -137,7 +137,7 @@ public class RemoteContentFetcher {
      */
     private long calculateBackoffMs(int attempt) {
         long baseBackoff = 500L * (1L << (attempt - 1)); // 500ms * 2^(attempt-1)
-        long jitter = (long) (Math.random() * 100); // 0-100ms jitter
+        long jitter = (long) (Math.random() * 100); // NOSONAR
         return baseBackoff + jitter;
     }
 

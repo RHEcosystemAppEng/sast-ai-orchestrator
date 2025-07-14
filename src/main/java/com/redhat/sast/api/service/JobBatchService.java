@@ -37,6 +37,9 @@ public class JobBatchService {
     JobService jobService;
 
     @Inject
+    PlatformService platformService;
+
+    @Inject
     InputSourceResolver inputSourceResolver;
 
     @Inject
@@ -124,7 +127,7 @@ public class JobBatchService {
 
                 associateJobToBatchInNewTransaction(jobId, batchId);
 
-                managedExecutor.execute(() -> jobService.getPlatformService().startSastAIWorkflow(createdJob));
+                managedExecutor.execute(() -> platformService.startSastAIWorkflow(createdJob));
                 completedCount.incrementAndGet();
 
             } catch (Exception e) {

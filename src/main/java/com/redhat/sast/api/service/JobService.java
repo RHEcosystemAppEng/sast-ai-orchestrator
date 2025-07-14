@@ -204,13 +204,6 @@ public class JobService {
     }
 
     /**
-     * Gets the platform service instance for batch processing
-     */
-    public PlatformService getPlatformService() {
-        return platformService;
-    }
-
-    /**
      * Gets the Job entity by ID for batch processing
      */
     public Job getJobEntityById(@Nonnull Long jobId) {

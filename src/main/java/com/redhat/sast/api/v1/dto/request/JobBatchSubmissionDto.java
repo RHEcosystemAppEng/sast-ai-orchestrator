@@ -2,27 +2,30 @@ package com.redhat.sast.api.v1.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class JobBatchSubmissionDto {
 
-    @JsonProperty("sourceUrl")
-    private String sourceUrl;
+    @JsonProperty("batchGoogleSheetUrl")
+    @NotBlank(message = "Batch Google Sheet URL cannot be null or empty.")
+    private String batchGoogleSheetUrl;
 
     @JsonProperty("submittedBy")
     private String submittedBy;
 
     public JobBatchSubmissionDto() {}
 
-    public JobBatchSubmissionDto(String sourceUrl, String submittedBy) {
-        this.sourceUrl = sourceUrl;
+    public JobBatchSubmissionDto(String batchGoogleSheetUrl, String submittedBy) {
+        this.batchGoogleSheetUrl = batchGoogleSheetUrl;
         this.submittedBy = submittedBy;
     }
 
-    public String getSourceUrl() {
-        return sourceUrl;
+    public String getBatchGoogleSheetUrl() {
+        return batchGoogleSheetUrl;
     }
 
-    public void setSourceUrl(String sourceUrl) {
-        this.sourceUrl = sourceUrl;
+    public void setBatchGoogleSheetUrl(String batchGoogleSheetUrl) {
+        this.batchGoogleSheetUrl = batchGoogleSheetUrl;
     }
 
     public String getSubmittedBy() {

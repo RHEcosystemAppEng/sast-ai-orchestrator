@@ -15,6 +15,7 @@ import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 
 import io.quarkus.panache.common.Page;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -67,6 +68,10 @@ public class JobService {
 
         // Create job settings if provided
         if (jobCreationDto.getWorkflowSettings() != null) {
+            LOG.infof(
+                    "Creating JobSettings with secretName: '%s'",
+                    jobCreationDto.getWorkflowSettings().getSecretName());
+
             JobSettings settings = new JobSettings();
             settings.setJob(job);
             settings.setLlmModelName(jobCreationDto.getWorkflowSettings().getLlmModelName());
@@ -77,6 +82,8 @@ public class JobService {
 
             // Manually set the JobSettings on the Job object to avoid lazy loading issues
             job.setJobSettings(settings);
+
+            LOG.infof("Persisted JobSettings with secretName: '%s'", settings.getSecretName());
         }
 
         return job;
@@ -99,7 +106,7 @@ public class JobService {
         // Set input source
         if (jobCreationDto.getInputSource() != null) {
             job.setInputSourceType(jobCreationDto.getInputSource().getType());
-            job.setInputSourceUrl(jobCreationDto.getInputSource().getUrl());
+            job.setGSheetUrl(jobCreationDto.getInputSource().getUrl());
         }
 
         job.setStatus(JobStatus.PENDING);
@@ -112,7 +119,7 @@ public class JobService {
                 .collect(Collectors.toList());
     }
 
-    public JobResponseDto getJobById(Long jobId) {
+    public JobResponseDto getJobById(@Nonnull Long jobId) {
         Job job = jobRepository.findById(jobId);
         if (job == null) {
             throw new IllegalArgumentException("Job not found with id: " + jobId);
@@ -121,7 +128,7 @@ public class JobService {
     }
 
     @Transactional
-    public void cancelJob(Long jobId) {
+    public void cancelJob(@Nonnull Long jobId) {
         Job job = jobRepository.findById(jobId);
         if (job == null) {
             throw new IllegalArgumentException("Job not found with id: " + jobId);
@@ -138,7 +145,7 @@ public class JobService {
     }
 
     @Transactional
-    public void updateJobStatus(Long jobId, JobStatus newStatus) {
+    public void updateJobStatus(@Nonnull Long jobId, @Nonnull JobStatus newStatus) {
         Job job = jobRepository.findById(jobId);
         if (job != null) {
             job.setStatus(newStatus);
@@ -151,8 +158,8 @@ public class JobService {
         }
     }
 
-    @Transactional
-    public void updateJobTektonUrl(Long jobId, String tektonUrl) {
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    public void updateJobTektonUrl(@Nonnull Long jobId, @Nonnull String tektonUrl) {
         Job job = jobRepository.findById(jobId);
         if (job != null) {
             job.setTektonUrl(tektonUrl);
@@ -163,7 +170,7 @@ public class JobService {
         }
     }
 
-    private void updateJobStatusToFailed(Long jobId, Exception cause) {
+    private void updateJobStatusToFailed(@Nonnull Long jobId, Exception cause) {
         try {
             // This will use the DataService's REQUIRES_NEW transaction
             // to safely update the job status
@@ -194,5 +201,20 @@ public class JobService {
             dto.setBatchId(job.getJobBatch().getId());
         }
         return dto;
+    }
+
+    /**
+     * Gets the Job entity by ID for batch processing
+     */
+    public Job getJobEntityById(@Nonnull Long jobId) {
+        return jobRepository.findById(jobId);
+    }
+
+    /**
+     * Persists a Job entity for batch processing
+     */
+    @Transactional
+    public void persistJob(@Nonnull Job job) {
+        jobRepository.persist(job);
     }
 }

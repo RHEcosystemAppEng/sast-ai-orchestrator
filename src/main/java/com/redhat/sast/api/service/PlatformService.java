@@ -10,7 +10,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.jboss.logging.Logger;
 
-import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.platform.LlmSecretValues;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
@@ -19,6 +18,7 @@ import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
 import io.fabric8.tekton.client.TektonClient;
 import io.fabric8.tekton.v1.*;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -42,7 +42,7 @@ public class PlatformService {
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
-    public void startSastAIWorkflow(Job job) {
+    public void startSastAIWorkflow(@Nonnull Job job) {
         String pipelineRunName =
                 PIPELINE_NAME + "-" + UUID.randomUUID().toString().substring(0, 5);
         LOG.infof(
@@ -68,7 +68,7 @@ public class PlatformService {
             updateJobTektonUrl(job.getId(), tektonUrl);
             LOG.infof("Updated job %d with Tekton URL: %s", job.getId(), tektonUrl);
 
-            jobService.updateJobStatus(job.getId(), JobStatus.RUNNING);
+            // Start monitoring the pipeline in a background thread
             managedExecutor.execute(() -> watchPipelineRun(job.getId(), pipelineRunName));
         } catch (Exception e) {
             LOG.errorf(e, "Failed to create PipelineRun %s in namespace %s", pipelineRunName, namespace);
@@ -76,7 +76,7 @@ public class PlatformService {
         }
     }
 
-    private void watchPipelineRun(long jobId, String pipelineRunName) {
+    private void watchPipelineRun(@Nonnull Long jobId, @Nonnull String pipelineRunName) {
         LOG.infof("Starting watcher for PipelineRun: %s", pipelineRunName);
         final CompletableFuture<Void> future = new CompletableFuture<>();
         try (var ignoredWatch = tektonClient
@@ -123,8 +123,8 @@ public class PlatformService {
         }
     }
 
-    @Transactional
-    public void updateJobTektonUrl(Long jobId, String tektonUrl) {
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    public void updateJobTektonUrl(@Nonnull Long jobId, @Nonnull String tektonUrl) {
         try {
             jobService.updateJobTektonUrl(jobId, tektonUrl);
         } catch (Exception e) {
@@ -161,8 +161,11 @@ public class PlatformService {
             String llmApiKey = getDecodedSecretValue(secret, "llm_api_key");
             String embeddingsUrl = getDecodedSecretValue(secret, "embeddings_llm_url");
             String embeddingsApiKey = getDecodedSecretValue(secret, "embeddings_llm_api_key");
+            String llmModelName = getDecodedSecretValue(secret, "llm_model_name");
+            String embeddingsModelName = getDecodedSecretValue(secret, "embedding_llm_model_name");
 
-            return new LlmSecretValues(llmUrl, llmApiKey, embeddingsUrl, embeddingsApiKey);
+            return new LlmSecretValues(
+                    llmUrl, llmApiKey, embeddingsUrl, embeddingsApiKey, llmModelName, embeddingsModelName);
         } catch (Exception e) {
             LOG.errorf(e, "Failed to read secret '%s' from namespace '%s'", secretName, namespace);
             return LlmSecretValues.empty();
@@ -186,7 +189,17 @@ public class PlatformService {
         }
     }
 
-    private List<Param> extractPipelineParams(Job job) {
+    /**
+     * Gets model name with fallback: JobSettings first, then secret value
+     */
+    private String getModelNameWithFallback(String jobSettingsValue, String secretValue) {
+        if (jobSettingsValue != null && !jobSettingsValue.trim().isEmpty()) {
+            return jobSettingsValue;
+        }
+        return secretValue != null ? secretValue : "";
+    }
+
+    private List<Param> extractPipelineParams(@Nonnull Job job) {
         List<Param> params = new ArrayList<>();
 
         // Basic job parameters
@@ -200,7 +213,7 @@ public class PlatformService {
                 .build());
         params.add(new ParamBuilder()
                 .withName("INPUT_REPORT_FILE_PATH")
-                .withNewValue(job.getInputSourceUrl())
+                .withNewValue(job.getgSheetUrl())
                 .build());
         params.add(new ParamBuilder()
                 .withName("PROJECT_NAME")
@@ -214,38 +227,42 @@ public class PlatformService {
         // LLM settings from JobSettings and OCP secrets
         if (job.getJobSettings() != null) {
             String secretName = job.getJobSettings().getSecretName();
+            LOG.infof("Job %d has JobSettings with secretName: '%s'", job.getId(), secretName);
 
             // Read all LLM configuration from OCP secret in one call
             LlmSecretValues llmSecretValues = getLlmSecretValues(secretName);
 
-            // Add LLM parameters
+            // Add LLM parameters (URLs and API keys always from secret)
             params.add(new ParamBuilder()
                     .withName("LLM_URL")
                     .withNewValue(llmSecretValues.llmUrl())
                     .build());
             params.add(new ParamBuilder()
                     .withName("LLM_MODEL_NAME")
-                    .withNewValue(job.getJobSettings().getLlmModelName())
+                    .withNewValue(getModelNameWithFallback(
+                            job.getJobSettings().getLlmModelName(), llmSecretValues.llmModelName()))
                     .build());
             params.add(new ParamBuilder()
                     .withName("LLM_API_KEY")
                     .withNewValue(llmSecretValues.llmApiKey())
                     .build());
 
-            // Add embeddings parameters
+            // Add embeddings parameters (URLs and API keys always from secret)
             params.add(new ParamBuilder()
                     .withName("EMBEDDINGS_LLM_URL")
                     .withNewValue(llmSecretValues.embeddingsUrl())
                     .build());
             params.add(new ParamBuilder()
                     .withName("EMBEDDINGS_LLM_MODEL_NAME")
-                    .withNewValue(job.getJobSettings().getEmbeddingLlmModelName())
+                    .withNewValue(getModelNameWithFallback(
+                            job.getJobSettings().getEmbeddingLlmModelName(), llmSecretValues.embeddingsModelName()))
                     .build());
             params.add(new ParamBuilder()
                     .withName("EMBEDDINGS_LLM_API_KEY")
                     .withNewValue(llmSecretValues.embeddingsApiKey())
                     .build());
         } else {
+            LOG.warnf("Job %d has NO JobSettings - using empty LLM values", job.getId());
             // Add default empty values if no job settings
             params.add(new ParamBuilder().withName("LLM_URL").withNewValue("").build());
             params.add(new ParamBuilder()
@@ -271,7 +288,8 @@ public class PlatformService {
         return params;
     }
 
-    private PipelineRun buildPipelineRun(String pipelineRunName, List<Param> params, String llmSecretName) {
+    private PipelineRun buildPipelineRun(
+            @Nonnull String pipelineRunName, @Nonnull List<Param> params, String llmSecretName) {
         return new PipelineRunBuilder()
                 .withNewMetadata()
                 .withName(pipelineRunName)

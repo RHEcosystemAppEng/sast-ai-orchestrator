@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.redhat.sast.api.enums.BatchStatus;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -14,8 +16,8 @@ public class JobBatch {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "source_url", nullable = false)
-    private String sourceUrl;
+    @Column(name = "batch_google_sheet_url", nullable = false)
+    private String batchGoogleSheetUrl;
 
     @Column(name = "submitted_by")
     private String submittedBy;
@@ -23,8 +25,9 @@ public class JobBatch {
     @Column(name = "submitted_at", nullable = false)
     private LocalDateTime submittedAt;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private String status;
+    private BatchStatus status;
 
     @Column(name = "total_jobs")
     private Integer totalJobs;
@@ -45,7 +48,7 @@ public class JobBatch {
     public void prePersist() {
         this.submittedAt = LocalDateTime.now();
         this.lastUpdatedAt = LocalDateTime.now();
-        this.status = "PROCESSING";
+        this.status = BatchStatus.PROCESSING;
         this.totalJobs = 0;
         this.completedJobs = 0;
         this.failedJobs = 0;
@@ -56,7 +59,6 @@ public class JobBatch {
         this.lastUpdatedAt = LocalDateTime.now();
     }
 
-    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -65,12 +67,12 @@ public class JobBatch {
         this.id = id;
     }
 
-    public String getSourceUrl() {
-        return sourceUrl;
+    public String getBatchGoogleSheetUrl() {
+        return batchGoogleSheetUrl;
     }
 
-    public void setSourceUrl(String sourceUrl) {
-        this.sourceUrl = sourceUrl;
+    public void setBatchGoogleSheetUrl(String batchGoogleSheetUrl) {
+        this.batchGoogleSheetUrl = batchGoogleSheetUrl;
     }
 
     public String getSubmittedBy() {
@@ -89,11 +91,11 @@ public class JobBatch {
         this.submittedAt = submittedAt;
     }
 
-    public String getStatus() {
+    public BatchStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(BatchStatus status) {
         this.status = status;
     }
 

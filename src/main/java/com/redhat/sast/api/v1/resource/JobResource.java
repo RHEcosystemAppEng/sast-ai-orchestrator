@@ -23,7 +23,8 @@ public class JobResource {
 
     @POST
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response createJob(@FormParam("metadata") String metadataJson, @FormParam("inputFile") String inputFile) {
+    public Response createJob(@FormParam("metadata") String metadataJson,
+                              @FormParam("inputFile") String inputFile) {
         // Note: File handling for SARIF files would be implemented here
         // For now, we're handling the metadata part as JSON string
         try {

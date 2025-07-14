@@ -20,7 +20,8 @@ public class PackageResource {
 
     @GET
     public Response getAllPackages(
-            @QueryParam("page") @DefaultValue("0") int page, @QueryParam("size") @DefaultValue("50") int size) {
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("50") int size) {
         try {
             List<PackageSummaryDto> packages = packageService.getAllPackages(page, size);
             return Response.ok(packages).build();

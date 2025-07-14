@@ -34,7 +34,8 @@ public class JobBatchResource {
 
     @GET
     public Response getAllBatches(
-            @QueryParam("page") @DefaultValue("0") int page, @QueryParam("size") @DefaultValue("20") int size) {
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("20") int size) {
         try {
             List<JobBatchResponseDto> batches = jobBatchService.getAllBatches(page, size);
             return Response.ok(batches).build();

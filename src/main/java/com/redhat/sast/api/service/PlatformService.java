@@ -14,8 +14,12 @@ import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.platform.LlmSecretValues;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
 
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaimBuilder;
+import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
+import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.tekton.client.TektonClient;
 import io.fabric8.tekton.v1.*;
 import jakarta.annotation.Nonnull;
@@ -42,6 +46,15 @@ public class PlatformService {
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
+    @ConfigProperty(name = "sast.ai.workspace.shared.size", defaultValue = "20Gi")
+    String sharedWorkspaceSize;
+
+    @ConfigProperty(name = "sast.ai.workspace.cache.size", defaultValue = "10Gi")
+    String cacheWorkspaceSize;
+
+    @ConfigProperty(name = "sast.ai.cleanup.completed.pipelineruns", defaultValue = "true")
+    boolean cleanupCompletedPipelineRuns;
+
     public void startSastAIWorkflow(@Nonnull Job job) {
         String pipelineRunName =
                 PIPELINE_NAME + "-" + UUID.randomUUID().toString().substring(0, 5);
@@ -49,10 +62,14 @@ public class PlatformService {
                 "Initiating PipelineRun: %s for Pipeline: %s in namespace: %s",
                 pipelineRunName, PIPELINE_NAME, namespace);
 
+        String sharedPvcName = createDedicatedPVC(pipelineRunName + "-shared", sharedWorkspaceSize);
+        String cachePvcName = createDedicatedPVC(pipelineRunName + "-cache", cacheWorkspaceSize);
+
         List<Param> pipelineParams = extractPipelineParams(job);
         String llmSecretName =
                 (job.getJobSettings() != null) ? job.getJobSettings().getSecretName() : "sast-ai-default-llm-creds";
-        PipelineRun pipelineRun = buildPipelineRun(pipelineRunName, pipelineParams, llmSecretName);
+        PipelineRun pipelineRun =
+                buildPipelineRun(pipelineRunName, pipelineParams, llmSecretName, sharedPvcName, cachePvcName);
 
         try {
             PipelineRun createdPipelineRun = tektonClient
@@ -72,7 +89,85 @@ public class PlatformService {
             managedExecutor.execute(() -> watchPipelineRun(job.getId(), pipelineRunName));
         } catch (Exception e) {
             LOG.errorf(e, "Failed to create PipelineRun %s in namespace %s", pipelineRunName, namespace);
+            cleanupPVC(sharedPvcName);
+            cleanupPVC(cachePvcName);
             throw new RuntimeException("Failed to start Tekton pipeline", e);
+        }
+    }
+
+    private String createDedicatedPVC(String pvcName, String size) {
+        try {
+            KubernetesClient k8sClient = tektonClient.adapt(KubernetesClient.class);
+
+            PersistentVolumeClaim pvc = new PersistentVolumeClaimBuilder()
+                    .withNewMetadata()
+                    .withName(pvcName)
+                    .withNamespace(namespace)
+                    .endMetadata()
+                    .withNewSpec()
+                    .withAccessModes("ReadWriteOnce")
+                    .withNewResources()
+                    .addToRequests("storage", new Quantity(size))
+                    .endResources()
+                    .endSpec()
+                    .build();
+
+            PersistentVolumeClaim createdPvc = k8sClient
+                    .persistentVolumeClaims()
+                    .inNamespace(namespace)
+                    .resource(pvc)
+                    .create();
+
+            LOG.infof("Created dedicated PVC: %s with size: %s", pvcName, size);
+            return createdPvc.getMetadata().getName();
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to create PVC: %s", pvcName);
+            throw new RuntimeException("Failed to create dedicated PVC", e);
+        }
+    }
+
+    private void cleanupPVC(String pvcName) {
+        try {
+            KubernetesClient k8sClient = tektonClient.adapt(KubernetesClient.class);
+
+            boolean deleted = k8sClient
+                            .persistentVolumeClaims()
+                            .inNamespace(namespace)
+                            .withName(pvcName)
+                            .delete()
+                            .size()
+                    > 0;
+
+            if (deleted) {
+                LOG.infof("Successfully deleted PVC: %s", pvcName);
+            } else {
+                LOG.warnf("PVC %s was not found or already deleted", pvcName);
+            }
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to delete PVC: %s", pvcName);
+        }
+    }
+
+    private void cleanupPipelineRun(String pipelineRunName) {
+        try {
+            boolean deleted = tektonClient
+                            .v1()
+                            .pipelineRuns()
+                            .inNamespace(namespace)
+                            .withName(pipelineRunName)
+                            .delete()
+                            .size()
+                    > 0;
+
+            if (deleted) {
+                LOG.infof("Successfully deleted PipelineRun: %s", pipelineRunName);
+                // Wait a moment for pods to be cleaned up
+                Thread.sleep(2000);
+            } else {
+                LOG.warnf("PipelineRun %s was not found or already deleted", pipelineRunName);
+            }
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to delete PipelineRun: %s", pipelineRunName);
         }
     }
 
@@ -89,6 +184,17 @@ public class PlatformService {
             LOG.infof("Watcher for PipelineRun %s is closing.", pipelineRunName);
         } catch (Exception e) {
             LOG.errorf(e, "Watcher for %s failed.", pipelineRunName);
+        } finally {
+            LOG.infof("Cleaning up resources for PipelineRun: %s", pipelineRunName);
+
+            if (cleanupCompletedPipelineRuns) {
+                cleanupPipelineRun(pipelineRunName);
+            } else {
+                LOG.infof("Keeping PipelineRun %s for debugging (cleanup disabled)", pipelineRunName);
+            }
+
+            cleanupPVC(pipelineRunName + "-shared");
+            cleanupPVC(pipelineRunName + "-cache");
         }
     }
 
@@ -289,7 +395,11 @@ public class PlatformService {
     }
 
     private PipelineRun buildPipelineRun(
-            @Nonnull String pipelineRunName, @Nonnull List<Param> params, String llmSecretName) {
+            @Nonnull String pipelineRunName,
+            @Nonnull List<Param> params,
+            String llmSecretName,
+            @Nonnull String sharedPvcName,
+            @Nonnull String cachePvcName) {
         return new PipelineRunBuilder()
                 .withNewMetadata()
                 .withName(pipelineRunName)
@@ -302,11 +412,11 @@ public class PlatformService {
                 .withWorkspaces(
                         new WorkspaceBindingBuilder()
                                 .withName("shared-workspace")
-                                .withNewPersistentVolumeClaim("sast-ai-workflow-pvc", false)
+                                .withNewPersistentVolumeClaim(sharedPvcName, false)
                                 .build(),
                         new WorkspaceBindingBuilder()
                                 .withName("cache-workspace")
-                                .withNewPersistentVolumeClaim("sast-ai-cache-pvc", false)
+                                .withNewPersistentVolumeClaim(cachePvcName, false)
                                 .build(),
                         new WorkspaceBindingBuilder()
                                 .withName("gitlab-token-ws")

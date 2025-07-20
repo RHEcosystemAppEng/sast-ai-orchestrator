@@ -91,7 +91,7 @@ public class PlatformService {
             LOG.errorf(e, "Failed to create PipelineRun %s in namespace %s", pipelineRunName, namespace);
             cleanupPVC(sharedPvcName);
             cleanupPVC(cachePvcName);
-            throw new RuntimeException("Failed to start Tekton pipeline", e);
+            throw new IllegalStateException("Failed to start Tekton pipeline", e);
         }
     }
 
@@ -122,7 +122,7 @@ public class PlatformService {
             return createdPvc.getMetadata().getName();
         } catch (Exception e) {
             LOG.errorf(e, "Failed to create PVC: %s", pvcName);
-            throw new RuntimeException("Failed to create dedicated PVC", e);
+            throw new IllegalStateException("Failed to create dedicated PVC", e);
         }
     }
 
@@ -130,13 +130,12 @@ public class PlatformService {
         try {
             KubernetesClient k8sClient = tektonClient.adapt(KubernetesClient.class);
 
-            boolean deleted = k8sClient
-                            .persistentVolumeClaims()
-                            .inNamespace(namespace)
-                            .withName(pvcName)
-                            .delete()
-                            .size()
-                    > 0;
+            boolean deleted = !k8sClient
+                    .persistentVolumeClaims()
+                    .inNamespace(namespace)
+                    .withName(pvcName)
+                    .delete()
+                    .isEmpty();
 
             if (deleted) {
                 LOG.infof("Successfully deleted PVC: %s", pvcName);
@@ -150,19 +149,23 @@ public class PlatformService {
 
     private void cleanupPipelineRun(String pipelineRunName) {
         try {
-            boolean deleted = tektonClient
-                            .v1()
-                            .pipelineRuns()
-                            .inNamespace(namespace)
-                            .withName(pipelineRunName)
-                            .delete()
-                            .size()
-                    > 0;
+            boolean deleted = !tektonClient
+                    .v1()
+                    .pipelineRuns()
+                    .inNamespace(namespace)
+                    .withName(pipelineRunName)
+                    .delete()
+                    .isEmpty();
 
             if (deleted) {
                 LOG.infof("Successfully deleted PipelineRun: %s", pipelineRunName);
                 // Wait a moment for pods to be cleaned up
-                Thread.sleep(2000);
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    LOG.warnf("Cleanup sleep interrupted for PipelineRun: %s", pipelineRunName);
+                }
             } else {
                 LOG.warnf("PipelineRun %s was not found or already deleted", pipelineRunName);
             }

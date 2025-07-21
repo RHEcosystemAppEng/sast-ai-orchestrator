@@ -11,15 +11,12 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 import org.jboss.logging.Logger;
 
 import com.redhat.sast.api.model.Job;
+import com.redhat.sast.api.platform.KubernetesResourceManager;
 import com.redhat.sast.api.platform.LlmSecretValues;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
 
-import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
-import io.fabric8.kubernetes.api.model.PersistentVolumeClaimBuilder;
-import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
-import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.tekton.client.TektonClient;
 import io.fabric8.tekton.v1.*;
 import jakarta.annotation.Nonnull;
@@ -43,6 +40,9 @@ public class PlatformService {
     @Inject
     JobService jobService;
 
+    @Inject
+    KubernetesResourceManager resourceManager;
+
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
@@ -62,16 +62,18 @@ public class PlatformService {
                 "Initiating PipelineRun: %s for Pipeline: %s in namespace: %s",
                 pipelineRunName, PIPELINE_NAME, namespace);
 
-        String sharedPvcName = createDedicatedPVC(pipelineRunName + "-shared", sharedWorkspaceSize);
-        String cachePvcName = createDedicatedPVC(pipelineRunName + "-cache", cacheWorkspaceSize);
+        // Use try-with-resources to ensure PVC cleanup on any failure
+        try (KubernetesResourceManager.PvcResource sharedPvc =
+                        resourceManager.createManagedPVC(pipelineRunName + "-shared", sharedWorkspaceSize);
+                KubernetesResourceManager.PvcResource cachePvc =
+                        resourceManager.createManagedPVC(pipelineRunName + "-cache", cacheWorkspaceSize)) {
 
-        List<Param> pipelineParams = extractPipelineParams(job);
-        String llmSecretName =
-                (job.getJobSettings() != null) ? job.getJobSettings().getSecretName() : "sast-ai-default-llm-creds";
-        PipelineRun pipelineRun =
-                buildPipelineRun(pipelineRunName, pipelineParams, llmSecretName, sharedPvcName, cachePvcName);
+            List<Param> pipelineParams = extractPipelineParams(job);
+            String llmSecretName =
+                    (job.getJobSettings() != null) ? job.getJobSettings().getSecretName() : "sast-ai-default-llm-creds";
+            PipelineRun pipelineRun = buildPipelineRun(
+                    pipelineRunName, pipelineParams, llmSecretName, sharedPvc.getName(), cachePvc.getName());
 
-        try {
             PipelineRun createdPipelineRun = tektonClient
                     .v1()
                     .pipelineRuns()
@@ -86,91 +88,18 @@ public class PlatformService {
             LOG.infof("Updated job %d with Tekton URL: %s", job.getId(), tektonUrl);
 
             // Start monitoring the pipeline in a background thread
+            // At this point, we've successfully set up everything, so we don't want automatic cleanup
+            // The watcher's finally block will handle cleanup when the pipeline completes
             managedExecutor.execute(() -> watchPipelineRun(job.getId(), pipelineRunName));
+
+            // Mark PVCs as managed by the watcher now - disable auto-cleanup
+            sharedPvc.disableAutoCleanup();
+            cachePvc.disableAutoCleanup();
+
         } catch (Exception e) {
             LOG.errorf(e, "Failed to create PipelineRun %s in namespace %s", pipelineRunName, namespace);
-            cleanupPVC(sharedPvcName);
-            cleanupPVC(cachePvcName);
+            // PVCs will be automatically cleaned up by try-with-resources
             throw new IllegalStateException("Failed to start Tekton pipeline", e);
-        }
-    }
-
-    private String createDedicatedPVC(String pvcName, String size) {
-        try {
-            KubernetesClient k8sClient = tektonClient.adapt(KubernetesClient.class);
-
-            PersistentVolumeClaim pvc = new PersistentVolumeClaimBuilder()
-                    .withNewMetadata()
-                    .withName(pvcName)
-                    .withNamespace(namespace)
-                    .endMetadata()
-                    .withNewSpec()
-                    .withAccessModes("ReadWriteOnce")
-                    .withNewResources()
-                    .addToRequests("storage", new Quantity(size))
-                    .endResources()
-                    .endSpec()
-                    .build();
-
-            PersistentVolumeClaim createdPvc = k8sClient
-                    .persistentVolumeClaims()
-                    .inNamespace(namespace)
-                    .resource(pvc)
-                    .create();
-
-            LOG.infof("Created dedicated PVC: %s with size: %s", pvcName, size);
-            return createdPvc.getMetadata().getName();
-        } catch (Exception e) {
-            LOG.errorf(e, "Failed to create PVC: %s", pvcName);
-            throw new IllegalStateException("Failed to create dedicated PVC", e);
-        }
-    }
-
-    private void cleanupPVC(String pvcName) {
-        try {
-            KubernetesClient k8sClient = tektonClient.adapt(KubernetesClient.class);
-
-            boolean deleted = !k8sClient
-                    .persistentVolumeClaims()
-                    .inNamespace(namespace)
-                    .withName(pvcName)
-                    .delete()
-                    .isEmpty();
-
-            if (deleted) {
-                LOG.infof("Successfully deleted PVC: %s", pvcName);
-            } else {
-                LOG.warnf("PVC %s was not found or already deleted", pvcName);
-            }
-        } catch (Exception e) {
-            LOG.errorf(e, "Failed to delete PVC: %s", pvcName);
-        }
-    }
-
-    private void cleanupPipelineRun(String pipelineRunName) {
-        try {
-            boolean deleted = !tektonClient
-                    .v1()
-                    .pipelineRuns()
-                    .inNamespace(namespace)
-                    .withName(pipelineRunName)
-                    .delete()
-                    .isEmpty();
-
-            if (deleted) {
-                LOG.infof("Successfully deleted PipelineRun: %s", pipelineRunName);
-                // Wait a moment for pods to be cleaned up
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    LOG.warnf("Cleanup sleep interrupted for PipelineRun: %s", pipelineRunName);
-                }
-            } else {
-                LOG.warnf("PipelineRun %s was not found or already deleted", pipelineRunName);
-            }
-        } catch (Exception e) {
-            LOG.errorf(e, "Failed to delete PipelineRun: %s", pipelineRunName);
         }
     }
 
@@ -191,13 +120,12 @@ public class PlatformService {
             LOG.infof("Cleaning up resources for PipelineRun: %s", pipelineRunName);
 
             if (cleanupCompletedPipelineRuns) {
-                cleanupPipelineRun(pipelineRunName);
+                resourceManager.deletePipelineRun(pipelineRunName);
             } else {
                 LOG.infof("Keeping PipelineRun %s for debugging (cleanup disabled)", pipelineRunName);
             }
 
-            cleanupPVC(pipelineRunName + "-shared");
-            cleanupPVC(pipelineRunName + "-cache");
+            resourceManager.cleanupPipelineRunPVCs(pipelineRunName);
         }
     }
 

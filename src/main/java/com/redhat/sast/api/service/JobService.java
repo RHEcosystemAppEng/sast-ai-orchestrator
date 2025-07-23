@@ -134,14 +134,37 @@ public class JobService {
             throw new IllegalArgumentException("Job not found with id: " + jobId);
         }
 
-        if (job.getStatus() == JobStatus.RUNNING || job.getStatus() == JobStatus.SCHEDULED) {
-            job.setStatus(JobStatus.CANCELLED);
-            jobRepository.persist(job);
-
-            // TODO: Implement actual job cancellation logic (e.g., cancel Tekton pipeline)
-        } else {
+        if (!canBeCancelled(job.getStatus())) {
             throw new IllegalStateException("Job cannot be cancelled in status: " + job.getStatus());
         }
+
+        LOG.infof("Cancelling job %d (current status: %s)", jobId, job.getStatus());
+
+        markJobAsCancelled(job);
+
+        managedExecutor.execute(() -> {
+            try {
+                boolean cancelled = platformService.cancelWorkflow(job);
+                if (!cancelled) {
+                    LOG.warnf("Pipeline cancellation unsuccessful for job %d", jobId);
+                }
+            } catch (Exception e) {
+                LOG.errorf(e, "Error during pipeline cancellation for job %d", jobId);
+            }
+        });
+    }
+
+    private boolean canBeCancelled(JobStatus status) {
+        return status == JobStatus.RUNNING || status == JobStatus.SCHEDULED || status == JobStatus.PENDING;
+    }
+
+    private void markJobAsCancelled(Job job) {
+        job.setStatus(JobStatus.CANCELLED);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        job.setCompletedAt(now);
+        job.setCancelledAt(now);
+        jobRepository.persist(job);
+        LOG.infof("Job %d marked as CANCELLED", job.getId());
     }
 
     @Transactional
@@ -149,11 +172,37 @@ public class JobService {
         Job job = jobRepository.findById(jobId);
         if (job != null) {
             job.setStatus(newStatus);
-            if (newStatus == JobStatus.RUNNING && job.getStartedAt() == null) {
-                job.setStartedAt(java.time.LocalDateTime.now());
-            } else if (newStatus == JobStatus.COMPLETED || newStatus == JobStatus.FAILED) {
-                job.setCompletedAt(java.time.LocalDateTime.now());
+
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+            switch (newStatus) {
+                case RUNNING:
+                    if (job.getStartedAt() == null) {
+                        job.setStartedAt(now);
+                    }
+                    break;
+
+                case CANCELLED:
+                    if (job.getCancelledAt() == null) {
+                        job.setCancelledAt(now);
+                    }
+
+                case COMPLETED:
+                case FAILED:
+                    if (job.getCompletedAt() == null) {
+                        job.setCompletedAt(now);
+                    }
+                    break;
+
+                case PENDING:
+                case SCHEDULED:
+                    break;
+
+                default:
+                    LOG.warnf("Unhandled job status update: %s for job ID: %d", newStatus, jobId);
+                    break;
             }
+
             jobRepository.persist(job);
         }
     }
@@ -196,6 +245,7 @@ public class JobService {
         dto.setCreatedAt(job.getCreatedAt());
         dto.setStartedAt(job.getStartedAt());
         dto.setCompletedAt(job.getCompletedAt());
+        dto.setCancelledAt(job.getCancelledAt());
         dto.setTektonUrl(job.getTektonUrl());
         if (job.getJobBatch() != null) {
             dto.setBatchId(job.getJobBatch().getId());
@@ -216,5 +266,17 @@ public class JobService {
     @Transactional
     public void persistJob(@Nonnull Job job) {
         jobRepository.persist(job);
+    }
+
+    /**
+     * Handles pipeline deletion events from the watcher in a transactional context.
+     * This method is called when a pipeline is deleted (likely cancelled).
+     */
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    public void handlePipelineDeletion(@Nonnull Long jobId) {
+        Job currentJob = jobRepository.findById(jobId);
+        if (currentJob != null && currentJob.getStatus() != JobStatus.CANCELLED) {
+            updateJobStatus(jobId, JobStatus.CANCELLED);
+        }
     }
 }

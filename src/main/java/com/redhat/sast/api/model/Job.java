@@ -62,6 +62,9 @@ public class Job {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
     @Column(name = "tekton_url")
     private String tektonUrl;
 
@@ -216,6 +219,14 @@ public class Job {
 
     public void setCompletedAt(LocalDateTime completedAt) {
         this.completedAt = completedAt;
+    }
+
+    public LocalDateTime getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(LocalDateTime cancelledAt) {
+        this.cancelledAt = cancelledAt;
     }
 
     public String getTektonUrl() {

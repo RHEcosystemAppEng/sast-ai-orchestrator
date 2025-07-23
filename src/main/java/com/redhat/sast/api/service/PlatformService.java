@@ -252,4 +252,46 @@ public class PlatformService {
                         .build())
                 .build();
     }
+
+    /**
+     * Cancels a running pipeline for the given job.
+     *
+     * @param job the job whose pipeline should be cancelled
+     * @return true if cancellation was successful, false if pipeline was already completed/failed
+     */
+    public boolean cancelWorkflow(@Nonnull Job job) {
+        String pipelineRunName = resourceManager.extractPipelineRunName(job.getTektonUrl());
+        if (pipelineRunName == null) {
+            LOG.warnf("Cannot cancel job %d: no pipeline run name found", job.getId());
+            return false;
+        }
+
+        LOG.infof("Cancelling PipelineRun: %s for job ID: %d", pipelineRunName, job.getId());
+
+        try {
+            // Check if pipeline still exists and is running
+            PipelineRun pipelineRun = resourceManager.getPipelineRun(pipelineRunName);
+
+            if (pipelineRun == null) {
+                LOG.warnf("PipelineRun %s not found - may have already completed", pipelineRunName);
+                return false;
+            }
+
+            // Check if pipeline is still running
+            if (resourceManager.isPipelineInFinalState(pipelineRun)) {
+                LOG.infof("PipelineRun %s already completed - cannot cancel", pipelineRunName);
+                return false;
+            }
+
+            resourceManager.deletePipelineRun(pipelineRunName);
+
+            managedExecutor.execute(() -> resourceManager.cleanupPipelineRunPVCs(pipelineRunName));
+
+            return true;
+
+        } catch (Exception e) {
+            LOG.errorf(e, "Error cancelling PipelineRun %s for job ID: %d", pipelineRunName, job.getId());
+            return false;
+        }
+    }
 }

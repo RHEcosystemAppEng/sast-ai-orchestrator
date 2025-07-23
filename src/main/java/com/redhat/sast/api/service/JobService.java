@@ -1,5 +1,6 @@
 package com.redhat.sast.api.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -134,24 +135,22 @@ public class JobService {
             throw new IllegalArgumentException("Job not found with id: " + jobId);
         }
 
-        if (!canBeCancelled(job.getStatus())) {
+        if (canBeCancelled(job.getStatus())) {
+            markJobAsCancelled(job);
+
+            managedExecutor.execute(() -> {
+                try {
+                    boolean cancelled = platformService.cancelWorkflow(job);
+                    if (!cancelled) {
+                        LOG.warnf("Pipeline cancellation unsuccessful for job %d", jobId);
+                    }
+                } catch (Exception e) {
+                    LOG.errorf(e, "Error during pipeline cancellation for job %d", jobId);
+                }
+            });
+        } else {
             throw new IllegalStateException("Job cannot be cancelled in status: " + job.getStatus());
         }
-
-        LOG.infof("Cancelling job %d (current status: %s)", jobId, job.getStatus());
-
-        markJobAsCancelled(job);
-
-        managedExecutor.execute(() -> {
-            try {
-                boolean cancelled = platformService.cancelWorkflow(job);
-                if (!cancelled) {
-                    LOG.warnf("Pipeline cancellation unsuccessful for job %d", jobId);
-                }
-            } catch (Exception e) {
-                LOG.errorf(e, "Error during pipeline cancellation for job %d", jobId);
-            }
-        });
     }
 
     private boolean canBeCancelled(JobStatus status) {
@@ -160,11 +159,9 @@ public class JobService {
 
     private void markJobAsCancelled(Job job) {
         job.setStatus(JobStatus.CANCELLED);
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
-        job.setCompletedAt(now);
+        LocalDateTime now = LocalDateTime.now();
         job.setCancelledAt(now);
         jobRepository.persist(job);
-        LOG.infof("Job %d marked as CANCELLED", job.getId());
     }
 
     @Transactional

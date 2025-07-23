@@ -241,32 +241,27 @@ public class KubernetesResourceManager {
      * @return the pipeline run name, or null if extraction fails
      */
     public String extractPipelineRunName(@Nonnull String tektonUrl) {
-        if (tektonUrl == null || tektonUrl.isEmpty()) {
-            return null;
+        if (tektonUrl.isBlank()) {
+            throw new IllegalArgumentException("Tekton URL is blank!");
         }
 
-        try {
-            // Extract from full API URL like: .../apis/tekton.dev/v1/namespaces/ns/pipelineruns/name
-            if (tektonUrl.contains("/pipelineruns/")) {
-                String[] parts = tektonUrl.split("/pipelineruns/");
-                if (parts.length > 1) {
-                    return parts[1].split("[?#]")[0]; // Remove any query params or fragments
-                }
+        // Extract from full API URL like: .../apis/tekton.dev/v1/namespaces/ns/pipelineruns/name
+        if (tektonUrl.contains("/pipelineruns/")) {
+            String[] parts = tektonUrl.split("/pipelineruns/");
+            if (parts.length > 1) {
+                return parts[1].split("[?#]")[0]; // Remove any query params or fragments
             }
-
-            // Fallback for custom URL format like: tekton://namespaces/ns/pipelineruns/name
-            if (tektonUrl.startsWith("tekton://")) {
-                String[] parts = tektonUrl.split("/");
-                if (parts.length > 0) {
-                    return parts[parts.length - 1];
-                }
-            }
-
-            return null;
-        } catch (Exception e) {
-            LOG.errorf(e, "Failed to extract pipeline run name from URL: %s", tektonUrl);
-            return null;
         }
+
+        // Fallback for custom URL format like: tekton://namespaces/ns/pipelineruns/name
+        if (tektonUrl.startsWith("tekton://")) {
+            String[] parts = tektonUrl.split("/");
+            if (parts.length > 0) {
+                return parts[parts.length - 1];
+            }
+        }
+
+        return null;
     }
 
     /**

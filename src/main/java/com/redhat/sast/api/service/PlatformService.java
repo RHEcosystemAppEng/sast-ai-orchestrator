@@ -124,7 +124,7 @@ public class PlatformService {
                 .pipelineRuns()
                 .inNamespace(namespace)
                 .withName(pipelineRunName)
-                .watch(new PipelineRunWatcher(pipelineRunName, jobId, future, jobService))) {
+                .watch(new PipelineRunWatcher(pipelineRunName, jobId, future, jobService, resourceManager))) {
             future.join();
             LOG.infof("Watcher for PipelineRun %s is closing.", pipelineRunName);
         } catch (Exception e) {

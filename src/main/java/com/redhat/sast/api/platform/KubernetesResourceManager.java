@@ -3,6 +3,10 @@ package com.redhat.sast.api.platform;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
+import com.redhat.sast.api.enums.JobStatus;
+import com.redhat.sast.api.model.Job;
+import com.redhat.sast.api.service.JobService;
+
 import io.fabric8.knative.pkg.apis.Condition;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimBuilder;
@@ -13,6 +17,7 @@ import io.fabric8.tekton.v1.PipelineRun;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 
 /**
  * Manages Kubernetes resources lifecycle including PVCs and PipelineRuns.
@@ -25,6 +30,9 @@ public class KubernetesResourceManager {
 
     @Inject
     TektonClient tektonClient;
+
+    @Inject
+    JobService jobService;
 
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
@@ -258,6 +266,18 @@ public class KubernetesResourceManager {
         } catch (Exception e) {
             LOG.errorf(e, "Failed to extract pipeline run name from URL: %s", tektonUrl);
             return null;
+        }
+    }
+
+    /**
+     * Handles pipeline deletion events from the watcher in a transactional context.
+     * This method is called when a pipeline is deleted (likely cancelled).
+     */
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    public void handlePipelineDeletion(@Nonnull Long jobId) {
+        Job currentJob = jobService.getJobEntityById(jobId);
+        if (currentJob != null && currentJob.getStatus() != JobStatus.CANCELLED) {
+            jobService.updateJobStatus(jobId, JobStatus.CANCELLED);
         }
     }
 }

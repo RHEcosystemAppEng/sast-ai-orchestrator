@@ -5,7 +5,6 @@ import java.util.concurrent.CompletableFuture;
 import org.jboss.logging.Logger;
 
 import com.redhat.sast.api.enums.JobStatus;
-import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.service.JobService;
 
 import io.fabric8.knative.pkg.apis.Condition;
@@ -28,13 +27,19 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
     private final long jobId;
     private final CompletableFuture<Void> future;
     private final JobService jobService;
+    private final KubernetesResourceManager resourceManager;
 
     public PipelineRunWatcher(
-            String pipelineRunName, long jobId, CompletableFuture<Void> future, JobService jobService) {
+            String pipelineRunName,
+            long jobId,
+            CompletableFuture<Void> future,
+            JobService jobService,
+            KubernetesResourceManager resourceManager) {
         this.pipelineRunName = pipelineRunName;
         this.jobId = jobId;
         this.future = future;
         this.jobService = jobService;
+        this.resourceManager = resourceManager;
     }
 
     @Override
@@ -47,7 +52,7 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
             LOG.infof("PipelineRun %s was deleted (likely cancelled)", pipelineRunName);
             // Handle pipeline deletion in a separate transactional context
             try {
-                jobService.handlePipelineDeletion(jobId);
+                resourceManager.handlePipelineDeletion(jobId);
             } catch (Exception e) {
                 LOG.errorf(e, "Failed to handle pipeline deletion for job %d", jobId);
             }

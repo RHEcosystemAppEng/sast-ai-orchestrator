@@ -267,16 +267,4 @@ public class JobService {
     public void persistJob(@Nonnull Job job) {
         jobRepository.persist(job);
     }
-
-    /**
-     * Handles pipeline deletion events from the watcher in a transactional context.
-     * This method is called when a pipeline is deleted (likely cancelled).
-     */
-    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
-    public void handlePipelineDeletion(@Nonnull Long jobId) {
-        Job currentJob = jobRepository.findById(jobId);
-        if (currentJob != null && currentJob.getStatus() != JobStatus.CANCELLED) {
-            updateJobStatus(jobId, JobStatus.CANCELLED);
-        }
-    }
 }

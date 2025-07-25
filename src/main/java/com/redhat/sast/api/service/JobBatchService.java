@@ -60,7 +60,8 @@ public class JobBatchService {
         JobBatchResponseDto response = convertToResponseDto(batch);
 
         // Start async processing
-        managedExecutor.execute(() -> executeBatchProcessing(batch.getId(), batch.getBatchGoogleSheetUrl()));
+        managedExecutor.execute(() -> executeBatchProcessing(
+                batch.getId(), batch.getBatchGoogleSheetUrl(), batch.getUseKnownFalsePositiveFile()));
 
         return response;
     }
@@ -70,6 +71,7 @@ public class JobBatchService {
         JobBatch batch = new JobBatch();
         batch.setBatchGoogleSheetUrl(submissionDto.getBatchGoogleSheetUrl());
         batch.setSubmittedBy(submissionDto.getSubmittedBy());
+        batch.setUseKnownFalsePositiveFile(submissionDto.getUseKnownFalsePositiveFile());
         batch.setStatus(BatchStatus.PROCESSING);
 
         jobBatchRepository.persist(batch);
@@ -82,10 +84,11 @@ public class JobBatchService {
     /**
      * Asynchronously processes a batch by parsing input files and creating individual jobs
      */
-    public void executeBatchProcessing(@Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl) {
+    public void executeBatchProcessing(
+            @Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl, Boolean useKnownFalsePositiveFile) {
         try {
             LOG.debugf("Starting async processing for batch ID: %d", batchId);
-            List<JobCreationDto> jobDtos = fetchAndParseJobsFromSheet(batchGoogleSheetUrl);
+            List<JobCreationDto> jobDtos = fetchAndParseJobsFromSheet(batchGoogleSheetUrl, useKnownFalsePositiveFile);
 
             if (jobDtos.isEmpty()) {
                 updateBatchStatusInNewTransaction(batchId, BatchStatus.COMPLETED_EMPTY, 0, 0, 0);
@@ -107,10 +110,11 @@ public class JobBatchService {
     /**
      * Extracts the data fetching and parsing logic into a dedicated method.
      */
-    private List<JobCreationDto> fetchAndParseJobsFromSheet(String googleSheetUrl) throws Exception {
+    private List<JobCreationDto> fetchAndParseJobsFromSheet(String googleSheetUrl, Boolean useKnownFalsePositiveFile)
+            throws Exception {
         String processedInputUrl = inputSourceResolver.resolve(googleSheetUrl);
         String processedInputContent = remoteContentFetcher.fetch(processedInputUrl);
-        return csvJobParser.parse(processedInputContent);
+        return csvJobParser.parse(processedInputContent, useKnownFalsePositiveFile);
     }
 
     /**

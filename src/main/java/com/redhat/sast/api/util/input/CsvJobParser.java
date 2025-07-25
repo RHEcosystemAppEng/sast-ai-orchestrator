@@ -44,6 +44,20 @@ public class CsvJobParser {
      * @throws IOException if the CSV is malformed or a valid header cannot be found.
      */
     public List<JobCreationDto> parse(@Nonnull String csvContent) throws IOException {
+        return parse(csvContent, null);
+    }
+
+    /**
+     * Parses a raw CSV string into a list of JobCreationDto objects with custom workflow settings.
+     * It automatically detects the header row and handles variations in column names.
+     *
+     * @param csvContent The non-null, raw CSV data as a string.
+     * @param useKnownFalsePositiveFile Whether to use known false positives file (null defaults to true)
+     * @return A list of parsed jobs.
+     * @throws IOException if the CSV is malformed or a valid header cannot be found.
+     */
+    public List<JobCreationDto> parse(@Nonnull String csvContent, Boolean useKnownFalsePositiveFile)
+            throws IOException {
         if (csvContent == null || csvContent.isBlank()) {
             return new ArrayList<>();
         }
@@ -71,7 +85,7 @@ public class CsvJobParser {
                     .filter(Predicate.not(this::isRecordEmpty))
                     .map(record -> {
                         try {
-                            return createJobFromRecord(record, headerRecord);
+                            return createJobFromRecord(record, headerRecord, useKnownFalsePositiveFile);
                         } catch (IllegalArgumentException e) {
                             LOG.warnf("Skipping record at line %d: %s", record.getRecordNumber(), e.getMessage());
                             return null;
@@ -126,7 +140,8 @@ public class CsvJobParser {
         return foundHeaders.values().stream().allMatch(Boolean::booleanValue);
     }
 
-    private JobCreationDto createJobFromRecord(CSVRecord record, CSVRecord headerRecord) {
+    private JobCreationDto createJobFromRecord(
+            CSVRecord record, CSVRecord headerRecord, Boolean useKnownFalsePositiveFile) {
         JobCreationDto job = new JobCreationDto();
 
         int nvrIndex = findColumnIndex(headerRecord, "nvr");
@@ -141,7 +156,7 @@ public class CsvJobParser {
                 InputSourceType.GOOGLE_SHEET,
                 Optional.ofNullable(googleSheetUrl).orElse(job.getPackageSourceCodeUrl())));
 
-        setWorkflowSettings(job);
+        setWorkflowSettings(job, useKnownFalsePositiveFile);
         validateRequiredFields(job, record.getRecordNumber());
         return job;
     }
@@ -177,9 +192,11 @@ public class CsvJobParser {
         job.setKnownFalsePositivesUrl(urlInferenceService.inferKnownFalsePositivesUrl(job.getPackageNvr()));
     }
 
-    private void setWorkflowSettings(JobCreationDto job) {
+    private void setWorkflowSettings(JobCreationDto job, Boolean useKnownFalsePositiveFile) {
         WorkflowSettingsDto workflowSettings = new WorkflowSettingsDto();
         workflowSettings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
+        workflowSettings.setUseKnownFalsePositiveFile(
+                useKnownFalsePositiveFile != null ? useKnownFalsePositiveFile : true);
         job.setWorkflowSettings(workflowSettings);
     }
 

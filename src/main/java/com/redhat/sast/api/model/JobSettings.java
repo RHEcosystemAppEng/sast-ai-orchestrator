@@ -35,6 +35,9 @@ public class JobSettings {
     @Column(name = "secret_name")
     private String secretName;
 
+    @Column(name = "use_known_false_positive_file")
+    private Boolean useKnownFalsePositiveFile;
+
     public JobSettings() {}
 
     public Long getId() {
@@ -107,5 +110,13 @@ public class JobSettings {
 
     public void setSecretName(String secretName) {
         this.secretName = secretName;
+    }
+
+    public Boolean getUseKnownFalsePositiveFile() {
+        return useKnownFalsePositiveFile;
+    }
+
+    public void setUseKnownFalsePositiveFile(Boolean useKnownFalsePositiveFile) {
+        this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
     }
 }

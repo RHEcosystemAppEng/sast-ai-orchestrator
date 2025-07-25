@@ -39,6 +39,7 @@ public class PipelineParameterMapper {
     private static final String PARAM_EMBEDDINGS_LLM_URL = "EMBEDDINGS_LLM_URL";
     private static final String PARAM_EMBEDDINGS_LLM_MODEL_NAME = "EMBEDDINGS_LLM_MODEL_NAME";
     private static final String PARAM_EMBEDDINGS_LLM_API_KEY = "EMBEDDINGS_LLM_API_KEY";
+    private static final String PARAM_USE_KNOWN_FALSE_POSITIVE_FILE = "USE_KNOWN_FALSE_POSITIVE_FILE";
 
     @Inject
     TektonClient tektonClient;
@@ -70,6 +71,9 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getgSheetUrl()));
         params.add(createParam(PARAM_PROJECT_NAME, job.getProjectName()));
         params.add(createParam(PARAM_PROJECT_VERSION, job.getProjectVersion()));
+
+        Boolean useKnownFalsePositiveFile = getUseKnownFalsePositiveFileValue(job);
+        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
     }
 
     /**
@@ -200,5 +204,15 @@ public class PipelineParameterMapper {
             return jobSettingsValue;
         }
         return secretValue != null ? secretValue : "";
+    }
+
+    /**
+     * Gets the USE_KNOWN_FALSE_POSITIVE_FILE value with fallback to true
+     */
+    private Boolean getUseKnownFalsePositiveFileValue(Job job) {
+        if (job.getJobSettings() != null && job.getJobSettings().getUseKnownFalsePositiveFile() != null) {
+            return job.getJobSettings().getUseKnownFalsePositiveFile();
+        }
+        return true;
     }
 }

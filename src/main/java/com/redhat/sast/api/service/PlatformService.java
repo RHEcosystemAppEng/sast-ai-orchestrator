@@ -1,8 +1,7 @@
 package com.redhat.sast.api.service;
 
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -11,10 +10,10 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 import org.jboss.logging.Logger;
 
 import com.redhat.sast.api.model.Job;
-import com.redhat.sast.api.platform.LlmSecretValues;
+import com.redhat.sast.api.platform.KubernetesResourceManager;
+import com.redhat.sast.api.platform.PipelineParameterMapper;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
 
-import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
 import io.fabric8.tekton.client.TektonClient;
 import io.fabric8.tekton.v1.*;
@@ -28,6 +27,18 @@ public class PlatformService {
 
     private static final String PIPELINE_NAME = "sast-ai-workflow-pipeline";
 
+    // Workspace names
+    private static final String SHARED_WORKSPACE = "shared-workspace";
+    private static final String CACHE_WORKSPACE = "cache-workspace";
+    private static final String GITLAB_TOKEN_WORKSPACE = "gitlab-token-ws";
+    private static final String LLM_CREDENTIALS_WORKSPACE = "llm-credentials-ws";
+    private static final String GOOGLE_SA_JSON_WORKSPACE = "google-sa-json-ws";
+
+    // Secret names
+    private static final String GITLAB_TOKEN_SECRET = "gitlab-token-secret";
+    private static final String DEFAULT_LLM_SECRET = "sast-ai-default-llm-creds";
+    private static final String GOOGLE_SA_SECRET = "google-service-account-secret";
+
     private static final Logger LOG = Logger.getLogger(PlatformService.class);
 
     @Inject
@@ -39,8 +50,23 @@ public class PlatformService {
     @Inject
     JobService jobService;
 
+    @Inject
+    KubernetesResourceManager resourceManager;
+
+    @Inject
+    PipelineParameterMapper parameterMapper;
+
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
+
+    @ConfigProperty(name = "sast.ai.workspace.shared.size", defaultValue = "20Gi")
+    String sharedWorkspaceSize;
+
+    @ConfigProperty(name = "sast.ai.workspace.cache.size", defaultValue = "10Gi")
+    String cacheWorkspaceSize;
+
+    @ConfigProperty(name = "sast.ai.cleanup.completed.pipelineruns", defaultValue = "true")
+    boolean cleanupCompletedPipelineRuns;
 
     public void startSastAIWorkflow(@Nonnull Job job) {
         String pipelineRunName =
@@ -49,12 +75,18 @@ public class PlatformService {
                 "Initiating PipelineRun: %s for Pipeline: %s in namespace: %s",
                 pipelineRunName, PIPELINE_NAME, namespace);
 
-        List<Param> pipelineParams = extractPipelineParams(job);
-        String llmSecretName =
-                (job.getJobSettings() != null) ? job.getJobSettings().getSecretName() : "sast-ai-default-llm-creds";
-        PipelineRun pipelineRun = buildPipelineRun(pipelineRunName, pipelineParams, llmSecretName);
+        // Use try-with-resources to ensure PVC cleanup on any failure
+        try (KubernetesResourceManager.PvcResource sharedPvc =
+                        resourceManager.createManagedPVC(pipelineRunName + "-shared", sharedWorkspaceSize);
+                KubernetesResourceManager.PvcResource cachePvc =
+                        resourceManager.createManagedPVC(pipelineRunName + "-cache", cacheWorkspaceSize)) {
 
-        try {
+            List<Param> pipelineParams = parameterMapper.extractPipelineParams(job);
+            String llmSecretName =
+                    (job.getJobSettings() != null) ? job.getJobSettings().getSecretName() : "sast-ai-default-llm-creds";
+            PipelineRun pipelineRun = buildPipelineRun(
+                    pipelineRunName, pipelineParams, llmSecretName, sharedPvc.getName(), cachePvc.getName());
+
             PipelineRun createdPipelineRun = tektonClient
                     .v1()
                     .pipelineRuns()
@@ -69,10 +101,18 @@ public class PlatformService {
             LOG.infof("Updated job %d with Tekton URL: %s", job.getId(), tektonUrl);
 
             // Start monitoring the pipeline in a background thread
+            // At this point, we've successfully set up everything, so we don't want automatic cleanup
+            // The watcher's finally block will handle cleanup when the pipeline completes
             managedExecutor.execute(() -> watchPipelineRun(job.getId(), pipelineRunName));
+
+            // Mark PVCs as managed by the watcher now - disable auto-cleanup
+            sharedPvc.disableAutoCleanup();
+            cachePvc.disableAutoCleanup();
+
         } catch (Exception e) {
             LOG.errorf(e, "Failed to create PipelineRun %s in namespace %s", pipelineRunName, namespace);
-            throw new RuntimeException("Failed to start Tekton pipeline", e);
+            // PVCs will be automatically cleaned up by try-with-resources
+            throw new IllegalStateException("Failed to start Tekton pipeline", e);
         }
     }
 
@@ -89,6 +129,16 @@ public class PlatformService {
             LOG.infof("Watcher for PipelineRun %s is closing.", pipelineRunName);
         } catch (Exception e) {
             LOG.errorf(e, "Watcher for %s failed.", pipelineRunName);
+        } finally {
+            LOG.infof("Cleaning up resources for PipelineRun: %s", pipelineRunName);
+
+            if (cleanupCompletedPipelineRuns) {
+                resourceManager.deletePipelineRun(pipelineRunName);
+            } else {
+                LOG.infof("Keeping PipelineRun %s for debugging (cleanup disabled)", pipelineRunName);
+            }
+
+            resourceManager.cleanupPipelineRunPVCs(pipelineRunName);
         }
     }
 
@@ -132,164 +182,16 @@ public class PlatformService {
         }
     }
 
-    private LlmSecretValues getLlmSecretValues(String secretName) {
-        try {
-            if (secretName == null || secretName.trim().isEmpty()) {
-                LOG.warnf("Secret name is null or empty");
-                return LlmSecretValues.empty();
-            }
-
-            // Use the underlying Kubernetes client from TektonClient to access secrets
-            Secret secret = tektonClient
-                    .adapt(io.fabric8.kubernetes.client.KubernetesClient.class)
-                    .secrets()
-                    .inNamespace(namespace)
-                    .withName(secretName)
-                    .get();
-            if (secret == null) {
-                LOG.warnf("Secret '%s' not found in namespace '%s'", secretName, namespace);
-                return LlmSecretValues.empty();
-            }
-
-            if (secret.getData() == null) {
-                LOG.warnf("Secret '%s' has no data", secretName);
-                return LlmSecretValues.empty();
-            }
-
-            // Extract and decode all values in one pass
-            String llmUrl = getDecodedSecretValue(secret, "llm_url");
-            String llmApiKey = getDecodedSecretValue(secret, "llm_api_key");
-            String embeddingsUrl = getDecodedSecretValue(secret, "embeddings_llm_url");
-            String embeddingsApiKey = getDecodedSecretValue(secret, "embeddings_llm_api_key");
-            String llmModelName = getDecodedSecretValue(secret, "llm_model_name");
-            String embeddingsModelName = getDecodedSecretValue(secret, "embedding_llm_model_name");
-
-            return new LlmSecretValues(
-                    llmUrl, llmApiKey, embeddingsUrl, embeddingsApiKey, llmModelName, embeddingsModelName);
-        } catch (Exception e) {
-            LOG.errorf(e, "Failed to read secret '%s' from namespace '%s'", secretName, namespace);
-            return LlmSecretValues.empty();
-        }
-    }
-
-    private String getDecodedSecretValue(Secret secret, String key) {
-        try {
-            if (!secret.getData().containsKey(key)) {
-                LOG.debugf(
-                        "Secret '%s' does not contain key '%s'",
-                        secret.getMetadata().getName(), key);
-                return "";
-            }
-
-            String encodedValue = secret.getData().get(key);
-            return new String(java.util.Base64.getDecoder().decode(encodedValue), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            LOG.warnf(e, "Failed to decode secret value for key '%s'", key);
-            return "";
-        }
-    }
-
     /**
-     * Gets model name with fallback: JobSettings first, then secret value
+     * Builds a Tekton PipelineRun with the specified configuration.
      */
-    private String getModelNameWithFallback(String jobSettingsValue, String secretValue) {
-        if (jobSettingsValue != null && !jobSettingsValue.trim().isEmpty()) {
-            return jobSettingsValue;
-        }
-        return secretValue != null ? secretValue : "";
-    }
-
-    private List<Param> extractPipelineParams(@Nonnull Job job) {
-        List<Param> params = new ArrayList<>();
-
-        // Basic job parameters
-        params.add(new ParamBuilder()
-                .withName("REPO_REMOTE_URL")
-                .withNewValue(job.getPackageSourceCodeUrl())
-                .build());
-        params.add(new ParamBuilder()
-                .withName("FALSE_POSITIVES_URL")
-                .withNewValue(job.getKnownFalsePositivesUrl())
-                .build());
-        params.add(new ParamBuilder()
-                .withName("INPUT_REPORT_FILE_PATH")
-                .withNewValue(job.getgSheetUrl())
-                .build());
-        params.add(new ParamBuilder()
-                .withName("PROJECT_NAME")
-                .withNewValue(job.getProjectName())
-                .build());
-        params.add(new ParamBuilder()
-                .withName("PROJECT_VERSION")
-                .withNewValue(job.getProjectVersion())
-                .build());
-
-        // LLM settings from JobSettings and OCP secrets
-        if (job.getJobSettings() != null) {
-            String secretName = job.getJobSettings().getSecretName();
-            LOG.infof("Job %d has JobSettings with secretName: '%s'", job.getId(), secretName);
-
-            // Read all LLM configuration from OCP secret in one call
-            LlmSecretValues llmSecretValues = getLlmSecretValues(secretName);
-
-            // Add LLM parameters (URLs and API keys always from secret)
-            params.add(new ParamBuilder()
-                    .withName("LLM_URL")
-                    .withNewValue(llmSecretValues.llmUrl())
-                    .build());
-            params.add(new ParamBuilder()
-                    .withName("LLM_MODEL_NAME")
-                    .withNewValue(getModelNameWithFallback(
-                            job.getJobSettings().getLlmModelName(), llmSecretValues.llmModelName()))
-                    .build());
-            params.add(new ParamBuilder()
-                    .withName("LLM_API_KEY")
-                    .withNewValue(llmSecretValues.llmApiKey())
-                    .build());
-
-            // Add embeddings parameters (URLs and API keys always from secret)
-            params.add(new ParamBuilder()
-                    .withName("EMBEDDINGS_LLM_URL")
-                    .withNewValue(llmSecretValues.embeddingsUrl())
-                    .build());
-            params.add(new ParamBuilder()
-                    .withName("EMBEDDINGS_LLM_MODEL_NAME")
-                    .withNewValue(getModelNameWithFallback(
-                            job.getJobSettings().getEmbeddingLlmModelName(), llmSecretValues.embeddingsModelName()))
-                    .build());
-            params.add(new ParamBuilder()
-                    .withName("EMBEDDINGS_LLM_API_KEY")
-                    .withNewValue(llmSecretValues.embeddingsApiKey())
-                    .build());
-        } else {
-            LOG.warnf("Job %d has NO JobSettings - using empty LLM values", job.getId());
-            // Add default empty values if no job settings
-            params.add(new ParamBuilder().withName("LLM_URL").withNewValue("").build());
-            params.add(new ParamBuilder()
-                    .withName("LLM_MODEL_NAME")
-                    .withNewValue("")
-                    .build());
-            params.add(
-                    new ParamBuilder().withName("LLM_API_KEY").withNewValue("").build());
-            params.add(new ParamBuilder()
-                    .withName("EMBEDDINGS_LLM_URL")
-                    .withNewValue("")
-                    .build());
-            params.add(new ParamBuilder()
-                    .withName("EMBEDDINGS_LLM_MODEL_NAME")
-                    .withNewValue("")
-                    .build());
-            params.add(new ParamBuilder()
-                    .withName("EMBEDDINGS_LLM_API_KEY")
-                    .withNewValue("")
-                    .build());
-        }
-
-        return params;
-    }
-
     private PipelineRun buildPipelineRun(
-            @Nonnull String pipelineRunName, @Nonnull List<Param> params, String llmSecretName) {
+            @Nonnull String pipelineRunName,
+            @Nonnull List<Param> params,
+            String llmSecretName,
+            @Nonnull String sharedPvcName,
+            @Nonnull String cachePvcName) {
+
         return new PipelineRunBuilder()
                 .withNewMetadata()
                 .withName(pipelineRunName)
@@ -299,36 +201,55 @@ public class PlatformService {
                 .withNewPipelineRef()
                 .withName(PIPELINE_NAME)
                 .endPipelineRef()
-                .withWorkspaces(
-                        new WorkspaceBindingBuilder()
-                                .withName("shared-workspace")
-                                .withNewPersistentVolumeClaim("sast-ai-workflow-pvc", false)
-                                .build(),
-                        new WorkspaceBindingBuilder()
-                                .withName("cache-workspace")
-                                .withNewPersistentVolumeClaim("sast-ai-cache-pvc", false)
-                                .build(),
-                        new WorkspaceBindingBuilder()
-                                .withName("gitlab-token-ws")
-                                .withSecret(new SecretVolumeSourceBuilder()
-                                        .withSecretName("gitlab-token-secret")
-                                        .build())
-                                .build(),
-                        new WorkspaceBindingBuilder()
-                                .withName("llm-credentials-ws")
-                                .withSecret(new SecretVolumeSourceBuilder()
-                                        .withSecretName(
-                                                llmSecretName != null ? llmSecretName : "sast-ai-default-llm-creds")
-                                        .build())
-                                .build(),
-                        new WorkspaceBindingBuilder()
-                                .withName("google-sa-json-ws")
-                                .withSecret(new SecretVolumeSourceBuilder()
-                                        .withSecretName("google-service-account-secret")
-                                        .build())
-                                .build())
+                .withWorkspaces(buildWorkspaceBindings(llmSecretName, sharedPvcName, cachePvcName))
                 .withParams(params)
                 .endSpec()
+                .build();
+    }
+
+    /**
+     * Creates all workspace bindings for the pipeline.
+     * Uses helper methods for better readability and maintainability.
+     */
+    private WorkspaceBinding[] buildWorkspaceBindings(String llmSecretName, String sharedPvcName, String cachePvcName) {
+
+        return new WorkspaceBinding[] {
+            createPvcWorkspace(SHARED_WORKSPACE, sharedPvcName),
+            createPvcWorkspace(CACHE_WORKSPACE, cachePvcName),
+            createSecretWorkspace(GITLAB_TOKEN_WORKSPACE, GITLAB_TOKEN_SECRET),
+            createSecretWorkspace(
+                    LLM_CREDENTIALS_WORKSPACE, Objects.requireNonNullElse(llmSecretName, DEFAULT_LLM_SECRET)),
+            createSecretWorkspace(GOOGLE_SA_JSON_WORKSPACE, GOOGLE_SA_SECRET)
+        };
+    }
+
+    /**
+     * Creates a workspace binding for PersistentVolumeClaim.
+     *
+     * @param workspaceName the name of the workspace
+     * @param pvcName the name of the PVC
+     * @return configured WorkspaceBinding
+     */
+    private WorkspaceBinding createPvcWorkspace(String workspaceName, String pvcName) {
+        return new WorkspaceBindingBuilder()
+                .withName(workspaceName)
+                .withNewPersistentVolumeClaim(pvcName, false)
+                .build();
+    }
+
+    /**
+     * Creates a workspace binding for Kubernetes Secret.
+     *
+     * @param workspaceName the name of the workspace
+     * @param secretName the name of the secret
+     * @return configured WorkspaceBinding
+     */
+    private WorkspaceBinding createSecretWorkspace(String workspaceName, String secretName) {
+        return new WorkspaceBindingBuilder()
+                .withName(workspaceName)
+                .withSecret(new SecretVolumeSourceBuilder()
+                        .withSecretName(secretName)
+                        .build())
                 .build();
     }
 }

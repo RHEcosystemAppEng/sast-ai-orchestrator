@@ -46,6 +46,9 @@ public class JobResponseDto {
     @JsonProperty("completedAt")
     private LocalDateTime completedAt;
 
+    @JsonProperty("cancelledAt")
+    private LocalDateTime cancelledAt;
+
     @JsonProperty("tektonUrl")
     private String tektonUrl;
 
@@ -156,6 +159,14 @@ public class JobResponseDto {
 
     public void setCompletedAt(LocalDateTime completedAt) {
         this.completedAt = completedAt;
+    }
+
+    public LocalDateTime getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(LocalDateTime cancelledAt) {
+        this.cancelledAt = cancelledAt;
     }
 
     public String getTektonUrl() {

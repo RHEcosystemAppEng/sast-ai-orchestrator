@@ -49,3 +49,6 @@ Chart.lock
 charts/*.tgz
 charts/*.tar.gz
 .helmignore
+
+# Cursor
+.cursorrules

@@ -61,4 +61,21 @@ public class JobBatchResource {
                     .build();
         }
     }
+
+    @POST
+    @Path("/{batchId}:cancel")
+    public Response cancelJobBatch(@PathParam("batchId") Long batchId) {
+        try {
+            jobBatchService.cancelJobBatch(batchId);
+            return Response.ok("Job batch cancellation requested").build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Job batch not found: " + e.getMessage())
+                    .build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Failed to cancel job batch: " + e.getMessage())
+                    .build();
+        }
+    }
 }

@@ -5,5 +5,6 @@ public enum BatchStatus {
     COMPLETED,
     COMPLETED_WITH_ERRORS,
     COMPLETED_EMPTY,
-    FAILED
+    FAILED,
+    CANCELLED
 }

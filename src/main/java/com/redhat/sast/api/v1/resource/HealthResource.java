@@ -7,6 +7,7 @@ import javax.sql.DataSource;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
+import com.redhat.sast.api.service.GoogleSheetsService;
 import com.redhat.sast.api.v1.dto.response.HealthResponseDto;
 
 import io.fabric8.kubernetes.client.KubernetesClientException;
@@ -34,6 +35,9 @@ public class HealthResource {
     @Inject
     TektonClient tektonClient;
 
+    @Inject
+    GoogleSheetsService googleSheetsService;
+
     @ConfigProperty(name = "quarkus.application.version", defaultValue = "unknown")
     String applicationVersion;
 
@@ -50,6 +54,7 @@ public class HealthResource {
             // Add all health check dependencies
             health.addDependency(checkDatabaseHealth());
             health.addDependency(checkTektonHealth());
+            health.addDependency(checkGoogleServiceAccountHealth());
 
             // Let the DTO determine overall health based on dependencies
             health.determineOverallHealth();
@@ -138,6 +143,22 @@ public class HealthResource {
         } catch (Exception e) {
             LOG.errorf(e, "Tekton health check: general failure in namespace=%s", namespace);
             return HealthResponseDto.down("tekton", e.getMessage());
+        }
+    }
+
+    private HealthResponseDto checkGoogleServiceAccountHealth() {
+        try {
+            if (googleSheetsService.isServiceAccountAvailable()) {
+                LOG.debug("Google service account is available");
+                return HealthResponseDto.up("google-service-account", "Service account available");
+            } else {
+                LOG.warn("Google service account is not available - batch functionality will fail");
+                return HealthResponseDto.down(
+                        "google-service-account", "Service account not available - required for batch functionality");
+            }
+        } catch (Exception e) {
+            LOG.errorf(e, "Google service account health check failed");
+            return HealthResponseDto.down("google-service-account", e.getMessage());
         }
     }
 }

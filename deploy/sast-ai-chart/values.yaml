@@ -9,7 +9,7 @@ app:
     repository: quay.io/ecosystem-appeng/sast-ai-orchestrator
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "main-2bed0a3"
+    tag: "main-8d08ec0"
   
   # Number of replicas
   replicas: 1

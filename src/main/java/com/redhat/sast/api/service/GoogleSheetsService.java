@@ -35,9 +35,6 @@ public class GoogleSheetsService {
     @ConfigProperty(name = "google.service.account.secret.path")
     String serviceAccountSecretPath;
 
-    @ConfigProperty(name = "google.service.account.enabled")
-    boolean serviceAccountEnabled;
-
     @Inject
     InputSourceResolver inputSourceResolver;
 
@@ -49,10 +46,6 @@ public class GoogleSheetsService {
      * @throws IOException if authentication fails or sheet cannot be read
      */
     public List<List<Object>> readSheetData(@Nonnull String googleSheetUrl) throws IOException {
-        if (!serviceAccountEnabled) {
-            throw new IllegalStateException("Google Service Account authentication is not enabled");
-        }
-
         validateServiceAccountFile();
 
         String spreadsheetId = inputSourceResolver.extractSpreadsheetId(googleSheetUrl);
@@ -87,13 +80,9 @@ public class GoogleSheetsService {
     /**
      * Checks if the service account is properly configured and available.
      *
-     * @return true if service account is enabled and credentials file exists
+     * @return true if credentials file exists and is readable
      */
     public boolean isServiceAccountAvailable() {
-        if (!serviceAccountEnabled) {
-            return false;
-        }
-
         try {
             Path credentialsPath = Paths.get(serviceAccountSecretPath);
             return Files.exists(credentialsPath) && Files.isReadable(credentialsPath);

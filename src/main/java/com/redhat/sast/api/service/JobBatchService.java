@@ -111,7 +111,8 @@ public class JobBatchService {
      * Extracts the data fetching and parsing logic into a dedicated method.
      * Uses Google Service Account authentication exclusively - no fallback to CSV export.
      */
-    private List<JobCreationDto> fetchAndParseJobsFromSheet(String googleSheetUrl) throws Exception {
+    private List<JobCreationDto> fetchAndParseJobsFromSheet(String googleSheetUrl, Boolean useKnownFalsePositiveFile)
+            throws Exception {
         // Check if Google Service Account is available
         if (!googleSheetsService.isServiceAccountAvailable()) {
             LOG.errorf("Google Service Account authentication is not available for sheet: %s", googleSheetUrl);
@@ -122,7 +123,7 @@ public class JobBatchService {
         LOG.debugf("Using Google Service Account authentication for sheet: %s", googleSheetUrl);
         try {
             String processedInputContent = csvConverter.convert(googleSheetsService.readSheetData(googleSheetUrl));
-            return csvJobParser.parse(processedInputContent);
+            return csvJobParser.parse(processedInputContent, useKnownFalsePositiveFile);
         } catch (IOException e) {
             LOG.errorf("Google Sheets operation failed: %s", e.getMessage());
             throw new Exception("Google Sheets operation failed: " + e.getMessage(), e);

@@ -78,6 +78,8 @@ public class JobService {
             settings.setEmbeddingLlmModelName(
                     jobCreationDto.getWorkflowSettings().getEmbeddingsLlmModelName());
             settings.setSecretName(jobCreationDto.getWorkflowSettings().getSecretName());
+            settings.setUseKnownFalsePositiveFile(
+                    jobCreationDto.getWorkflowSettings().getUseKnownFalsePositiveFile());
             jobSettingsRepository.persist(settings);
 
             // Manually set the JobSettings on the Job object to avoid lazy loading issues

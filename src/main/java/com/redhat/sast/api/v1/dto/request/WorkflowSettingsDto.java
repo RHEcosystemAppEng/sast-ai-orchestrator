@@ -13,6 +13,9 @@ public class WorkflowSettingsDto {
     @JsonProperty("secretName")
     private String secretName;
 
+    @JsonProperty("useKnownFalsePositiveFile")
+    private Boolean useKnownFalsePositiveFile;
+
     public WorkflowSettingsDto() {}
 
     public WorkflowSettingsDto(String llmModelName, String embeddingsLlmModelName, String secretName) {
@@ -21,11 +24,20 @@ public class WorkflowSettingsDto {
         this.secretName = secretName;
     }
 
+    public WorkflowSettingsDto(
+            String llmModelName, String embeddingsLlmModelName, String secretName, Boolean useKnownFalsePositiveFile) {
+        this.llmModelName = llmModelName;
+        this.embeddingsLlmModelName = embeddingsLlmModelName;
+        this.secretName = secretName;
+        this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
+    }
+
     public WorkflowSettingsDto(WorkflowSettingsDto other) {
         if (other != null) {
             this.llmModelName = other.llmModelName;
             this.embeddingsLlmModelName = other.embeddingsLlmModelName;
             this.secretName = other.secretName;
+            this.useKnownFalsePositiveFile = other.useKnownFalsePositiveFile;
         }
     }
 
@@ -51,5 +63,13 @@ public class WorkflowSettingsDto {
 
     public void setSecretName(String secretName) {
         this.secretName = secretName;
+    }
+
+    public Boolean getUseKnownFalsePositiveFile() {
+        return useKnownFalsePositiveFile;
+    }
+
+    public void setUseKnownFalsePositiveFile(Boolean useKnownFalsePositiveFile) {
+        this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
     }
 }

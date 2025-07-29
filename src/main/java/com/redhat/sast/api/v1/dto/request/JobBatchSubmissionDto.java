@@ -13,11 +13,20 @@ public class JobBatchSubmissionDto {
     @JsonProperty("submittedBy")
     private String submittedBy;
 
+    @JsonProperty("useKnownFalsePositiveFile")
+    private Boolean useKnownFalsePositiveFile;
+
     public JobBatchSubmissionDto() {}
 
     public JobBatchSubmissionDto(String batchGoogleSheetUrl, String submittedBy) {
         this.batchGoogleSheetUrl = batchGoogleSheetUrl;
         this.submittedBy = submittedBy;
+    }
+
+    public JobBatchSubmissionDto(String batchGoogleSheetUrl, String submittedBy, Boolean useKnownFalsePositiveFile) {
+        this.batchGoogleSheetUrl = batchGoogleSheetUrl;
+        this.submittedBy = submittedBy;
+        this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
     }
 
     public String getBatchGoogleSheetUrl() {
@@ -34,5 +43,13 @@ public class JobBatchSubmissionDto {
 
     public void setSubmittedBy(String submittedBy) {
         this.submittedBy = submittedBy;
+    }
+
+    public Boolean getUseKnownFalsePositiveFile() {
+        return useKnownFalsePositiveFile;
+    }
+
+    public void setUseKnownFalsePositiveFile(Boolean useKnownFalsePositiveFile) {
+        this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
     }
 }

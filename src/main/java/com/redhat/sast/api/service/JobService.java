@@ -8,6 +8,7 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 import org.jboss.logging.Logger;
 
 import com.redhat.sast.api.enums.JobStatus;
+import com.redhat.sast.api.mapper.JobMapper;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobSettings;
 import com.redhat.sast.api.repository.JobRepository;
@@ -223,26 +224,7 @@ public class JobService {
     }
 
     private JobResponseDto convertToResponseDto(Job job) {
-        JobResponseDto dto = new JobResponseDto();
-        dto.setJobId(job.getId());
-        dto.setProjectName(job.getProjectName());
-        dto.setProjectVersion(job.getProjectVersion());
-        dto.setPackageName(job.getPackageName());
-        dto.setPackageNvr(job.getPackageNvr());
-        dto.setOshScanId(job.getOshScanId());
-        dto.setSourceCodeUrl(job.getPackageSourceCodeUrl());
-        dto.setJiraLink(job.getJiraLink());
-        dto.setHostname(job.getHostname());
-        dto.setStatus(job.getStatus());
-        dto.setCreatedAt(job.getCreatedAt());
-        dto.setStartedAt(job.getStartedAt());
-        dto.setCompletedAt(job.getCompletedAt());
-        dto.setCancelledAt(job.getCancelledAt());
-        dto.setTektonUrl(job.getTektonUrl());
-        if (job.getJobBatch() != null) {
-            dto.setBatchId(job.getJobBatch().getId());
-        }
-        return dto;
+        return JobMapper.INSTANCE.jobToJobResponseDto(job);
     }
 
     /**

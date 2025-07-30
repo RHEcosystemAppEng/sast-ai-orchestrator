@@ -159,49 +159,40 @@ public class JobService {
 
     private void markJobAsCancelled(Job job) {
         job.setStatus(JobStatus.CANCELLED);
-        LocalDateTime now = LocalDateTime.now();
-        job.setCancelledAt(now);
+        job.setCancelledAt(LocalDateTime.now());
         jobRepository.persist(job);
     }
 
     @Transactional
     public void updateJobStatus(@Nonnull Long jobId, @Nonnull JobStatus newStatus) {
+
         Job job = jobRepository.findById(jobId);
-        if (job != null) {
-            job.setStatus(newStatus);
-
-            java.time.LocalDateTime now = java.time.LocalDateTime.now();
-
-            switch (newStatus) {
-                case RUNNING:
-                    if (job.getStartedAt() == null) {
-                        job.setStartedAt(now);
-                    }
-                    break;
-
-                case CANCELLED:
-                    if (job.getCancelledAt() == null) {
-                        job.setCancelledAt(now);
-                    }
-
-                case COMPLETED:
-                case FAILED:
-                    if (job.getCompletedAt() == null) {
-                        job.setCompletedAt(now);
-                    }
-                    break;
-
-                case PENDING:
-                case SCHEDULED:
-                    break;
-
-                default:
-                    LOG.warnf("Unhandled job status update: %s for job ID: %d", newStatus, jobId);
-                    break;
-            }
-
-            jobRepository.persist(job);
+        if (job == null) {
+            LOG.warnf("Job with ID %d not found when trying to update status to %s", jobId, newStatus);
+            throw new IllegalArgumentException("Job not found with ID: " + jobId);
         }
+
+        JobStatus currentStatus = job.getStatus();
+        if (!isValidStatusTransition(currentStatus, newStatus)) {
+            LOG.warnf("Invalid status transition from %s to %s for job ID: %d", currentStatus, newStatus, jobId);
+            throw new IllegalStateException(String.format(
+                    "Invalid status transition from %s to %s for job ID: %d", currentStatus, newStatus, jobId));
+        }
+
+        job.setStatus(newStatus);
+
+        switch (newStatus) {
+            case RUNNING -> job.setStartedAt(LocalDateTime.now());
+            case CANCELLED -> job.setCancelledAt(LocalDateTime.now());
+            case COMPLETED, FAILED -> job.setCompletedAt(LocalDateTime.now());
+            case PENDING, SCHEDULED -> {
+                // No timestamp updates needed for these states
+            }
+            default -> LOG.warnf("Unhandled job status update: %s for job ID: %d", newStatus, jobId);
+        }
+
+        jobRepository.persist(job);
+        LOG.debugf("Updated job ID %d status from %s to %s", jobId, currentStatus, newStatus);
     }
 
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
@@ -216,12 +207,25 @@ public class JobService {
         }
     }
 
+    private boolean isValidStatusTransition(JobStatus from, JobStatus to) {
+        if (from == to) {
+            return true; // Same status update considers valid to capture the event timestamp
+        }
+
+        return switch (from) {
+            case PENDING -> to == JobStatus.SCHEDULED || to == JobStatus.CANCELLED;
+            case SCHEDULED -> to == JobStatus.RUNNING || to == JobStatus.CANCELLED;
+            case RUNNING -> to == JobStatus.COMPLETED || to == JobStatus.FAILED || to == JobStatus.CANCELLED;
+            default -> false;
+        };
+    }
+
     private void updateJobStatusToFailed(@Nonnull Long jobId, Exception cause) {
         try {
             // This will use the DataService's REQUIRES_NEW transaction
             // to safely update the job status
             updateJobStatus(jobId, JobStatus.FAILED);
-            LOG.infof("Updated job ID %d status to FAILED due to pipeline startup failure", jobId);
+            LOG.infof("Updated job ID %d status to FAILED due to pipeline error: %s", jobId, cause.getMessage());
         } catch (Exception e) {
             LOG.errorf(e, "Critical: Failed to update job status to FAILED for job ID: %d", jobId);
         }

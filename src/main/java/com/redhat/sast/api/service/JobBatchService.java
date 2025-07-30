@@ -145,7 +145,7 @@ public class JobBatchService {
      */
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public Job createJobInNewTransaction(JobCreationDto jobDto) {
-        return jobService.createJobInDatabase(jobDto);
+        return jobService.createJobEntity(jobDto);
     }
 
     /**

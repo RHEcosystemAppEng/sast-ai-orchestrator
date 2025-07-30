@@ -86,7 +86,7 @@ public class JobResource {
     @Path("/{jobId}")
     public Response getJobById(@PathParam("jobId") Long jobId) {
         try {
-            JobResponseDto job = jobService.getJobById(jobId);
+            JobResponseDto job = jobService.getJobDtoByJobId(jobId);
             return Response.ok(job).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.NOT_FOUND)

@@ -7,7 +7,6 @@ import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.service.JobService;
 
-import io.fabric8.knative.pkg.apis.Condition;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimBuilder;
 import io.fabric8.kubernetes.api.model.Quantity;
@@ -186,32 +185,22 @@ public class KubernetesResourceManager {
     }
 
     /**
-     * Gets the configured namespace for resource operations.
-     *
-     * @return the namespace
-     */
-    public String getNamespace() {
-        return namespace;
-    }
-
-    /**
-     * Checks if a pipeline run has reached a final state (succeeded or failed).
+     * Checks if a pipeline run has completed execution (succeeded or failed).
      *
      * @param pipelineRun the pipeline run to check
-     * @return true if the pipeline is in a final state, false otherwise
+     * @return true if the pipeline has completed, false otherwise
      */
-    public boolean isPipelineInFinalState(@Nonnull PipelineRun pipelineRun) {
+    public boolean isPipelineCompleted(@Nonnull PipelineRun pipelineRun) {
         if (pipelineRun.getStatus() == null || pipelineRun.getStatus().getConditions() == null) {
             return false;
         }
 
-        for (Condition condition : pipelineRun.getStatus().getConditions()) {
-            if ("Succeeded".equals(condition.getType())) {
-                return "True".equalsIgnoreCase(condition.getStatus())
-                        || "False".equalsIgnoreCase(condition.getStatus());
-            }
-        }
-        return false;
+        return pipelineRun.getStatus().getConditions().stream()
+                .filter(condition -> "Succeeded".equalsIgnoreCase(condition.getType()) && condition.getStatus() != null)
+                .anyMatch(condition -> {
+                    String status = condition.getStatus();
+                    return "True".equalsIgnoreCase(status) || "False".equalsIgnoreCase(status);
+                });
     }
 
     /**

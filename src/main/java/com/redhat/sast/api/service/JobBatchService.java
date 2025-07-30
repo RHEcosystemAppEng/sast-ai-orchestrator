@@ -1,5 +1,6 @@
 package com.redhat.sast.api.service;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -12,9 +13,8 @@ import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobBatch;
 import com.redhat.sast.api.repository.JobBatchRepository;
+import com.redhat.sast.api.util.input.CsvConverter;
 import com.redhat.sast.api.util.input.CsvJobParser;
-import com.redhat.sast.api.util.input.InputSourceResolver;
-import com.redhat.sast.api.util.input.RemoteContentFetcher;
 import com.redhat.sast.api.v1.dto.request.JobBatchSubmissionDto;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobBatchResponseDto;
@@ -40,16 +40,16 @@ public class JobBatchService {
     PlatformService platformService;
 
     @Inject
-    InputSourceResolver inputSourceResolver;
-
-    @Inject
-    RemoteContentFetcher remoteContentFetcher;
-
-    @Inject
     CsvJobParser csvJobParser;
 
     @Inject
     ManagedExecutor managedExecutor;
+
+    @Inject
+    GoogleSheetsService googleSheetsService;
+
+    @Inject
+    CsvConverter csvConverter;
 
     /**
      * Submits a batch job for processing.
@@ -109,12 +109,28 @@ public class JobBatchService {
 
     /**
      * Extracts the data fetching and parsing logic into a dedicated method.
+     * Uses Google Service Account authentication exclusively - no fallback to CSV export.
      */
     private List<JobCreationDto> fetchAndParseJobsFromSheet(String googleSheetUrl, Boolean useKnownFalsePositiveFile)
             throws Exception {
-        String processedInputUrl = inputSourceResolver.resolve(googleSheetUrl);
-        String processedInputContent = remoteContentFetcher.fetch(processedInputUrl);
-        return csvJobParser.parse(processedInputContent, useKnownFalsePositiveFile);
+        // Check if Google Service Account is available
+        if (!googleSheetsService.isServiceAccountAvailable()) {
+            LOG.errorf("Google Service Account authentication is not available for sheet: %s", googleSheetUrl);
+            throw new Exception(
+                    "Google Service Account authentication is required but not available. Please check service account configuration.");
+        }
+
+        LOG.debugf("Using Google Service Account authentication for sheet: %s", googleSheetUrl);
+        try {
+            String processedInputContent = csvConverter.convert(googleSheetsService.readSheetData(googleSheetUrl));
+            return csvJobParser.parse(processedInputContent, useKnownFalsePositiveFile);
+        } catch (IOException e) {
+            LOG.errorf("Google Sheets operation failed: %s", e.getMessage());
+            throw new Exception("Google Sheets operation failed: " + e.getMessage(), e);
+        } catch (Exception e) {
+            LOG.errorf("Failed to read Google Sheet: %s", e.getMessage());
+            throw new Exception("Failed to read Google Sheet: " + e.getMessage(), e);
+        }
     }
 
     /**

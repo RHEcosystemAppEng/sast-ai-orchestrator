@@ -6,6 +6,8 @@ import java.util.stream.Collectors;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.jboss.logging.Logger;
 
+import com.redhat.sast.api.common.constants.ApplicationConstants;
+import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobSettings;
@@ -37,20 +39,19 @@ public class JobService {
     @Inject
     ManagedExecutor managedExecutor;
 
+    @Inject
+    UrlInferenceService urlInferenceService;
+
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
-        // First, create the job in the database (transactional)
         Job job = createJobInDatabase(jobCreationDto);
 
-        // Then start the job execution asynchronously (fire and forget)
         managedExecutor.execute(() -> {
             try {
                 LOG.infof("Starting async pipeline execution for job ID: %d", job.getId());
                 platformService.startSastAIWorkflow(job);
             } catch (Exception e) {
                 LOG.errorf(e, "Failed to start pipeline for job ID: %d", job.getId());
-                // Update job status to failed if pipeline startup fails
                 try {
-                    // Use a separate thread to avoid transaction issues
                     managedExecutor.execute(() -> updateJobStatusToFailed(job.getId(), e));
                 } catch (Exception updateException) {
                     LOG.errorf(updateException, "Failed to update job status for job ID: %d", job.getId());
@@ -66,48 +67,34 @@ public class JobService {
         Job job = getJobFromDto(jobCreationDto);
         jobRepository.persist(job);
 
-        // Create job settings if provided
-        if (jobCreationDto.getWorkflowSettings() != null) {
-            LOG.infof(
-                    "Creating JobSettings with secretName: '%s'",
-                    jobCreationDto.getWorkflowSettings().getSecretName());
+        LOG.debugf("Creating JobSettings with default secretName: '%s'", ApplicationConstants.DEFAULT_SECRET_NAME);
 
-            JobSettings settings = new JobSettings();
-            settings.setJob(job);
-            settings.setLlmModelName(jobCreationDto.getWorkflowSettings().getLlmModelName());
-            settings.setEmbeddingLlmModelName(
-                    jobCreationDto.getWorkflowSettings().getEmbeddingsLlmModelName());
-            settings.setSecretName(jobCreationDto.getWorkflowSettings().getSecretName());
-            jobSettingsRepository.persist(settings);
+        JobSettings settings = new JobSettings();
+        settings.setJob(job);
+        settings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
+        jobSettingsRepository.persist(settings);
 
-            // Manually set the JobSettings on the Job object to avoid lazy loading issues
-            job.setJobSettings(settings);
+        job.setJobSettings(settings);
 
-            LOG.infof("Persisted JobSettings with secretName: '%s'", settings.getSecretName());
-        }
+        LOG.debugf("Persisted JobSettings with secretName: '%s'", settings.getSecretName());
 
         return job;
     }
 
-    private static Job getJobFromDto(JobCreationDto jobCreationDto) {
+    private Job getJobFromDto(JobCreationDto jobCreationDto) {
         Job job = new Job();
 
-        // Set basic job properties
-        job.setProjectName(jobCreationDto.getProjectName());
-        job.setProjectVersion(jobCreationDto.getProjectVersion());
-        job.setPackageName(jobCreationDto.getPackageName());
         job.setPackageNvr(jobCreationDto.getPackageNvr());
-        job.setOshScanId(jobCreationDto.getOshScanId());
-        job.setPackageSourceCodeUrl(jobCreationDto.getPackageSourceCodeUrl());
-        job.setJiraLink(jobCreationDto.getJiraLink());
-        job.setHostname(jobCreationDto.getHostname());
-        job.setKnownFalsePositivesUrl(jobCreationDto.getKnownFalsePositivesUrl());
 
-        // Set input source
-        if (jobCreationDto.getInputSource() != null) {
-            job.setInputSourceType(jobCreationDto.getInputSource().getType());
-            job.setGSheetUrl(jobCreationDto.getInputSource().getUrl());
-        }
+        job.setProjectName(urlInferenceService.inferProjectName(jobCreationDto.getPackageNvr()));
+        job.setProjectVersion(urlInferenceService.inferProjectVersion(jobCreationDto.getPackageNvr()));
+        job.setPackageName(urlInferenceService.inferPackageName(jobCreationDto.getPackageNvr()));
+        job.setPackageSourceCodeUrl(urlInferenceService.inferSourceCodeUrl(jobCreationDto.getPackageNvr()));
+        job.setKnownFalsePositivesUrl(urlInferenceService.inferKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
+
+        // Set input source - always Google Sheet for now
+        job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
+        job.setGSheetUrl(jobCreationDto.getInputSourceUrl());
 
         job.setStatus(JobStatus.PENDING);
         return job;

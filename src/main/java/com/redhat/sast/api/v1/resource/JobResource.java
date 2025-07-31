@@ -9,6 +9,7 @@ import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -45,8 +46,7 @@ public class JobResource {
 
     @POST
     @Path("/simple")
-    public Response createJobSimple(JobCreationDto jobCreationDto) {
-        // Simplified endpoint for JSON-only job creation
+    public Response createJobSimple(@Valid JobCreationDto jobCreationDto) {
         try {
             JobResponseDto response = jobService.createJob(jobCreationDto);
             return Response.status(Response.Status.CREATED).entity(response).build();

@@ -2,65 +2,23 @@ package com.redhat.sast.api.v1.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class JobCreationDto {
 
-    @JsonProperty("projectName")
-    private String projectName;
-
-    @JsonProperty("projectVersion")
-    private String projectVersion;
-
-    @JsonProperty("packageName")
-    private String packageName;
-
     @JsonProperty("packageNvr")
+    @NotBlank(message = "Package NVR cannot be null or empty.")
     private String packageNvr;
 
-    @JsonProperty("oshScanId")
-    private String oshScanId;
-
-    @JsonProperty("packageSourceCodeUrl")
-    private String packageSourceCodeUrl;
-
-    @JsonProperty("jiraLink")
-    private String jiraLink;
-
-    @JsonProperty("hostname")
-    private String hostname;
-
-    @JsonProperty("knownFalsePositivesUrl")
-    private String knownFalsePositivesUrl;
-
-    @JsonProperty("inputSource")
-    private InputSourceDto inputSource;
-
-    @JsonProperty("workflowSettings")
-    private WorkflowSettingsDto workflowSettings;
+    @JsonProperty("inputSourceUrl")
+    @NotBlank(message = "Input source URL cannot be null or empty.")
+    private String inputSourceUrl;
 
     public JobCreationDto() {}
 
-    public String getProjectName() {
-        return projectName;
-    }
-
-    public void setProjectName(String projectName) {
-        this.projectName = projectName;
-    }
-
-    public String getProjectVersion() {
-        return projectVersion;
-    }
-
-    public void setProjectVersion(String projectVersion) {
-        this.projectVersion = projectVersion;
-    }
-
-    public String getPackageName() {
-        return packageName;
-    }
-
-    public void setPackageName(String packageName) {
-        this.packageName = packageName;
+    public JobCreationDto(String packageNvr, String inputSourceUrl) {
+        this.packageNvr = packageNvr;
+        this.inputSourceUrl = inputSourceUrl;
     }
 
     public String getPackageNvr() {
@@ -71,59 +29,11 @@ public class JobCreationDto {
         this.packageNvr = packageNvr;
     }
 
-    public String getOshScanId() {
-        return oshScanId;
+    public String getInputSourceUrl() {
+        return inputSourceUrl;
     }
 
-    public void setOshScanId(String oshScanId) {
-        this.oshScanId = oshScanId;
-    }
-
-    public String getPackageSourceCodeUrl() {
-        return packageSourceCodeUrl;
-    }
-
-    public void setPackageSourceCodeUrl(String packageSourceCodeUrl) {
-        this.packageSourceCodeUrl = packageSourceCodeUrl;
-    }
-
-    public String getJiraLink() {
-        return jiraLink;
-    }
-
-    public void setJiraLink(String jiraLink) {
-        this.jiraLink = jiraLink;
-    }
-
-    public String getHostname() {
-        return hostname;
-    }
-
-    public void setHostname(String hostname) {
-        this.hostname = hostname;
-    }
-
-    public String getKnownFalsePositivesUrl() {
-        return knownFalsePositivesUrl;
-    }
-
-    public void setKnownFalsePositivesUrl(String knownFalsePositivesUrl) {
-        this.knownFalsePositivesUrl = knownFalsePositivesUrl;
-    }
-
-    public InputSourceDto getInputSource() {
-        return inputSource == null ? null : new InputSourceDto(inputSource);
-    }
-
-    public void setInputSource(InputSourceDto inputSource) {
-        this.inputSource = inputSource == null ? null : new InputSourceDto(inputSource);
-    }
-
-    public WorkflowSettingsDto getWorkflowSettings() {
-        return workflowSettings == null ? null : new WorkflowSettingsDto(workflowSettings);
-    }
-
-    public void setWorkflowSettings(WorkflowSettingsDto workflowSettings) {
-        this.workflowSettings = workflowSettings == null ? null : new WorkflowSettingsDto(workflowSettings);
+    public void setInputSourceUrl(String inputSourceUrl) {
+        this.inputSourceUrl = inputSourceUrl;
     }
 }

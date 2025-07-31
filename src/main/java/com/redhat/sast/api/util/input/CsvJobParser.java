@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -16,12 +15,8 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.jboss.logging.Logger;
 
-import com.redhat.sast.api.common.constants.ApplicationConstants;
-import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.service.UrlInferenceService;
-import com.redhat.sast.api.v1.dto.request.InputSourceDto;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
-import com.redhat.sast.api.v1.dto.request.WorkflowSettingsDto;
 
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -93,7 +88,7 @@ public class CsvJobParser {
             CSVRecord record = records.get(i);
 
             if (hasRequiredColumns(record)) {
-                LOG.infof("Found valid header at row %d", i + 1);
+                LOG.debugf("Found valid header at row %d", i + 1);
                 return i;
             }
         }
@@ -127,21 +122,14 @@ public class CsvJobParser {
     }
 
     private JobCreationDto createJobFromRecord(CSVRecord record, CSVRecord headerRecord) {
-        JobCreationDto job = new JobCreationDto();
-
         int nvrIndex = findColumnIndex(headerRecord, "nvr");
         int googleSheetIndex = findColumnIndex(headerRecord, "googleSheetUrl");
 
-        job.setPackageNvr(getFieldValue(record, nvrIndex));
-
-        setInferredFields(job);
-
+        String packageNvr = getFieldValue(record, nvrIndex);
         String googleSheetUrl = getFieldValue(record, googleSheetIndex);
-        job.setInputSource(new InputSourceDto(
-                InputSourceType.GOOGLE_SHEET,
-                Optional.ofNullable(googleSheetUrl).orElse(job.getPackageSourceCodeUrl())));
 
-        setWorkflowSettings(job);
+        JobCreationDto job = new JobCreationDto(packageNvr, googleSheetUrl);
+
         validateRequiredFields(job, record.getRecordNumber());
         return job;
     }
@@ -169,30 +157,21 @@ public class CsvJobParser {
         return null;
     }
 
-    private void setInferredFields(JobCreationDto job) {
-        job.setProjectName(urlInferenceService.inferProjectName(job.getPackageNvr()));
-        job.setProjectVersion(urlInferenceService.inferProjectVersion(job.getPackageNvr()));
-        job.setPackageName(urlInferenceService.inferPackageName(job.getPackageNvr()));
-        job.setPackageSourceCodeUrl(urlInferenceService.inferSourceCodeUrl(job.getPackageNvr()));
-        job.setKnownFalsePositivesUrl(urlInferenceService.inferKnownFalsePositivesUrl(job.getPackageNvr()));
-    }
-
-    private void setWorkflowSettings(JobCreationDto job) {
-        WorkflowSettingsDto workflowSettings = new WorkflowSettingsDto();
-        workflowSettings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
-        job.setWorkflowSettings(workflowSettings);
-    }
-
     private void validateRequiredFields(JobCreationDto job, long recordNumber) {
         if (job.getPackageNvr() == null || job.getPackageNvr().trim().isEmpty()) {
             throw new IllegalArgumentException(
                     String.format("Record %d is missing required field 'nvr'", recordNumber));
         }
 
-        // Verify that inference was successful
-        if (job.getPackageName() == null || job.getProjectName() == null || job.getProjectVersion() == null) {
+        if (job.getInputSourceUrl() == null || job.getInputSourceUrl().trim().isEmpty()) {
+            throw new IllegalArgumentException(
+                    String.format("Record %d is missing required field 'googleSheetUrl'", recordNumber));
+        }
+
+        // Verify that NVR is valid for inference
+        if (!urlInferenceService.canInferUrls(job.getPackageNvr())) {
             throw new IllegalArgumentException(String.format(
-                    "Record %d has invalid NVR '%s' - failed to infer parameters", recordNumber, job.getPackageNvr()));
+                    "Record %d has invalid NVR '%s' - cannot infer parameters", recordNumber, job.getPackageNvr()));
         }
     }
 

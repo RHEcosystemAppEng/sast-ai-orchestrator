@@ -39,6 +39,20 @@ public class CsvJobParser {
      * @throws IOException if the CSV is malformed or a valid header cannot be found.
      */
     public List<JobCreationDto> parse(@Nonnull String csvContent) throws IOException {
+        return parse(csvContent, null);
+    }
+
+    /**
+     * Parses a raw CSV string into a list of JobCreationDto objects with custom workflow settings.
+     * It automatically detects the header row and handles variations in column names.
+     *
+     * @param csvContent The non-null, raw CSV data as a string.
+     * @param useKnownFalsePositiveFile Whether to use known false positives file (null defaults to true)
+     * @return A list of parsed jobs.
+     * @throws IOException if the CSV is malformed or a valid header cannot be found.
+     */
+    public List<JobCreationDto> parse(@Nonnull String csvContent, Boolean useKnownFalsePositiveFile)
+            throws IOException {
         if (csvContent == null || csvContent.isBlank()) {
             return new ArrayList<>();
         }

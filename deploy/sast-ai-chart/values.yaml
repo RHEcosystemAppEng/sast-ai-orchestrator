@@ -9,7 +9,7 @@ app:
     repository: quay.io/ecosystem-appeng/sast-ai-orchestrator
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "main-2bed0a3"
+    tag: "main-d40b2d5"
   
   # Number of replicas
   replicas: 1
@@ -27,6 +27,8 @@ app:
     QUARKUS_KUBERNETES_CLIENT_TRUST_CERTS: false
     # SAST AI specific configuration
     SAST_AI_WORKFLOW_NAMESPACE: sast-ai
+    # Google Service Account configuration
+    GOOGLE_SERVICE_ACCOUNT_SECRET_PATH: /etc/secrets/google-service-account-secret/service_account.json
     
   # Resource limits and requests
   resources:

@@ -74,12 +74,18 @@ spec:
               mountPath: /deployments/config
               readOnly: true
             {{- end }}
+            - name: google-service-account-secret
+              mountPath: /etc/secrets/google-service-account-secret
+              readOnly: true
       volumes:
         {{- if .Values.configMap.create }}
         - name: config
           configMap:
             name: {{ include "sast-ai.configMapName" . }}
         {{- end }}
+        - name: google-service-account-secret
+          secret:
+            secretName: google-service-account-secret
       {{- with .Values.app.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

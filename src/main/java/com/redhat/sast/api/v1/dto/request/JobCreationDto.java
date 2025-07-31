@@ -14,11 +14,20 @@ public class JobCreationDto {
     @NotBlank(message = "Input source URL cannot be null or empty.")
     private String inputSourceUrl;
 
+    @JsonProperty("useKnownFalsePositiveFile")
+    private Boolean useKnownFalsePositiveFile;
+
     public JobCreationDto() {}
 
     public JobCreationDto(String packageNvr, String inputSourceUrl) {
         this.packageNvr = packageNvr;
         this.inputSourceUrl = inputSourceUrl;
+    }
+
+    public JobCreationDto(String packageNvr, String inputSourceUrl, Boolean useKnownFalsePositiveFile) {
+        this.packageNvr = packageNvr;
+        this.inputSourceUrl = inputSourceUrl;
+        this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
     }
 
     public String getPackageNvr() {
@@ -35,5 +44,13 @@ public class JobCreationDto {
 
     public void setInputSourceUrl(String inputSourceUrl) {
         this.inputSourceUrl = inputSourceUrl;
+    }
+
+    public Boolean getUseKnownFalsePositiveFile() {
+        return useKnownFalsePositiveFile;
+    }
+
+    public void setUseKnownFalsePositiveFile(Boolean useKnownFalsePositiveFile) {
+        this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
     }
 }

@@ -41,6 +41,9 @@ public class JobBatch {
     @Column(name = "last_updated_at")
     private LocalDateTime lastUpdatedAt;
 
+    @Column(name = "use_known_false_positive_file")
+    private Boolean useKnownFalsePositiveFile;
+
     @OneToMany(mappedBy = "jobBatch", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Job> jobs;
 
@@ -131,8 +134,19 @@ public class JobBatch {
         this.lastUpdatedAt = lastUpdatedAt;
     }
 
+    public Boolean getUseKnownFalsePositiveFile() {
+        return useKnownFalsePositiveFile;
+    }
+
+    public void setUseKnownFalsePositiveFile(Boolean useKnownFalsePositiveFile) {
+        this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
+    }
+
     public List<Job> getJobs() {
-        return jobs != null ? new ArrayList<>(jobs) : new ArrayList<>();
+        if (jobs == null) {
+            jobs = new ArrayList<>();
+        }
+        return jobs;
     }
 
     public void setJobs(List<Job> jobs) {

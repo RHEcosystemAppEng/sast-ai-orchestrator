@@ -72,6 +72,8 @@ public class JobService {
         JobSettings settings = new JobSettings();
         settings.setJob(job);
         settings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
+        Boolean useKnownFalsePositiveFile = jobCreationDto.getUseKnownFalsePositiveFile();
+        settings.setUseKnownFalsePositiveFile(useKnownFalsePositiveFile != null ? useKnownFalsePositiveFile : true);
         jobSettingsRepository.persist(settings);
 
         job.setJobSettings(settings);

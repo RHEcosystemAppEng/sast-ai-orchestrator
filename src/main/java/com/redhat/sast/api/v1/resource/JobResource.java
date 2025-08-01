@@ -100,7 +100,7 @@ public class JobResource {
     }
 
     @POST
-    @Path("/{jobId}:cancel")
+    @Path("/{jobId}/cancel")
     public Response cancelJob(@PathParam("jobId") Long jobId) {
         try {
             jobService.cancelJob(jobId);

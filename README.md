@@ -21,7 +21,7 @@ Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosy
 - `POST /api/v1/jobs/simple` - Create a new security scanning job
 - `GET /api/v1/jobs` - List all jobs (with filtering & pagination)  
 - `GET /api/v1/jobs/{id}` - Get specific job details
-- `POST /api/v1/jobs/{id}:cancel` - Cancel a running job
+- `POST /api/v1/jobs/{id}/cancel` - Cancel a running job
 
 #### Job Batches
 - `POST /api/v1/job-batches` - Submit batch processing jobs

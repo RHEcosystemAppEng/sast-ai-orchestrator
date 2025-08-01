@@ -124,7 +124,7 @@ public class PlatformService {
                 .pipelineRuns()
                 .inNamespace(namespace)
                 .withName(pipelineRunName)
-                .watch(new PipelineRunWatcher(pipelineRunName, jobId, future, jobService))) {
+                .watch(new PipelineRunWatcher(pipelineRunName, jobId, future, jobService, resourceManager))) {
             future.join();
             LOG.infof("Watcher for PipelineRun %s is closing.", pipelineRunName);
         } catch (Exception e) {
@@ -251,5 +251,42 @@ public class PlatformService {
                         .withSecretName(secretName)
                         .build())
                 .build();
+    }
+
+    /**
+     * Cancels a running pipeline for the given job.
+     *
+     * @param job the job whose pipeline should be cancelled
+     * @return true if cancellation was successful, false if pipeline was already completed/failed
+     */
+    public boolean cancelTektonPipelineRun(@Nonnull Job job) {
+        String pipelineRunName = resourceManager.extractPipelineRunName(job.getTektonUrl());
+        if (pipelineRunName == null) {
+            LOG.warnf("Cannot cancel job %d: no pipeline run name found", job.getId());
+            return false;
+        }
+
+        try {
+            PipelineRun pipelineRun = resourceManager.getPipelineRun(pipelineRunName);
+
+            if (pipelineRun == null) {
+                LOG.warnf("PipelineRun %s not found - may have already completed", pipelineRunName);
+                return false;
+            }
+
+            if (resourceManager.isPipelineCompleted(pipelineRun)) {
+                LOG.infof("PipelineRun %s already completed - cannot cancel", pipelineRunName);
+                return false;
+            }
+
+            resourceManager.deletePipelineRun(pipelineRunName);
+            managedExecutor.execute(() -> resourceManager.cleanupPipelineRunPVCs(pipelineRunName));
+
+            return true;
+
+        } catch (Exception e) {
+            LOG.errorf(e, "Error cancelling PipelineRun %s for job ID: %d", pipelineRunName, job.getId());
+            return false;
+        }
     }
 }

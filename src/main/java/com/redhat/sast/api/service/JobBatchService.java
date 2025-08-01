@@ -165,7 +165,7 @@ public class JobBatchService {
      */
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public Job createJobInNewTransaction(JobCreationDto jobDto) {
-        return jobService.createJobInDatabase(jobDto);
+        return jobService.createJobEntity(jobDto);
     }
 
     /**
@@ -285,6 +285,51 @@ public class JobBatchService {
             batch.setFailedJobs(failedJobs);
             jobBatchRepository.persist(batch);
         }
+    }
+
+    /**
+     * Cancels all cancellable jobs in a batch.
+     *
+     * @param batchId the ID of the batch to cancel
+     * @return the number of jobs that were cancelled
+     */
+    @Transactional
+    public int cancelJobBatch(@Nonnull Long batchId) {
+        JobBatch batch = jobBatchRepository.findById(batchId);
+        if (batch == null) {
+            throw new IllegalArgumentException("Job batch not found with id: " + batchId);
+        }
+
+        List<Job> cancellableJobs = batch.getJobs().stream()
+                .filter(job -> canBeCancelled(job.getStatus()))
+                .toList();
+
+        if (cancellableJobs.isEmpty()) {
+            LOG.infof("No cancellable jobs found in batch %d", batchId);
+            return 0;
+        }
+
+        LOG.infof("Cancelling %d jobs in batch %d", cancellableJobs.size(), batchId);
+
+        int cancelledCount = 0;
+        for (Job job : cancellableJobs) {
+            try {
+                jobService.cancelJob(job.getId());
+                cancelledCount++;
+            } catch (Exception e) {
+                LOG.errorf(e, "Failed to cancel job %d in batch %d", job.getId(), batchId);
+            }
+        }
+
+        batch.setStatus(BatchStatus.CANCELLED);
+        jobBatchRepository.persist(batch);
+
+        LOG.infof("Cancelled %d out of %d jobs in batch %d", cancelledCount, cancellableJobs.size(), batchId);
+        return cancelledCount;
+    }
+
+    private boolean canBeCancelled(JobStatus status) {
+        return status == JobStatus.RUNNING || status == JobStatus.SCHEDULED || status == JobStatus.PENDING;
     }
 
     private JobBatchResponseDto convertToResponseDto(@Nonnull JobBatch batch) {

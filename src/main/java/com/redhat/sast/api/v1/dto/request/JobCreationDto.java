@@ -50,6 +50,14 @@ public class JobCreationDto {
         return useKnownFalsePositiveFile;
     }
 
+    public void setInputSource(InputSourceDto inputSource) {
+        this.inputSource = inputSource;
+    }
+
+    public WorkflowSettingsDto getWorkflowSettings() {
+        return this.workflowSettings;
+    }
+
     public void setUseKnownFalsePositiveFile(Boolean useKnownFalsePositiveFile) {
         this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
     }

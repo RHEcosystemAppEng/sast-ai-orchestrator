@@ -7,47 +7,50 @@ import com.redhat.sast.api.enums.JobStatus;
 
 public class JobResponseDto {
 
+    @JsonProperty("projectName")
+    protected String projectName;
+
+    @JsonProperty("projectVersion")
+    protected String projectVersion;
+
+    @JsonProperty("packageName")
+    protected String packageName;
+
+    @JsonProperty("packageNvr")
+    protected String packageNvr;
+
+    @JsonProperty("oshScanId")
+    protected String oshScanId;
+
+    @JsonProperty("jiraLink")
+    protected String jiraLink;
+
+    @JsonProperty("hostname")
+    protected String hostname;
+
+    @JsonProperty("status")
+    protected JobStatus status;
+
+    @JsonProperty("createdAt")
+    protected LocalDateTime createdAt;
+
+    @JsonProperty("startedAt")
+    protected LocalDateTime startedAt;
+
+    @JsonProperty("completedAt")
+    protected LocalDateTime completedAt;
+
+    @JsonProperty("cancelledAt")
+    protected LocalDateTime cancelledAt;
+
+    @JsonProperty("tektonUrl")
+    protected String tektonUrl;
+
     @JsonProperty("jobId")
     private Long jobId;
 
-    @JsonProperty("projectName")
-    private String projectName;
-
-    @JsonProperty("projectVersion")
-    private String projectVersion;
-
-    @JsonProperty("packageName")
-    private String packageName;
-
-    @JsonProperty("packageNvr")
-    private String packageNvr;
-
-    @JsonProperty("oshScanId")
-    private String oshScanId;
-
     @JsonProperty("sourceCodeUrl")
     private String sourceCodeUrl;
-
-    @JsonProperty("jiraLink")
-    private String jiraLink;
-
-    @JsonProperty("hostname")
-    private String hostname;
-
-    @JsonProperty("status")
-    private JobStatus status;
-
-    @JsonProperty("createdAt")
-    private LocalDateTime createdAt;
-
-    @JsonProperty("startedAt")
-    private LocalDateTime startedAt;
-
-    @JsonProperty("completedAt")
-    private LocalDateTime completedAt;
-
-    @JsonProperty("tektonUrl")
-    private String tektonUrl;
 
     @JsonProperty("batchId")
     private Long batchId;
@@ -60,6 +63,22 @@ public class JobResponseDto {
 
     public void setJobId(Long jobId) {
         this.jobId = jobId;
+    }
+
+    public String getSourceCodeUrl() {
+        return sourceCodeUrl;
+    }
+
+    public void setSourceCodeUrl(String sourceCodeUrl) {
+        this.sourceCodeUrl = sourceCodeUrl;
+    }
+
+    public Long getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(Long batchId) {
+        this.batchId = batchId;
     }
 
     public String getProjectName() {
@@ -100,14 +119,6 @@ public class JobResponseDto {
 
     public void setOshScanId(String oshScanId) {
         this.oshScanId = oshScanId;
-    }
-
-    public String getSourceCodeUrl() {
-        return sourceCodeUrl;
-    }
-
-    public void setSourceCodeUrl(String sourceCodeUrl) {
-        this.sourceCodeUrl = sourceCodeUrl;
     }
 
     public String getJiraLink() {
@@ -158,19 +169,19 @@ public class JobResponseDto {
         this.completedAt = completedAt;
     }
 
+    public LocalDateTime getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(LocalDateTime cancelledAt) {
+        this.cancelledAt = cancelledAt;
+    }
+
     public String getTektonUrl() {
         return tektonUrl;
     }
 
     public void setTektonUrl(String tektonUrl) {
         this.tektonUrl = tektonUrl;
-    }
-
-    public Long getBatchId() {
-        return batchId;
-    }
-
-    public void setBatchId(Long batchId) {
-        this.batchId = batchId;
     }
 }

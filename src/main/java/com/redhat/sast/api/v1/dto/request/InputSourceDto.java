@@ -18,13 +18,6 @@ public class InputSourceDto {
         this.url = url;
     }
 
-    public InputSourceDto(InputSourceDto other) {
-        if (other != null) {
-            this.type = other.type;
-            this.url = other.url;
-        }
-    }
-
     public InputSourceType getType() {
         return type;
     }

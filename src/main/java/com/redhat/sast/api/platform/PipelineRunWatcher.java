@@ -27,13 +27,19 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
     private final long jobId;
     private final CompletableFuture<Void> future;
     private final JobService jobService;
+    private final KubernetesResourceManager resourceManager;
 
     public PipelineRunWatcher(
-            String pipelineRunName, long jobId, CompletableFuture<Void> future, JobService jobService) {
+            String pipelineRunName,
+            long jobId,
+            CompletableFuture<Void> future,
+            JobService jobService,
+            KubernetesResourceManager resourceManager) {
         this.pipelineRunName = pipelineRunName;
         this.jobId = jobId;
         this.future = future;
         this.jobService = jobService;
+        this.resourceManager = resourceManager;
     }
 
     @Override
@@ -41,6 +47,18 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
         LOG.infof(
                 "Watcher event: %s for PipelineRun: %s",
                 action, resource.getMetadata().getName());
+
+        if (action == Action.DELETED) {
+            LOG.infof("PipelineRun %s was deleted (likely cancelled)", pipelineRunName);
+            // Handle pipeline deletion in a separate transactional context
+            try {
+                resourceManager.handlePipelineDeletion(jobId);
+            } catch (Exception e) {
+                LOG.errorf(e, "Failed to handle pipeline deletion for job %d", jobId);
+            }
+            future.complete(null);
+            return;
+        }
 
         if (resource.getStatus() != null && resource.getStatus().getConditions() != null) {
             for (Condition condition : resource.getStatus().getConditions()) {

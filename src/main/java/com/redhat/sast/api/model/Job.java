@@ -16,28 +16,28 @@ public class Job {
     private Long id;
 
     @Column(name = "project_name")
-    private String projectName;
+    protected String projectName;
 
     @Column(name = "project_version")
-    private String projectVersion;
+    protected String projectVersion;
 
     @Column(name = "package_name")
-    private String packageName;
+    protected String packageName;
 
     @Column(name = "package_nvr")
-    private String packageNvr;
+    protected String packageNvr;
 
     @Column(name = "osh_scan_id")
-    private String oshScanId;
+    protected String oshScanId;
 
     @Column(name = "package_source_code_url")
     private String packageSourceCodeUrl;
 
     @Column(name = "jira_link")
-    private String jiraLink;
+    protected String jiraLink;
 
     @Column(name = "hostname")
-    private String hostname;
+    protected String hostname;
 
     @Column(name = "known_false_positives_url")
     private String knownFalsePositivesUrl;
@@ -51,19 +51,22 @@ public class Job {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private JobStatus status;
+    protected JobStatus status;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    protected LocalDateTime createdAt;
 
     @Column(name = "started_at")
-    private LocalDateTime startedAt;
+    protected LocalDateTime startedAt;
 
     @Column(name = "completed_at")
-    private LocalDateTime completedAt;
+    protected LocalDateTime completedAt;
+
+    @Column(name = "cancelled_at")
+    protected LocalDateTime cancelledAt;
 
     @Column(name = "tekton_url")
-    private String tektonUrl;
+    protected String tektonUrl;
 
     @Column(name = "last_updated_at")
     private LocalDateTime lastUpdatedAt;
@@ -96,6 +99,62 @@ public class Job {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getPackageSourceCodeUrl() {
+        return packageSourceCodeUrl;
+    }
+
+    public void setPackageSourceCodeUrl(String packageSourceCodeUrl) {
+        this.packageSourceCodeUrl = packageSourceCodeUrl;
+    }
+
+    public String getKnownFalsePositivesUrl() {
+        return knownFalsePositivesUrl;
+    }
+
+    public void setKnownFalsePositivesUrl(String knownFalsePositivesUrl) {
+        this.knownFalsePositivesUrl = knownFalsePositivesUrl;
+    }
+
+    public InputSourceType getInputSourceType() {
+        return inputSourceType;
+    }
+
+    public void setInputSourceType(InputSourceType inputSourceType) {
+        this.inputSourceType = inputSourceType;
+    }
+
+    public String getgSheetUrl() {
+        return gSheetUrl;
+    }
+
+    public void setGSheetUrl(String gSheetUrl) {
+        this.gSheetUrl = gSheetUrl;
+    }
+
+    public LocalDateTime getLastUpdatedAt() {
+        return lastUpdatedAt;
+    }
+
+    public void setLastUpdatedAt(LocalDateTime lastUpdatedAt) {
+        this.lastUpdatedAt = lastUpdatedAt;
+    }
+
+    public JobBatch getJobBatch() {
+        return jobBatch;
+    }
+
+    public void setJobBatch(JobBatch jobBatch) {
+        this.jobBatch = jobBatch;
+    }
+
+    public JobSettings getJobSettings() {
+        return jobSettings;
+    }
+
+    public void setJobSettings(JobSettings jobSettings) {
+        this.jobSettings = jobSettings;
     }
 
     public String getProjectName() {
@@ -138,14 +197,6 @@ public class Job {
         this.oshScanId = oshScanId;
     }
 
-    public String getPackageSourceCodeUrl() {
-        return packageSourceCodeUrl;
-    }
-
-    public void setPackageSourceCodeUrl(String packageSourceCodeUrl) {
-        this.packageSourceCodeUrl = packageSourceCodeUrl;
-    }
-
     public String getJiraLink() {
         return jiraLink;
     }
@@ -160,30 +211,6 @@ public class Job {
 
     public void setHostname(String hostname) {
         this.hostname = hostname;
-    }
-
-    public String getKnownFalsePositivesUrl() {
-        return knownFalsePositivesUrl;
-    }
-
-    public void setKnownFalsePositivesUrl(String knownFalsePositivesUrl) {
-        this.knownFalsePositivesUrl = knownFalsePositivesUrl;
-    }
-
-    public InputSourceType getInputSourceType() {
-        return inputSourceType;
-    }
-
-    public void setInputSourceType(InputSourceType inputSourceType) {
-        this.inputSourceType = inputSourceType;
-    }
-
-    public String getgSheetUrl() {
-        return gSheetUrl;
-    }
-
-    public void setGSheetUrl(String gSheetUrl) {
-        this.gSheetUrl = gSheetUrl;
     }
 
     public JobStatus getStatus() {
@@ -218,35 +245,19 @@ public class Job {
         this.completedAt = completedAt;
     }
 
+    public LocalDateTime getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(LocalDateTime cancelledAt) {
+        this.cancelledAt = cancelledAt;
+    }
+
     public String getTektonUrl() {
         return tektonUrl;
     }
 
     public void setTektonUrl(String tektonUrl) {
         this.tektonUrl = tektonUrl;
-    }
-
-    public LocalDateTime getLastUpdatedAt() {
-        return lastUpdatedAt;
-    }
-
-    public void setLastUpdatedAt(LocalDateTime lastUpdatedAt) {
-        this.lastUpdatedAt = lastUpdatedAt;
-    }
-
-    public JobBatch getJobBatch() {
-        return jobBatch;
-    }
-
-    public void setJobBatch(JobBatch jobBatch) {
-        this.jobBatch = jobBatch;
-    }
-
-    public JobSettings getJobSettings() {
-        return jobSettings;
-    }
-
-    public void setJobSettings(JobSettings jobSettings) {
-        this.jobSettings = jobSettings;
     }
 }

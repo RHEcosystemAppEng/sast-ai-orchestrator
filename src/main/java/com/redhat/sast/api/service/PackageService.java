@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.redhat.sast.api.enums.JobStatus;
+import com.redhat.sast.api.mapper.JobMapper;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
@@ -67,24 +68,6 @@ public class PackageService {
     }
 
     private JobResponseDto convertToResponseDto(Job job) {
-        JobResponseDto dto = new JobResponseDto();
-        dto.setJobId(job.getId());
-        dto.setProjectName(job.getProjectName());
-        dto.setProjectVersion(job.getProjectVersion());
-        dto.setPackageName(job.getPackageName());
-        dto.setPackageNvr(job.getPackageNvr());
-        dto.setOshScanId(job.getOshScanId());
-        dto.setSourceCodeUrl(job.getPackageSourceCodeUrl());
-        dto.setJiraLink(job.getJiraLink());
-        dto.setHostname(job.getHostname());
-        dto.setStatus(job.getStatus());
-        dto.setCreatedAt(job.getCreatedAt());
-        dto.setStartedAt(job.getStartedAt());
-        dto.setCompletedAt(job.getCompletedAt());
-        dto.setTektonUrl(job.getTektonUrl());
-        if (job.getJobBatch() != null) {
-            dto.setBatchId(job.getJobBatch().getId());
-        }
-        return dto;
+        return JobMapper.INSTANCE.jobToJobResponseDto(job);
     }
 }

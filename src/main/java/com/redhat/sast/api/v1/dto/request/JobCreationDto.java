@@ -112,18 +112,18 @@ public class JobCreationDto {
     }
 
     public InputSourceDto getInputSource() {
-        return inputSource == null ? null : new InputSourceDto(inputSource);
+        return this.inputSource;
     }
 
     public void setInputSource(InputSourceDto inputSource) {
-        this.inputSource = inputSource == null ? null : new InputSourceDto(inputSource);
+        this.inputSource = inputSource;
     }
 
     public WorkflowSettingsDto getWorkflowSettings() {
-        return workflowSettings == null ? null : new WorkflowSettingsDto(workflowSettings);
+        return this.workflowSettings;
     }
 
     public void setWorkflowSettings(WorkflowSettingsDto workflowSettings) {
-        this.workflowSettings = workflowSettings == null ? null : new WorkflowSettingsDto(workflowSettings);
+        this.workflowSettings = workflowSettings;
     }
 }

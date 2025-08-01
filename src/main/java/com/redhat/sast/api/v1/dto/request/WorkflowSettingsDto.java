@@ -32,15 +32,6 @@ public class WorkflowSettingsDto {
         this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
     }
 
-    public WorkflowSettingsDto(WorkflowSettingsDto other) {
-        if (other != null) {
-            this.llmModelName = other.llmModelName;
-            this.embeddingsLlmModelName = other.embeddingsLlmModelName;
-            this.secretName = other.secretName;
-            this.useKnownFalsePositiveFile = other.useKnownFalsePositiveFile;
-        }
-    }
-
     public String getLlmModelName() {
         return llmModelName;
     }

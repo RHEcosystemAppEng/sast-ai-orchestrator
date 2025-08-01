@@ -42,7 +42,7 @@ public class JobService {
     ManagedExecutor managedExecutor;
 
     @Inject
-    UrlInferenceService urlInferenceService;
+    NvrResolutionService nvrResolutionService;
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
         // First, create the job entity (transactional)
@@ -161,11 +161,12 @@ public class JobService {
 
         job.setPackageNvr(jobCreationDto.getPackageNvr());
 
-        job.setProjectName(urlInferenceService.inferProjectName(jobCreationDto.getPackageNvr()));
-        job.setProjectVersion(urlInferenceService.inferProjectVersion(jobCreationDto.getPackageNvr()));
-        job.setPackageName(urlInferenceService.inferPackageName(jobCreationDto.getPackageNvr()));
-        job.setPackageSourceCodeUrl(urlInferenceService.inferSourceCodeUrl(jobCreationDto.getPackageNvr()));
-        job.setKnownFalsePositivesUrl(urlInferenceService.inferKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
+        job.setProjectName(nvrResolutionService.resolveProjectName(jobCreationDto.getPackageNvr()));
+        job.setProjectVersion(nvrResolutionService.resolveProjectVersion(jobCreationDto.getPackageNvr()));
+        job.setPackageName(nvrResolutionService.resolvePackageName(jobCreationDto.getPackageNvr()));
+        job.setPackageSourceCodeUrl(nvrResolutionService.resolveSourceCodeUrl(jobCreationDto.getPackageNvr()));
+        job.setKnownFalsePositivesUrl(
+                nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
 
         // Set input source - always Google Sheet for now
         job.setInputSourceType(InputSourceType.GOOGLE_SHEET);

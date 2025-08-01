@@ -15,7 +15,7 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.jboss.logging.Logger;
 
-import com.redhat.sast.api.service.UrlInferenceService;
+import com.redhat.sast.api.service.NvrResolutionService;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 
 import jakarta.annotation.Nonnull;
@@ -28,7 +28,7 @@ public class CsvJobParser {
     private static final Logger LOG = Logger.getLogger(CsvJobParser.class);
 
     @Inject
-    UrlInferenceService urlInferenceService;
+    NvrResolutionService nvrResolutionService;
 
     /**
      * Parses a raw CSV string into a list of JobCreationDto objects.
@@ -183,7 +183,7 @@ public class CsvJobParser {
         }
 
         // Verify that NVR is valid for inference
-        if (!urlInferenceService.canInferUrls(job.getPackageNvr())) {
+        if (!nvrResolutionService.isValidNvr(job.getPackageNvr())) {
             throw new IllegalArgumentException(String.format(
                     "Record %d has invalid NVR '%s' - cannot infer parameters", recordNumber, job.getPackageNvr()));
         }

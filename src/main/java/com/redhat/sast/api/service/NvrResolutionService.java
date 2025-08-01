@@ -2,8 +2,6 @@ package com.redhat.sast.api.service;
 
 import java.util.Map;
 
-import org.jboss.logging.Logger;
-
 import com.redhat.sast.api.exceptions.InvalidNvrException;
 import com.redhat.sast.api.util.url.NvrParser;
 import com.redhat.sast.api.util.url.UrlInferenceOperation;
@@ -15,7 +13,8 @@ import com.redhat.sast.api.util.url.UrlInferenceOperations.SourceCodeUrlOperatio
 
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service for resolving package NVR (Name-Version-Release) strings into various components
@@ -24,18 +23,17 @@ import jakarta.inject.Inject;
  * using the Template Method pattern.
  */
 @ApplicationScoped
+@RequiredArgsConstructor
+@Slf4j
 public class NvrResolutionService {
 
-    private static final Logger LOGGER = Logger.getLogger(NvrResolutionService.class);
-
-    @Inject
-    NvrParser nvrParser;
+    private final NvrParser nvrParser;
 
     private Map<String, UrlInferenceOperation> operations;
 
     public void setNvrParser(NvrParser nvrParser) {
-        this.nvrParser = nvrParser;
-        initOperations(); // Reinitialize operations when parser changes
+        // Note: This setter is kept for testing purposes, but constructor injection is preferred
+        throw new UnsupportedOperationException("Use constructor injection instead of setter injection");
     }
 
     @PostConstruct

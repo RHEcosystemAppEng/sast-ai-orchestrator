@@ -1,6 +1,6 @@
 package com.redhat.sast.api.util.url;
 
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
 
 import com.redhat.sast.api.exceptions.InvalidNvrException;
 

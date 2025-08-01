@@ -13,13 +13,13 @@ import com.redhat.sast.api.v1.dto.response.PackageSummaryDto;
 
 import io.quarkus.panache.common.Page;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class PackageService {
 
-    @Inject
-    JobRepository jobRepository;
+    private final JobRepository jobRepository;
 
     public List<PackageSummaryDto> getAllPackages(int page, int size) {
         List<String> packageNames = jobRepository.findDistinctPackageNames();

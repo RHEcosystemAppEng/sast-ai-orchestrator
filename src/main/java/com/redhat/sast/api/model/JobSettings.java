@@ -1,9 +1,15 @@
 package com.redhat.sast.api.model;
 
 import jakarta.persistence.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "job_settings")
+@Data
+@NoArgsConstructor
+@EqualsAndHashCode(exclude = "job")
 public class JobSettings {
 
     @Id
@@ -37,86 +43,4 @@ public class JobSettings {
 
     @Column(name = "use_known_false_positive_file")
     private Boolean useKnownFalsePositiveFile;
-
-    public JobSettings() {}
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Job getJob() {
-        return job;
-    }
-
-    public void setJob(Job job) {
-        this.job = job;
-    }
-
-    public String getLlmUrl() {
-        return llmUrl;
-    }
-
-    public void setLlmUrl(String llmUrl) {
-        this.llmUrl = llmUrl;
-    }
-
-    public String getLlmModelName() {
-        return llmModelName;
-    }
-
-    public void setLlmModelName(String llmModelName) {
-        this.llmModelName = llmModelName;
-    }
-
-    public String getLlmApiKey() {
-        return llmApiKey;
-    }
-
-    public void setLlmApiKey(String llmApiKey) {
-        this.llmApiKey = llmApiKey;
-    }
-
-    public String getEmbeddingLlmUrl() {
-        return embeddingLlmUrl;
-    }
-
-    public void setEmbeddingLlmUrl(String embeddingLlmUrl) {
-        this.embeddingLlmUrl = embeddingLlmUrl;
-    }
-
-    public String getEmbeddingLlmModelName() {
-        return embeddingLlmModelName;
-    }
-
-    public void setEmbeddingLlmModelName(String embeddingLlmModelName) {
-        this.embeddingLlmModelName = embeddingLlmModelName;
-    }
-
-    public String getEmbeddingLlmApiKey() {
-        return embeddingLlmApiKey;
-    }
-
-    public void setEmbeddingLlmApiKey(String embeddingLlmApiKey) {
-        this.embeddingLlmApiKey = embeddingLlmApiKey;
-    }
-
-    public String getSecretName() {
-        return secretName;
-    }
-
-    public void setSecretName(String secretName) {
-        this.secretName = secretName;
-    }
-
-    public Boolean getUseKnownFalsePositiveFile() {
-        return useKnownFalsePositiveFile;
-    }
-
-    public void setUseKnownFalsePositiveFile(Boolean useKnownFalsePositiveFile) {
-        this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
-    }
 }

@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import com.redhat.sast.api.model.Job;
 
@@ -17,15 +16,15 @@ import io.fabric8.tekton.v1.ParamBuilder;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Maps Job domain objects to Tekton pipeline parameters.
  * Handles the transformation of job data and settings into pipeline-specific parameter format.
  */
 @ApplicationScoped
+@Slf4j
 public class PipelineParameterMapper {
-
-    private static final Logger LOG = Logger.getLogger(PipelineParameterMapper.class);
 
     // Pipeline parameter names
     private static final String PARAM_REPO_REMOTE_URL = "REPO_REMOTE_URL";
@@ -68,7 +67,7 @@ public class PipelineParameterMapper {
     private void addBasicJobParameters(List<Param> params, Job job) {
         params.add(createParam(PARAM_REPO_REMOTE_URL, job.getPackageSourceCodeUrl()));
         params.add(createParam(PARAM_FALSE_POSITIVES_URL, job.getKnownFalsePositivesUrl()));
-        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getgSheetUrl()));
+        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
         params.add(createParam(PARAM_PROJECT_NAME, job.getProjectName()));
         params.add(createParam(PARAM_PROJECT_VERSION, job.getProjectVersion()));
 
@@ -92,7 +91,7 @@ public class PipelineParameterMapper {
      */
     private void addLlmParametersWithSettings(List<Param> params, Job job) {
         String secretName = job.getJobSettings().getSecretName();
-        LOG.infof("Job %d has JobSettings with secretName: '%s'", job.getId(), secretName);
+        LOGGER.info("Job {} has JobSettings with secretName: '{}'", job.getId(), secretName);
 
         LlmSecretValues llmSecretValues = getLlmSecretValues(secretName);
 
@@ -116,7 +115,7 @@ public class PipelineParameterMapper {
      * Adds default empty LLM parameters when JobSettings are not available.
      */
     private void addDefaultLlmParameters(List<Param> params, Job job) {
-        LOG.warnf("Job %d has NO JobSettings - using empty LLM values", job.getId());
+        LOGGER.warn("Job {} has NO JobSettings - using empty LLM values", job.getId());
 
         params.add(createParam(PARAM_LLM_URL, ""));
         params.add(createParam(PARAM_LLM_MODEL_NAME, ""));
@@ -142,7 +141,7 @@ public class PipelineParameterMapper {
     private LlmSecretValues getLlmSecretValues(String secretName) {
         try {
             if (secretName == null || secretName.trim().isEmpty()) {
-                LOG.warnf("Secret name is null or empty");
+                LOGGER.warn("Secret name is null or empty");
                 return LlmSecretValues.empty();
             }
 
@@ -154,12 +153,12 @@ public class PipelineParameterMapper {
                     .withName(secretName)
                     .get();
             if (secret == null) {
-                LOG.warnf("Secret '%s' not found in namespace '%s'", secretName, namespace);
+                LOGGER.warn("Secret '{}' not found in namespace '{}'", secretName, namespace);
                 return LlmSecretValues.empty();
             }
 
             if (secret.getData() == null) {
-                LOG.warnf("Secret '%s' has no data", secretName);
+                LOGGER.warn("Secret '{}' has no data", secretName);
                 return LlmSecretValues.empty();
             }
 
@@ -174,7 +173,7 @@ public class PipelineParameterMapper {
             return new LlmSecretValues(
                     llmUrl, llmApiKey, embeddingsUrl, embeddingsApiKey, llmModelName, embeddingsModelName);
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to read secret '%s' from namespace '%s'", secretName, namespace);
+            LOGGER.error("Failed to read secret '{}' from namespace '{}'", secretName, namespace, e);
             return LlmSecretValues.empty();
         }
     }
@@ -182,16 +181,17 @@ public class PipelineParameterMapper {
     private String getDecodedSecretValue(Secret secret, String key) {
         try {
             if (!secret.getData().containsKey(key)) {
-                LOG.debugf(
-                        "Secret '%s' does not contain key '%s'",
-                        secret.getMetadata().getName(), key);
+                LOGGER.debug(
+                        "Secret '{}' does not contain key '{}'",
+                        secret.getMetadata().getName(),
+                        key);
                 return "";
             }
 
             String encodedValue = secret.getData().get(key);
             return new String(java.util.Base64.getDecoder().decode(encodedValue), StandardCharsets.UTF_8);
         } catch (Exception e) {
-            LOG.warnf(e, "Failed to decode secret value for key '%s'", key);
+            LOGGER.warn("Failed to decode secret value for key '{}'", key, e);
             return "";
         }
     }

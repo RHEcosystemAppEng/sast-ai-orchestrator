@@ -3,7 +3,13 @@ package com.redhat.sast.api.v1.dto.request;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class JobCreationDto {
 
     @JsonProperty("packageNvr")
@@ -17,40 +23,8 @@ public class JobCreationDto {
     @JsonProperty("useKnownFalsePositiveFile")
     private Boolean useKnownFalsePositiveFile;
 
-    public JobCreationDto() {}
-
     public JobCreationDto(String packageNvr, String inputSourceUrl) {
         this.packageNvr = packageNvr;
         this.inputSourceUrl = inputSourceUrl;
-    }
-
-    public JobCreationDto(String packageNvr, String inputSourceUrl, Boolean useKnownFalsePositiveFile) {
-        this.packageNvr = packageNvr;
-        this.inputSourceUrl = inputSourceUrl;
-        this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
-    }
-
-    public String getPackageNvr() {
-        return packageNvr;
-    }
-
-    public void setPackageNvr(String packageNvr) {
-        this.packageNvr = packageNvr;
-    }
-
-    public String getInputSourceUrl() {
-        return inputSourceUrl;
-    }
-
-    public void setInputSourceUrl(String inputSourceUrl) {
-        this.inputSourceUrl = inputSourceUrl;
-    }
-
-    public Boolean getUseKnownFalsePositiveFile() {
-        return useKnownFalsePositiveFile;
-    }
-
-    public void setUseKnownFalsePositiveFile(Boolean useKnownFalsePositiveFile) {
-        this.useKnownFalsePositiveFile = useKnownFalsePositiveFile;
     }
 }

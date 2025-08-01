@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.eclipse.microprofile.context.ManagedExecutor;
-import org.jboss.logging.Logger;
 
 import com.redhat.sast.api.common.constants.ApplicationConstants;
 import com.redhat.sast.api.enums.InputSourceType;
@@ -21,28 +20,20 @@ import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 import io.quarkus.panache.common.Page;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @ApplicationScoped
+@RequiredArgsConstructor
+@Slf4j
 public class JobService {
 
-    private static final Logger LOG = Logger.getLogger(JobService.class);
-
-    @Inject
-    JobRepository jobRepository;
-
-    @Inject
-    JobSettingsRepository jobSettingsRepository;
-
-    @Inject
-    PlatformService platformService;
-
-    @Inject
-    ManagedExecutor managedExecutor;
-
-    @Inject
-    NvrResolutionService nvrResolutionService;
+    private final JobRepository jobRepository;
+    private final JobSettingsRepository jobSettingsRepository;
+    private final PlatformService platformService;
+    private final ManagedExecutor managedExecutor;
+    private final NvrResolutionService nvrResolutionService;
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
         // First, create the job entity (transactional)
@@ -50,14 +41,14 @@ public class JobService {
 
         managedExecutor.execute(() -> {
             try {
-                LOG.infof("Starting async pipeline execution for job ID: %d", job.getId());
+                LOGGER.info("Starting async pipeline execution for job ID: {}", job.getId());
                 platformService.startSastAIWorkflow(job);
             } catch (Exception e) {
-                LOG.errorf(e, "Failed to start pipeline for job ID: %d", job.getId());
+                LOGGER.error("Failed to start pipeline for job ID: {}", job.getId(), e);
                 try {
                     managedExecutor.execute(() -> updateJobStatusToFailed(job.getId(), e));
                 } catch (Exception updateException) {
-                    LOG.errorf(updateException, "Failed to update job status for job ID: %d", job.getId());
+                    LOGGER.error("Failed to update job status for job ID: {}", job.getId(), updateException);
                 }
             }
         });
@@ -80,10 +71,10 @@ public class JobService {
                 try {
                     boolean cancelled = platformService.cancelTektonPipelineRun(job);
                     if (!cancelled) {
-                        LOG.warnf("Pipeline cancellation unsuccessful for job %d", jobId);
+                        LOGGER.warn("Pipeline cancellation unsuccessful for job {}", jobId);
                     }
                 } catch (Exception e) {
-                    LOG.errorf(e, "Error during pipeline cancellation for job %d", jobId);
+                    LOGGER.error("Error during pipeline cancellation for job {}", jobId, e);
                 }
             });
         } else {
@@ -96,13 +87,13 @@ public class JobService {
 
         Job job = jobRepository.findById(jobId);
         if (job == null) {
-            LOG.warnf("Job with ID %d not found when trying to update status to %s", jobId, newStatus);
+            LOGGER.warn("Job with ID {} not found when trying to update status to {}", jobId, newStatus);
             throw new IllegalArgumentException("Job not found with ID: " + jobId);
         }
 
         JobStatus currentStatus = job.getStatus();
         if (!isValidStatusTransition(currentStatus, newStatus)) {
-            LOG.warnf("Invalid status transition from %s to %s for job ID: %d", currentStatus, newStatus, jobId);
+            LOGGER.warn("Invalid status transition from {} to {} for job ID: {}", currentStatus, newStatus, jobId);
             throw new IllegalStateException(String.format(
                     "Invalid status transition from %s to %s for job ID: %d", currentStatus, newStatus, jobId));
         }
@@ -116,11 +107,11 @@ public class JobService {
             case PENDING, SCHEDULED -> {
                 // No timestamp updates needed for these states
             }
-            default -> LOG.warnf("Unhandled job status update: %s for job ID: %d", newStatus, jobId);
+            default -> LOGGER.warn("Unhandled job status update: {} for job ID: {}", newStatus, jobId);
         }
 
         jobRepository.persist(job);
-        LOG.debugf("Updated job ID %d status from %s to %s", jobId, currentStatus, newStatus);
+        LOGGER.debug("Updated job ID {} status from {} to {}", jobId, currentStatus, newStatus);
     }
 
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
@@ -129,9 +120,9 @@ public class JobService {
         if (job != null) {
             job.setTektonUrl(tektonUrl);
             jobRepository.persist(job);
-            LOG.infof("Updated job %d with Tekton URL: %s", jobId, tektonUrl);
+            LOGGER.info("Updated job {} with Tekton URL: {}", jobId, tektonUrl);
         } else {
-            LOG.warnf("Job with ID %d not found when trying to update Tekton URL", jobId);
+            LOGGER.warn("Job with ID {} not found when trying to update Tekton URL", jobId);
         }
     }
 
@@ -140,7 +131,7 @@ public class JobService {
         Job job = getJobFromDto(jobCreationDto);
         jobRepository.persist(job);
 
-        LOG.debugf("Creating JobSettings with default secretName: '%s'", ApplicationConstants.DEFAULT_SECRET_NAME);
+        LOGGER.debug("Creating JobSettings with default secretName: '{}'", ApplicationConstants.DEFAULT_SECRET_NAME);
 
         JobSettings settings = new JobSettings();
         settings.setJob(job);
@@ -151,7 +142,7 @@ public class JobService {
 
         job.setJobSettings(settings);
 
-        LOG.debugf("Persisted JobSettings with secretName: '%s'", settings.getSecretName());
+        LOGGER.debug("Persisted JobSettings with secretName: '{}'", settings.getSecretName());
 
         return job;
     }
@@ -208,9 +199,9 @@ public class JobService {
             // This will use the DataService's REQUIRES_NEW transaction
             // to safely update the job status
             updateJobStatus(jobId, JobStatus.FAILED);
-            LOG.infof("Updated job ID %d status to FAILED due to pipeline error: %s", jobId, cause.getMessage());
+            LOGGER.info("Updated job ID {} status to FAILED due to pipeline error: {}", jobId, cause.getMessage());
         } catch (Exception e) {
-            LOG.errorf(e, "Critical: Failed to update job status to FAILED for job ID: %d", jobId);
+            LOGGER.error("Critical: Failed to update job status to FAILED for job ID: {}", jobId, e);
         }
     }
 

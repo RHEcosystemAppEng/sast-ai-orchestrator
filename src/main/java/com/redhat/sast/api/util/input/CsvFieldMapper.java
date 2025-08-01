@@ -4,14 +4,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.csv.CSVRecord;
-import org.jboss.logging.Logger;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Utility class for mapping CSV fields with their various naming variations.
  */
+@Slf4j
 public class CsvFieldMapper {
-
-    private static final Logger LOG = Logger.getLogger(CsvFieldMapper.class);
 
     // Field name variations mapped to their standardized names
     private static final Map<String, List<String>> FIELD_VARIATIONS = Map.of(
@@ -33,7 +33,7 @@ public class CsvFieldMapper {
     public static String getFieldValue(CSVRecord record, Map<String, Integer> headerMap, String fieldName) {
         List<String> variations = FIELD_VARIATIONS.get(fieldName);
         if (variations == null) {
-            LOG.warnf("Unknown field name: %s", fieldName);
+            LOGGER.warn("Unknown field name: {}", fieldName);
             return null;
         }
 

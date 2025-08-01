@@ -13,7 +13,6 @@ import java.util.stream.IntStream;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.jboss.logging.Logger;
 
 import com.redhat.sast.api.service.NvrResolutionService;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
@@ -21,11 +20,11 @@ import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 
 @ApplicationScoped
+@Slf4j
 public class CsvJobParser {
-
-    private static final Logger LOG = Logger.getLogger(CsvJobParser.class);
 
     @Inject
     NvrResolutionService nvrResolutionService;
@@ -65,7 +64,7 @@ public class CsvJobParser {
 
             int headerRowIndex = findHeaderRow(records);
             if (headerRowIndex == -1) {
-                LOG.errorf("Header detection failed. Raw content was:\n%s", csvContent);
+                LOGGER.error("Header detection failed. Raw content was:\n{}", csvContent);
                 String requiredHeaders = CsvFieldMapper.getRequiredFieldVariations().entrySet().stream()
                         .map(entry -> "'" + entry.getKey() + "' (variations: " + entry.getValue() + ")")
                         .reduce((a, b) -> a + " and " + b)
@@ -82,17 +81,17 @@ public class CsvJobParser {
                         try {
                             return createJobFromRecord(record, headerRecord);
                         } catch (IllegalArgumentException e) {
-                            LOG.warnf("Skipping record at line %d: %s", record.getRecordNumber(), e.getMessage());
+                            LOGGER.warn("Skipping record at line {}: {}", record.getRecordNumber(), e.getMessage());
                             return null;
                         }
                     })
                     .filter(job -> job != null)
                     .collect(Collectors.toList());
 
-            LOG.infof("Successfully parsed %d jobs from CSV content", jobs.size());
+            LOGGER.info("Successfully parsed {} jobs from CSV content", jobs.size());
             return jobs;
         } catch (IOException e) {
-            LOG.error("Failed to parse CSV content", e);
+            LOGGER.error("Failed to parse CSV content", e);
             throw new IOException("Failed to parse CSV content: " + e.getMessage(), e);
         }
     }
@@ -102,7 +101,7 @@ public class CsvJobParser {
             CSVRecord record = records.get(i);
 
             if (hasRequiredColumns(record)) {
-                LOG.debugf("Found valid header at row %d", i + 1);
+                LOGGER.debug("Found valid header at row {}", i + 1);
                 return i;
             }
         }

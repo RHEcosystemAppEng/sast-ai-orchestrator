@@ -9,7 +9,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
@@ -23,20 +22,21 @@ import com.redhat.sast.api.util.input.InputSourceResolver;
 
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @ApplicationScoped
+@RequiredArgsConstructor
+@Slf4j
 public class GoogleSheetsService {
 
-    private static final Logger LOG = Logger.getLogger(GoogleSheetsService.class);
     private static final String APPLICATION_NAME = "SAST-AI-Orchestrator";
     private static final List<String> SCOPES = Collections.singletonList(SheetsScopes.SPREADSHEETS_READONLY);
 
     @ConfigProperty(name = "google.service.account.secret.path")
     String serviceAccountSecretPath;
 
-    @Inject
-    InputSourceResolver inputSourceResolver;
+    private final InputSourceResolver inputSourceResolver;
 
     /**
      * Reads a Google Sheet using service account authentication and returns the raw sheet data.
@@ -49,7 +49,7 @@ public class GoogleSheetsService {
         validateServiceAccountFile();
 
         String spreadsheetId = inputSourceResolver.extractSpreadsheetId(googleSheetUrl);
-        LOG.debugf("Reading Google Sheet with ID: %s using service account", spreadsheetId);
+        LOGGER.debug("Reading Google Sheet with ID: {} using service account", spreadsheetId);
 
         try {
             Sheets service = createSheetsService();
@@ -60,13 +60,13 @@ public class GoogleSheetsService {
 
             List<List<Object>> values = response.getValues();
             if (values == null || values.isEmpty()) {
-                LOG.warn("No data found in Google Sheet");
+                LOGGER.warn("No data found in Google Sheet");
                 return Collections.emptyList();
             }
 
             return values;
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to read Google Sheet: %s", e.getMessage());
+            LOGGER.error("Failed to read Google Sheet: {}", e.getMessage(), e);
             if (e.getMessage().contains("authentication")
                     || e.getMessage().contains("credentials")
                     || e.getMessage().contains("permission")
@@ -87,7 +87,7 @@ public class GoogleSheetsService {
             Path credentialsPath = Paths.get(serviceAccountSecretPath);
             return Files.exists(credentialsPath) && Files.isReadable(credentialsPath);
         } catch (Exception e) {
-            LOG.debugf("Service account file not available: %s", e.getMessage());
+            LOGGER.debug("Service account file not available: {}", e.getMessage());
             return false;
         }
     }

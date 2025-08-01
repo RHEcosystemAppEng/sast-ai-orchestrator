@@ -4,6 +4,13 @@ import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class PackageSummaryDto {
 
     @JsonProperty("packageName")
@@ -23,54 +30,4 @@ public class PackageSummaryDto {
 
     @JsonProperty("runningAnalyses")
     private Integer runningAnalyses;
-
-    public PackageSummaryDto() {}
-
-    public String getPackageName() {
-        return packageName;
-    }
-
-    public void setPackageName(String packageName) {
-        this.packageName = packageName;
-    }
-
-    public Integer getTotalAnalyses() {
-        return totalAnalyses;
-    }
-
-    public void setTotalAnalyses(Integer totalAnalyses) {
-        this.totalAnalyses = totalAnalyses;
-    }
-
-    public LocalDateTime getLastAnalysisDate() {
-        return lastAnalysisDate;
-    }
-
-    public void setLastAnalysisDate(LocalDateTime lastAnalysisDate) {
-        this.lastAnalysisDate = lastAnalysisDate;
-    }
-
-    public Integer getCompletedAnalyses() {
-        return completedAnalyses;
-    }
-
-    public void setCompletedAnalyses(Integer completedAnalyses) {
-        this.completedAnalyses = completedAnalyses;
-    }
-
-    public Integer getFailedAnalyses() {
-        return failedAnalyses;
-    }
-
-    public void setFailedAnalyses(Integer failedAnalyses) {
-        this.failedAnalyses = failedAnalyses;
-    }
-
-    public Integer getRunningAnalyses() {
-        return runningAnalyses;
-    }
-
-    public void setRunningAnalyses(Integer runningAnalyses) {
-        this.runningAnalyses = runningAnalyses;
-    }
 }

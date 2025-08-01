@@ -5,7 +5,6 @@ import java.sql.SQLException;
 import javax.sql.DataSource;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import com.redhat.sast.api.service.GoogleSheetsService;
 import com.redhat.sast.api.v1.dto.response.HealthResponseDto;
@@ -21,13 +20,13 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 
 @ApplicationScoped
 @Path("/health")
 @Produces(MediaType.APPLICATION_JSON)
+@Slf4j
 public class HealthResource {
-
-    private static final Logger LOG = Logger.getLogger(HealthResource.class);
 
     @Inject
     DataSource dataSource;
@@ -67,7 +66,7 @@ public class HealthResource {
                             .build();
 
         } catch (Exception e) {
-            LOG.errorf(e, "Unexpected error during health check");
+            LOGGER.error("Unexpected error during health check", e);
 
             HealthResponseDto health = HealthResponseDto.overall();
             health.setStatus("DOWN");
@@ -88,18 +87,18 @@ public class HealthResource {
                     var resultSet = statement.executeQuery("SELECT 1")) {
 
                 if (resultSet.next() && resultSet.getInt(1) == 1) {
-                    LOG.debug("Database health check passed");
+                    LOGGER.debug("Database health check passed");
                     return HealthResponseDto.up("database");
                 } else {
-                    LOG.warn("Database health check failed - unexpected result");
+                    LOGGER.warn("Database health check failed - unexpected result");
                     return HealthResponseDto.down("database", "Unexpected result from health query");
                 }
             }
         } catch (SQLException e) {
-            LOG.errorf(e, "Database health check failed");
+            LOGGER.error("Database health check failed", e);
             return HealthResponseDto.down("database", e.getMessage());
         } catch (Exception e) {
-            LOG.errorf(e, "Unexpected error during database health check");
+            LOGGER.error("Unexpected error during database health check", e);
             return HealthResponseDto.down("database", e.getMessage());
         }
     }
@@ -112,7 +111,7 @@ public class HealthResource {
                     tektonClient.v1().pipelines().inNamespace(namespace).list();
 
             if (pipelineList == null) {
-                LOG.warnf("Tekton health check: Pipelines list is null in namespace=%s", namespace);
+                LOGGER.warn("Tekton health check: Pipelines list is null in namespace={}", namespace);
                 return HealthResponseDto.down("tekton", "Pipelines list is null");
             }
 
@@ -122,26 +121,26 @@ public class HealthResource {
                         tektonClient.v1().pipelineRuns().inNamespace(namespace).list();
 
                 if (pipelineRunList == null) {
-                    LOG.warnf("Tekton health check: PipelineRuns list is null in namespace=%s", namespace);
+                    LOGGER.warn("Tekton health check: PipelineRuns list is null in namespace={}", namespace);
                     return HealthResponseDto.down("tekton", "PipelineRuns list is null");
                 }
 
-                LOG.infof(
-                        "Tekton health check: successful in namespace=%s with %d pipelines and %d pipeline runs",
+                LOGGER.info(
+                        "Tekton health check: successful in namespace={} with {} pipelines and {} pipeline runs",
                         namespace,
                         pipelineList.getItems().size(),
                         pipelineRunList.getItems().size());
                 return HealthResponseDto.up("tekton");
 
             } catch (KubernetesClientException e) {
-                LOG.warnf(e, "Tekton health check: limited permissions in namespace=%s", namespace);
+                LOGGER.warn("Tekton health check: limited permissions in namespace={}", namespace, e);
                 return HealthResponseDto.up("tekton", "Limited Permissions");
             }
         } catch (KubernetesClientException e) {
-            LOG.errorf(e, "Tekton health check: failed to list pipelines in namespace=%s", namespace);
+            LOGGER.error("Tekton health check: failed to list pipelines in namespace={}", namespace, e);
             return HealthResponseDto.down("tekton", e.getMessage());
         } catch (Exception e) {
-            LOG.errorf(e, "Tekton health check: general failure in namespace=%s", namespace);
+            LOGGER.error("Tekton health check: general failure in namespace={}", namespace, e);
             return HealthResponseDto.down("tekton", e.getMessage());
         }
     }
@@ -149,15 +148,15 @@ public class HealthResource {
     private HealthResponseDto checkGoogleServiceAccountHealth() {
         try {
             if (googleSheetsService.isServiceAccountAvailable()) {
-                LOG.debug("Google service account is available");
+                LOGGER.debug("Google service account is available");
                 return HealthResponseDto.up("google-service-account", "Service account available");
             } else {
-                LOG.warn("Google service account is not available - batch functionality will fail");
+                LOGGER.warn("Google service account is not available - batch functionality will fail");
                 return HealthResponseDto.down(
                         "google-service-account", "Service account not available - required for batch functionality");
             }
         } catch (Exception e) {
-            LOG.errorf(e, "Google service account health check failed");
+            LOGGER.error("Google service account health check failed", e);
             return HealthResponseDto.down("google-service-account", e.getMessage());
         }
     }

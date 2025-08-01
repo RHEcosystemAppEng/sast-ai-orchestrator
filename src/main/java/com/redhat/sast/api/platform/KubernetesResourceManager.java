@@ -1,7 +1,6 @@
 package com.redhat.sast.api.platform;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
@@ -17,15 +16,15 @@ import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Manages Kubernetes resources lifecycle including PVCs and PipelineRuns.
  * Handles creation, cleanup, and lifecycle management of platform resources.
  */
 @ApplicationScoped
+@Slf4j
 public class KubernetesResourceManager {
-
-    private static final Logger LOG = Logger.getLogger(KubernetesResourceManager.class);
 
     @Inject
     TektonClient tektonClient;
@@ -95,10 +94,10 @@ public class KubernetesResourceManager {
                     .resource(pvc)
                     .create();
 
-            LOG.infof("Created PVC: %s with size: %s in namespace: %s", pvcName, size, namespace);
+            LOGGER.info("Created PVC: {} with size: {} in namespace: {}", pvcName, size, namespace);
             return createdPvc.getMetadata().getName();
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to create PVC: %s", pvcName);
+            LOGGER.error("Failed to create PVC: {}", pvcName, e);
             throw new IllegalStateException("Failed to create PVC: " + pvcName, e);
         }
     }
@@ -132,12 +131,12 @@ public class KubernetesResourceManager {
                     .isEmpty();
 
             if (deleted) {
-                LOG.infof("Successfully deleted PVC: %s", pvcName);
+                LOGGER.info("Successfully deleted PVC: {}", pvcName);
             } else {
-                LOG.warnf("PVC %s was not found or already deleted", pvcName);
+                LOGGER.warn("PVC {} was not found or already deleted", pvcName);
             }
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to delete PVC: %s", pvcName);
+            LOGGER.error("Failed to delete PVC: {}", pvcName, e);
         }
     }
 
@@ -158,19 +157,19 @@ public class KubernetesResourceManager {
                     .isEmpty();
 
             if (deleted) {
-                LOG.infof("Successfully deleted PipelineRun: %s", pipelineRunName);
+                LOGGER.info("Successfully deleted PipelineRun: {}", pipelineRunName);
                 // Wait a moment for pods to be cleaned up
                 try {
                     Thread.sleep(2000);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    LOG.warnf("Cleanup sleep interrupted for PipelineRun: %s", pipelineRunName);
+                    LOGGER.warn("Cleanup sleep interrupted for PipelineRun: {}", pipelineRunName);
                 }
             } else {
-                LOG.warnf("PipelineRun %s was not found or already deleted", pipelineRunName);
+                LOGGER.warn("PipelineRun {} was not found or already deleted", pipelineRunName);
             }
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to delete PipelineRun: %s", pipelineRunName);
+            LOGGER.error("Failed to delete PipelineRun: {}", pipelineRunName, e);
         }
     }
 
@@ -218,7 +217,7 @@ public class KubernetesResourceManager {
                     .withName(pipelineRunName)
                     .get();
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to get PipelineRun: %s", pipelineRunName);
+            LOGGER.error("Failed to get PipelineRun: {}", pipelineRunName, e);
             return null;
         }
     }

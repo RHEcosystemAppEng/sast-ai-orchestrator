@@ -6,9 +6,15 @@ import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.enums.JobStatus;
 
 import jakarta.persistence.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "job")
+@Data
+@NoArgsConstructor
+@EqualsAndHashCode(exclude = {"jobBatch", "jobSettings"})
 public class Job {
 
     @Id
@@ -90,174 +96,5 @@ public class Job {
     @PreUpdate
     public void preUpdate() {
         this.lastUpdatedAt = LocalDateTime.now();
-    }
-
-    // Getters and Setters
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getPackageSourceCodeUrl() {
-        return packageSourceCodeUrl;
-    }
-
-    public void setPackageSourceCodeUrl(String packageSourceCodeUrl) {
-        this.packageSourceCodeUrl = packageSourceCodeUrl;
-    }
-
-    public String getKnownFalsePositivesUrl() {
-        return knownFalsePositivesUrl;
-    }
-
-    public void setKnownFalsePositivesUrl(String knownFalsePositivesUrl) {
-        this.knownFalsePositivesUrl = knownFalsePositivesUrl;
-    }
-
-    public InputSourceType getInputSourceType() {
-        return inputSourceType;
-    }
-
-    public void setInputSourceType(InputSourceType inputSourceType) {
-        this.inputSourceType = inputSourceType;
-    }
-
-    public String getgSheetUrl() {
-        return gSheetUrl;
-    }
-
-    public void setGSheetUrl(String gSheetUrl) {
-        this.gSheetUrl = gSheetUrl;
-    }
-
-    public LocalDateTime getLastUpdatedAt() {
-        return lastUpdatedAt;
-    }
-
-    public void setLastUpdatedAt(LocalDateTime lastUpdatedAt) {
-        this.lastUpdatedAt = lastUpdatedAt;
-    }
-
-    public JobBatch getJobBatch() {
-        return jobBatch;
-    }
-
-    public void setJobBatch(JobBatch jobBatch) {
-        this.jobBatch = jobBatch;
-    }
-
-    public JobSettings getJobSettings() {
-        return jobSettings;
-    }
-
-    public void setJobSettings(JobSettings jobSettings) {
-        this.jobSettings = jobSettings;
-    }
-
-    public String getProjectName() {
-        return projectName;
-    }
-
-    public void setProjectName(String projectName) {
-        this.projectName = projectName;
-    }
-
-    public String getProjectVersion() {
-        return projectVersion;
-    }
-
-    public void setProjectVersion(String projectVersion) {
-        this.projectVersion = projectVersion;
-    }
-
-    public String getPackageName() {
-        return packageName;
-    }
-
-    public void setPackageName(String packageName) {
-        this.packageName = packageName;
-    }
-
-    public String getPackageNvr() {
-        return packageNvr;
-    }
-
-    public void setPackageNvr(String packageNvr) {
-        this.packageNvr = packageNvr;
-    }
-
-    public String getOshScanId() {
-        return oshScanId;
-    }
-
-    public void setOshScanId(String oshScanId) {
-        this.oshScanId = oshScanId;
-    }
-
-    public String getJiraLink() {
-        return jiraLink;
-    }
-
-    public void setJiraLink(String jiraLink) {
-        this.jiraLink = jiraLink;
-    }
-
-    public String getHostname() {
-        return hostname;
-    }
-
-    public void setHostname(String hostname) {
-        this.hostname = hostname;
-    }
-
-    public JobStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(JobStatus status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getStartedAt() {
-        return startedAt;
-    }
-
-    public void setStartedAt(LocalDateTime startedAt) {
-        this.startedAt = startedAt;
-    }
-
-    public LocalDateTime getCompletedAt() {
-        return completedAt;
-    }
-
-    public void setCompletedAt(LocalDateTime completedAt) {
-        this.completedAt = completedAt;
-    }
-
-    public LocalDateTime getCancelledAt() {
-        return cancelledAt;
-    }
-
-    public void setCancelledAt(LocalDateTime cancelledAt) {
-        this.cancelledAt = cancelledAt;
-    }
-
-    public String getTektonUrl() {
-        return tektonUrl;
-    }
-
-    public void setTektonUrl(String tektonUrl) {
-        this.tektonUrl = tektonUrl;
     }
 }

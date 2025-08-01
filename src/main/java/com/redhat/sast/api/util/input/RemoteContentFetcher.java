@@ -8,15 +8,14 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 
-import org.jboss.logging.Logger;
-
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
+import lombok.extern.slf4j.Slf4j;
 
 @ApplicationScoped
+@Slf4j
 public class RemoteContentFetcher {
 
-    private static final Logger LOG = Logger.getLogger(RemoteContentFetcher.class);
     private static final String USER_AGENT = "SAST-AI-Orchestrator/1.0";
     private static final int MAX_RETRIES = 3;
     private static final int REQUEST_TIMEOUT_SECONDS = 5;
@@ -52,14 +51,19 @@ public class RemoteContentFetcher {
 
                 if (attempt < MAX_RETRIES) {
                     long backoffMs = calculateBackoffMs(attempt);
-                    LOG.warnf(
-                            "Attempt %d failed for URL %s: %s. Retrying in %d ms...",
-                            attempt, sourceUrl, e.getMessage(), backoffMs);
+                    LOGGER.warn(
+                            "Attempt {} failed for URL {}: {}. Retrying in {} ms...",
+                            attempt,
+                            sourceUrl,
+                            e.getMessage(),
+                            backoffMs);
                     Thread.sleep(backoffMs);
                 } else {
-                    LOG.errorf(
-                            "All %d attempts failed for URL %s. Final error: %s",
-                            MAX_RETRIES, sourceUrl, e.getMessage());
+                    LOGGER.error(
+                            "All {} attempts failed for URL {}. Final error: {}",
+                            MAX_RETRIES,
+                            sourceUrl,
+                            e.getMessage());
                 }
             }
         }
@@ -86,16 +90,19 @@ public class RemoteContentFetcher {
             String content = response.body();
 
             if (attempt > 1) {
-                LOG.debugf(
-                        "Successfully fetched content from %s on attempt %d. Length: %d characters",
-                        sourceUrl, attempt, content.length());
+                LOGGER.debug(
+                        "Successfully fetched content from {} on attempt {}. Length: {} characters",
+                        sourceUrl,
+                        attempt,
+                        content.length());
             } else {
-                LOG.debugf("Successfully fetched content from %s. Length: %d characters", sourceUrl, content.length());
+                LOGGER.debug(
+                        "Successfully fetched content from {}. Length: {} characters", sourceUrl, content.length());
             }
 
             return content;
         } catch (IllegalArgumentException e) {
-            LOG.errorf(e, "Invalid URL syntax: %s", sourceUrl);
+            LOGGER.error("Invalid URL syntax: {}", sourceUrl, e);
             throw new IOException("The provided URL is malformed: " + sourceUrl, e);
         } catch (HttpTimeoutException e) {
             throw new IOException("Request timed out after " + REQUEST_TIMEOUT_SECONDS + "s: " + sourceUrl, e);

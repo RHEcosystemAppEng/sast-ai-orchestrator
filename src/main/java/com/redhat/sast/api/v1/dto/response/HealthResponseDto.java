@@ -6,6 +6,15 @@ import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+@Getter
+@Setter
+@EqualsAndHashCode
+@ToString
 public class HealthResponseDto {
 
     @JsonProperty("status")
@@ -76,52 +85,13 @@ public class HealthResponseDto {
         return this;
     }
 
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
+    // Custom getter/setter for dependencies with defensive copying
     public Map<String, String> getDependencies() {
         return dependencies != null ? new HashMap<>(dependencies) : new HashMap<>();
     }
 
     public void setDependencies(Map<String, String> dependencies) {
         this.dependencies = dependencies != null ? new HashMap<>(dependencies) : new HashMap<>();
-    }
-
-    public String getComponent() {
-        return component;
-    }
-
-    public void setComponent(String component) {
-        this.component = component;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
     }
 
     // Helper method to add a component health check result to dependencies

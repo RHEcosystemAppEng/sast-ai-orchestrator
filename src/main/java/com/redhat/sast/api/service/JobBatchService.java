@@ -6,7 +6,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.eclipse.microprofile.context.ManagedExecutor;
-import org.jboss.logging.Logger;
 
 import com.redhat.sast.api.enums.BatchStatus;
 import com.redhat.sast.api.enums.JobStatus;
@@ -22,34 +21,22 @@ import com.redhat.sast.api.v1.dto.response.JobBatchResponseDto;
 import io.quarkus.panache.common.Page;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @ApplicationScoped
+@RequiredArgsConstructor
+@Slf4j
 public class JobBatchService {
 
-    private static final Logger LOG = Logger.getLogger(JobBatchService.class);
-
-    @Inject
-    JobBatchRepository jobBatchRepository;
-
-    @Inject
-    JobService jobService;
-
-    @Inject
-    PlatformService platformService;
-
-    @Inject
-    CsvJobParser csvJobParser;
-
-    @Inject
-    ManagedExecutor managedExecutor;
-
-    @Inject
-    GoogleSheetsService googleSheetsService;
-
-    @Inject
-    CsvConverter csvConverter;
+    private final JobBatchRepository jobBatchRepository;
+    private final JobService jobService;
+    private final PlatformService platformService;
+    private final CsvJobParser csvJobParser;
+    private final ManagedExecutor managedExecutor;
+    private final GoogleSheetsService googleSheetsService;
+    private final CsvConverter csvConverter;
 
     /**
      * Submits a batch job for processing.
@@ -75,8 +62,8 @@ public class JobBatchService {
         batch.setStatus(BatchStatus.PROCESSING);
 
         jobBatchRepository.persist(batch);
-        LOG.infof(
-                "Created new job batch with ID: %d for URL: %s", batch.getId(), submissionDto.getBatchGoogleSheetUrl());
+        LOGGER.info(
+                "Created new job batch with ID: {} for URL: {}", batch.getId(), submissionDto.getBatchGoogleSheetUrl());
 
         return batch;
     }
@@ -87,7 +74,7 @@ public class JobBatchService {
     public void executeBatchProcessing(
             @Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl, Boolean useKnownFalsePositiveFile) {
         try {
-            LOG.debugf("Starting async processing for batch ID: %d", batchId);
+            LOGGER.debug("Starting async processing for batch ID: {}", batchId);
             List<JobCreationDto> jobDtos = fetchAndParseJobsFromSheet(batchGoogleSheetUrl, useKnownFalsePositiveFile);
 
             if (jobDtos.isEmpty()) {
@@ -96,13 +83,13 @@ public class JobBatchService {
             }
 
             updateBatchTotalJobs(batchId, jobDtos.size());
-            LOG.debug(String.format(
-                    "Batch %d: Found %d jobs to process. Starting sequential processing.", batchId, jobDtos.size()));
+            LOGGER.debug(
+                    "Batch {}: Found {} jobs to process. Starting sequential processing.", batchId, jobDtos.size());
 
             processJobs(batchId, jobDtos);
 
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to process batch %d: %s", batchId, e.getMessage());
+            LOGGER.error("Failed to process batch {}: {}", batchId, e.getMessage(), e);
             updateBatchStatusInNewTransaction(batchId, BatchStatus.FAILED, 0, 0, 0);
         }
     }
@@ -115,20 +102,20 @@ public class JobBatchService {
             throws Exception {
         // Check if Google Service Account is available
         if (!googleSheetsService.isServiceAccountAvailable()) {
-            LOG.errorf("Google Service Account authentication is not available for sheet: %s", googleSheetUrl);
+            LOGGER.error("Google Service Account authentication is not available for sheet: {}", googleSheetUrl);
             throw new Exception(
                     "Google Service Account authentication is required but not available. Please check service account configuration.");
         }
 
-        LOG.debugf("Using Google Service Account authentication for sheet: %s", googleSheetUrl);
+        LOGGER.debug("Using Google Service Account authentication for sheet: {}", googleSheetUrl);
         try {
             String processedInputContent = csvConverter.convert(googleSheetsService.readSheetData(googleSheetUrl));
             return csvJobParser.parse(processedInputContent, useKnownFalsePositiveFile);
         } catch (IOException e) {
-            LOG.errorf("Google Sheets operation failed: %s", e.getMessage());
+            LOGGER.error("Google Sheets operation failed: {}", e.getMessage());
             throw new Exception("Google Sheets operation failed: " + e.getMessage(), e);
         } catch (Exception e) {
-            LOG.errorf("Failed to read Google Sheet: %s", e.getMessage());
+            LOGGER.error("Failed to read Google Sheet: {}", e.getMessage());
             throw new Exception("Failed to read Google Sheet: " + e.getMessage(), e);
         }
     }
@@ -152,7 +139,7 @@ public class JobBatchService {
 
             } catch (Exception e) {
                 failedCount.incrementAndGet();
-                LOG.errorf(e, "Failed during processing of a single job for batch %d", batchId);
+                LOGGER.error("Failed during processing of a single job for batch {}", batchId, e);
             } finally {
                 updateBatchProgressInNewTransaction(batchId, completedCount.get(), failedCount.get());
             }
@@ -198,9 +185,13 @@ public class JobBatchService {
                 ? BatchStatus.FAILED
                 : (failed > 0) ? BatchStatus.COMPLETED_WITH_ERRORS : BatchStatus.COMPLETED;
         updateBatchStatusInNewTransaction(batchId, finalStatus, total, completed, failed);
-        LOG.infof(
-                "Batch %d processing finalized. Status: %s, Total: %d, Completed: %d, Failed: %d",
-                batchId, finalStatus, total, completed, failed);
+        LOGGER.info(
+                "Batch {} processing finalized. Status: {}, Total: {}, Completed: {}, Failed: {}",
+                batchId,
+                finalStatus,
+                total,
+                completed,
+                failed);
     }
 
     /**
@@ -214,10 +205,10 @@ public class JobBatchService {
                 batch.setCompletedJobs(completedJobs);
                 batch.setFailedJobs(failedJobs);
                 jobBatchRepository.persist(batch);
-                LOG.infof("Updated batch %d progress: completed=%d, failed=%d", batchId, completedJobs, failedJobs);
+                LOGGER.info("Updated batch {} progress: completed={}, failed={}", batchId, completedJobs, failedJobs);
             }
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to update batch progress for batch %d", batchId);
+            LOGGER.error("Failed to update batch progress for batch {}", batchId, e);
         }
     }
 
@@ -235,10 +226,10 @@ public class JobBatchService {
                 batch.setCompletedJobs(completedJobs);
                 batch.setFailedJobs(failedJobs);
                 jobBatchRepository.persist(batch);
-                LOG.infof("Updated batch %d final status: %s", batchId, status);
+                LOGGER.info("Updated batch {} final status: {}", batchId, status);
             }
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to update batch status for batch %d", batchId);
+            LOGGER.error("Failed to update batch status for batch {}", batchId, e);
         }
     }
 
@@ -305,11 +296,11 @@ public class JobBatchService {
                 .toList();
 
         if (cancellableJobs.isEmpty()) {
-            LOG.infof("No cancellable jobs found in batch %d", batchId);
+            LOGGER.info("No cancellable jobs found in batch {}", batchId);
             return 0;
         }
 
-        LOG.infof("Cancelling %d jobs in batch %d", cancellableJobs.size(), batchId);
+        LOGGER.info("Cancelling {} jobs in batch {}", cancellableJobs.size(), batchId);
 
         int cancelledCount = 0;
         for (Job job : cancellableJobs) {
@@ -317,14 +308,14 @@ public class JobBatchService {
                 jobService.cancelJob(job.getId());
                 cancelledCount++;
             } catch (Exception e) {
-                LOG.errorf(e, "Failed to cancel job %d in batch %d", job.getId(), batchId);
+                LOGGER.error("Failed to cancel job {} in batch {}", job.getId(), batchId, e);
             }
         }
 
         batch.setStatus(BatchStatus.CANCELLED);
         jobBatchRepository.persist(batch);
 
-        LOG.infof("Cancelled %d out of %d jobs in batch %d", cancelledCount, cancellableJobs.size(), batchId);
+        LOGGER.info("Cancelled {} out of {} jobs in batch {}", cancelledCount, cancellableJobs.size(), batchId);
         return cancelledCount;
     }
 

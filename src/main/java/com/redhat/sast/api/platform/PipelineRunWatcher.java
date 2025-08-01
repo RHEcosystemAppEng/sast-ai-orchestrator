@@ -2,8 +2,6 @@ package com.redhat.sast.api.platform;
 
 import java.util.concurrent.CompletableFuture;
 
-import org.jboss.logging.Logger;
-
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.service.JobService;
 
@@ -11,14 +9,15 @@ import io.fabric8.knative.pkg.apis.Condition;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.WatcherException;
 import io.fabric8.tekton.v1.PipelineRun;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Watcher implementation for monitoring Tekton PipelineRun status changes.
  * Updates job status in the database based on pipeline execution results.
  */
+@Slf4j
 public class PipelineRunWatcher implements Watcher<PipelineRun> {
 
-    private static final Logger LOG = Logger.getLogger(PipelineRunWatcher.class);
     private static final String SUCCEEDED_CONDITION = "Succeeded";
     private static final String STATUS_TRUE = "True";
     private static final String STATUS_FALSE = "False";
@@ -44,17 +43,18 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
 
     @Override
     public void eventReceived(Action action, PipelineRun resource) {
-        LOG.infof(
-                "Watcher event: %s for PipelineRun: %s",
-                action, resource.getMetadata().getName());
+        LOGGER.info(
+                "Watcher event: {} for PipelineRun: {}",
+                action,
+                resource.getMetadata().getName());
 
         if (action == Action.DELETED) {
-            LOG.infof("PipelineRun %s was deleted (likely cancelled)", pipelineRunName);
+            LOGGER.info("PipelineRun {} was deleted (likely cancelled)", pipelineRunName);
             // Handle pipeline deletion in a separate transactional context
             try {
                 resourceManager.handlePipelineDeletion(jobId);
             } catch (Exception e) {
-                LOG.errorf(e, "Failed to handle pipeline deletion for job %d", jobId);
+                LOGGER.error("Failed to handle pipeline deletion for job {}", jobId, e);
             }
             future.complete(null);
             return;
@@ -64,14 +64,16 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
             for (Condition condition : resource.getStatus().getConditions()) {
                 if (SUCCEEDED_CONDITION.equals(condition.getType())) {
                     if (STATUS_TRUE.equalsIgnoreCase(condition.getStatus())) {
-                        LOG.infof("PipelineRun %s succeeded.", pipelineRunName);
+                        LOGGER.info("PipelineRun {} succeeded.", pipelineRunName);
                         jobService.updateJobStatus(jobId, JobStatus.COMPLETED);
                         future.complete(null);
                         return;
                     } else if (STATUS_FALSE.equalsIgnoreCase(condition.getStatus())) {
-                        LOG.errorf(
-                                "PipelineRun %s failed. Reason: %s, Message: %s",
-                                pipelineRunName, condition.getReason(), condition.getMessage());
+                        LOGGER.error(
+                                "PipelineRun {} failed. Reason: {}, Message: {}",
+                                pipelineRunName,
+                                condition.getReason(),
+                                condition.getMessage());
                         jobService.updateJobStatus(jobId, JobStatus.FAILED);
                         future.complete(null);
                         return;
@@ -84,10 +86,10 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
     @Override
     public void onClose(WatcherException cause) {
         if (cause != null) {
-            LOG.errorf(cause, "Watcher for %s closed due to an error.", pipelineRunName);
+            LOGGER.error("Watcher for {} closed due to an error.", pipelineRunName, cause);
             future.completeExceptionally(cause);
         } else {
-            LOG.warnf("Watcher for %s closed cleanly without a final status.", pipelineRunName);
+            LOGGER.warn("Watcher for {} closed cleanly without a final status.", pipelineRunName);
             future.complete(null);
         }
     }

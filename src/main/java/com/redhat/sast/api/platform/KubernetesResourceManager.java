@@ -2,10 +2,6 @@ package com.redhat.sast.api.platform;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.redhat.sast.api.enums.JobStatus;
-import com.redhat.sast.api.model.Job;
-import com.redhat.sast.api.service.JobService;
-
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimBuilder;
 import io.fabric8.kubernetes.api.model.Quantity;
@@ -15,7 +11,6 @@ import io.fabric8.tekton.v1.PipelineRun;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -28,9 +23,6 @@ public class KubernetesResourceManager {
 
     @Inject
     TektonClient tektonClient;
-
-    @Inject
-    JobService jobService;
 
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
@@ -57,9 +49,9 @@ public class KubernetesResourceManager {
 
         @Override
         public void close() {
-            if (shouldCleanup && pvcName != null) {
-                deletePVC(pvcName);
-            }
+            //            if (shouldCleanup && pvcName != null) {
+            ////                deletePVC(pvcName);
+            //            }
         }
     }
 
@@ -253,14 +245,46 @@ public class KubernetesResourceManager {
     }
 
     /**
-     * Handles pipeline deletion events from the watcher in a transactional context.
-     * This method is called when a pipeline is deleted (likely cancelled).
+     * Cancels a running PipelineRun by setting its status to PipelineRunCancelled.
+     * This preserves execution history unlike deletion.
+     *
+     * @param pipelineRunName the name of the PipelineRun to cancel
+     * @return true if cancellation was successful, false otherwise
      */
-    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
-    public void handlePipelineDeletion(@Nonnull Long jobId) {
-        Job currentJob = jobService.getJobEntityById(jobId);
-        if (currentJob != null && currentJob.getStatus() != JobStatus.CANCELLED) {
-            jobService.updateJobStatus(jobId, JobStatus.CANCELLED);
+    public boolean cancelPipelineRun(@Nonnull String pipelineRunName) {
+        try {
+            PipelineRun pipelineRun = getPipelineRun(pipelineRunName);
+            if (pipelineRun == null) {
+                LOGGER.warn("PipelineRun {} not found for cancellation", pipelineRunName);
+                return false;
+            }
+
+            if (isPipelineCompleted(pipelineRun)) {
+                LOGGER.info("PipelineRun {} already completed - cannot cancel", pipelineRunName);
+                return false;
+            }
+
+            // Patch the PipelineRun spec to cancel it gracefully
+            // Update the existing PipelineRun's status to cancel it
+            PipelineRun updatedRun = new io.fabric8.tekton.v1.PipelineRunBuilder(pipelineRun)
+                    .editSpec()
+                    .withStatus("Cancelled")
+                    .endSpec()
+                    .build();
+
+            tektonClient
+                    .v1()
+                    .pipelineRuns()
+                    .inNamespace(namespace)
+                    .withName(pipelineRunName)
+                    .patch(updatedRun);
+
+            LOGGER.info("Successfully cancelled PipelineRun: {}", pipelineRunName);
+            return true;
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to cancel PipelineRun: {}", pipelineRunName, e);
+            return false;
         }
     }
 }

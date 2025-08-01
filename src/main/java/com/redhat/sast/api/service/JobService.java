@@ -12,11 +12,13 @@ import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.mapper.JobMapper;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobSettings;
+import com.redhat.sast.api.platform.PipelineParameterMapper;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.repository.JobSettingsRepository;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 
+import io.fabric8.tekton.v1.Param;
 import io.quarkus.panache.common.Page;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -34,21 +36,26 @@ public class JobService {
     private final PlatformService platformService;
     private final ManagedExecutor managedExecutor;
     private final NvrResolutionService nvrResolutionService;
+    private final PipelineParameterMapper parameterMapper;
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
-        // First, create the job entity (transactional)
-        Job job = createJobEntity(jobCreationDto);
+        final Job job = createJobEntity(jobCreationDto);
+
+        final Long jobId = job.getId();
+        final List<Param> pipelineParams = parameterMapper.extractPipelineParams(job);
+        final String llmSecretName =
+                (job.getJobSettings() != null) ? job.getJobSettings().getSecretName() : "sast-ai-default-llm-creds";
 
         managedExecutor.execute(() -> {
             try {
-                LOGGER.info("Starting async pipeline execution for job ID: {}", job.getId());
-                platformService.startSastAIWorkflow(job);
+                LOGGER.info("Starting async pipeline execution for job ID: {}", jobId);
+                platformService.startSastAIWorkflow(jobId, pipelineParams, llmSecretName);
             } catch (Exception e) {
-                LOGGER.error("Failed to start pipeline for job ID: {}", job.getId(), e);
+                LOGGER.error("Failed to start pipeline for job ID: {}", jobId, e);
                 try {
-                    managedExecutor.execute(() -> updateJobStatusToFailed(job.getId(), e));
+                    managedExecutor.execute(() -> updateJobStatusToFailed(jobId, e));
                 } catch (Exception updateException) {
-                    LOGGER.error("Failed to update job status for job ID: {}", job.getId(), updateException);
+                    LOGGER.error("Failed to update job status for job ID: {}", jobId, updateException);
                 }
             }
         });
@@ -56,36 +63,35 @@ public class JobService {
         return convertToResponseDto(job);
     }
 
-    @Transactional
     public void cancelJob(@Nonnull Long jobId) {
-        Job job = jobRepository.findById(jobId);
+        final Job job = jobRepository.findById(jobId);
         if (job == null) {
             throw new IllegalArgumentException("Job cannot be found with id: " + jobId);
         }
 
         JobStatus status = job.getStatus();
-        if (status == JobStatus.RUNNING || status == JobStatus.SCHEDULED || status == JobStatus.PENDING) {
-            updateJobStatus(jobId, JobStatus.CANCELLED);
-
-            managedExecutor.execute(() -> {
-                try {
-                    boolean cancelled = platformService.cancelTektonPipelineRun(job);
-                    if (!cancelled) {
-                        LOGGER.warn("Pipeline cancellation unsuccessful for job {}", jobId);
-                    }
-                } catch (Exception e) {
-                    LOGGER.error("Error during pipeline cancellation for job {}", jobId, e);
-                }
-            });
-        } else {
+        if (!(status == JobStatus.RUNNING || status == JobStatus.SCHEDULED || status == JobStatus.PENDING)) {
             throw new IllegalStateException("Job cannot be cancelled in status: " + job.getStatus());
         }
+        String tektonUrl = job.getTektonUrl();
+
+        updateJobStatus(jobId, JobStatus.CANCELLED);
+        managedExecutor.execute(() -> {
+            try {
+                boolean cancelled = platformService.cancelTektonPipelineRun(tektonUrl, jobId);
+                if (!cancelled) {
+                    LOGGER.warn("Pipeline cancellation unsuccessful for job {}", jobId);
+                }
+            } catch (Exception e) {
+                LOGGER.error("Error during job cancellation for job {}", jobId, e);
+            }
+        });
     }
 
-    @Transactional
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public void updateJobStatus(@Nonnull Long jobId, @Nonnull JobStatus newStatus) {
 
-        Job job = jobRepository.findById(jobId);
+        final Job job = jobRepository.findById(jobId);
         if (job == null) {
             LOGGER.warn("Job with ID {} not found when trying to update status to {}", jobId, newStatus);
             throw new IllegalArgumentException("Job not found with ID: " + jobId);
@@ -114,7 +120,7 @@ public class JobService {
         LOGGER.debug("Updated job ID {} status from {} to {}", jobId, currentStatus, newStatus);
     }
 
-    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    @Transactional
     public void updateJobTektonUrl(@Nonnull Long jobId, @Nonnull String tektonUrl) {
         Job job = jobRepository.findById(jobId);
         if (job != null) {

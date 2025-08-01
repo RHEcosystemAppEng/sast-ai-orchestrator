@@ -48,18 +48,6 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
                 action,
                 resource.getMetadata().getName());
 
-        if (action == Action.DELETED) {
-            LOGGER.info("PipelineRun {} was deleted (likely cancelled)", pipelineRunName);
-            // Handle pipeline deletion in a separate transactional context
-            try {
-                resourceManager.handlePipelineDeletion(jobId);
-            } catch (Exception e) {
-                LOGGER.error("Failed to handle pipeline deletion for job {}", jobId, e);
-            }
-            future.complete(null);
-            return;
-        }
-
         if (resource.getStatus() != null && resource.getStatus().getConditions() != null) {
             for (Condition condition : resource.getStatus().getConditions()) {
                 if (SUCCEEDED_CONDITION.equals(condition.getType())) {
@@ -74,7 +62,9 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
                                 pipelineRunName,
                                 condition.getReason(),
                                 condition.getMessage());
-                        jobService.updateJobStatus(jobId, JobStatus.FAILED);
+                        if (!condition.getReason().equalsIgnoreCase("Cancelled")) {
+                            jobService.updateJobStatus(jobId, JobStatus.FAILED);
+                        }
                         future.complete(null);
                         return;
                     }

@@ -11,6 +11,7 @@ import com.redhat.sast.api.enums.BatchStatus;
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobBatch;
+import com.redhat.sast.api.platform.PipelineParameterMapper;
 import com.redhat.sast.api.repository.JobBatchRepository;
 import com.redhat.sast.api.util.input.CsvConverter;
 import com.redhat.sast.api.util.input.CsvJobParser;
@@ -18,6 +19,7 @@ import com.redhat.sast.api.v1.dto.request.JobBatchSubmissionDto;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobBatchResponseDto;
 
+import io.fabric8.tekton.v1.Param;
 import io.quarkus.panache.common.Page;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -37,6 +39,7 @@ public class JobBatchService {
     private final ManagedExecutor managedExecutor;
     private final GoogleSheetsService googleSheetsService;
     private final CsvConverter csvConverter;
+    private final PipelineParameterMapper parameterMapper;
 
     /**
      * Submits a batch job for processing.
@@ -129,12 +132,17 @@ public class JobBatchService {
 
         for (JobCreationDto jobDto : jobDtos) {
             try {
-                Job createdJob = createJobInNewTransaction(jobDto);
-                Long jobId = createdJob.getId();
+                final Job createdJob = createJobInNewTransaction(jobDto);
+                final Long jobId = createdJob.getId();
+                final List<Param> pipelineParams = parameterMapper.extractPipelineParams(createdJob);
+                final String llmSecretName = (createdJob.getJobSettings() != null)
+                        ? createdJob.getJobSettings().getSecretName()
+                        : "sast-ai-default-llm-creds";
 
                 associateJobToBatchInNewTransaction(jobId, batchId);
 
-                managedExecutor.execute(() -> platformService.startSastAIWorkflow(createdJob));
+                managedExecutor.execute(
+                        () -> platformService.startSastAIWorkflow(jobId, pipelineParams, llmSecretName));
                 completedCount.incrementAndGet();
 
             } catch (Exception e) {

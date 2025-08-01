@@ -8,7 +8,6 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
-import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.platform.KubernetesResourceManager;
 import com.redhat.sast.api.platform.PipelineParameterMapper;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
@@ -59,7 +58,7 @@ public class PlatformService {
     @ConfigProperty(name = "sast.ai.cleanup.completed.pipelineruns", defaultValue = "true")
     boolean cleanupCompletedPipelineRuns;
 
-    public void startSastAIWorkflow(@Nonnull Job job) {
+    public void startSastAIWorkflow(@Nonnull Long jobId, @Nonnull List<Param> pipelineParams, String llmSecretName) {
         String pipelineRunName =
                 PIPELINE_NAME + "-" + UUID.randomUUID().toString().substring(0, 5);
         LOGGER.info(
@@ -74,9 +73,6 @@ public class PlatformService {
                 KubernetesResourceManager.PvcResource cachePvc =
                         resourceManager.createManagedPVC(pipelineRunName + "-cache", cacheWorkspaceSize)) {
 
-            List<Param> pipelineParams = parameterMapper.extractPipelineParams(job);
-            String llmSecretName =
-                    (job.getJobSettings() != null) ? job.getJobSettings().getSecretName() : "sast-ai-default-llm-creds";
             PipelineRun pipelineRun = buildPipelineRun(
                     pipelineRunName, pipelineParams, llmSecretName, sharedPvc.getName(), cachePvc.getName());
 
@@ -90,13 +86,11 @@ public class PlatformService {
 
             // Set the Tekton URL on the job using cluster information from TektonClient
             String tektonUrl = buildTektonUrlFromClient(createdPipelineRun);
-            updateJobTektonUrl(job.getId(), tektonUrl);
-            LOGGER.info("Updated job {} with Tekton URL: {}", job.getId(), tektonUrl);
+            updateJobTektonUrl(jobId, tektonUrl);
 
             // Start monitoring the pipeline in a background thread
-            // At this point, we've successfully set up everything, so we don't want automatic cleanup
-            // The watcher's finally block will handle cleanup when the pipeline completes
-            managedExecutor.execute(() -> watchPipelineRun(job.getId(), pipelineRunName));
+            // At this point, we've successfully set up everything
+            managedExecutor.execute(() -> watchPipelineRun(jobId, pipelineRunName));
 
             // Mark PVCs as managed by the watcher now - disable auto-cleanup
             sharedPvc.disableAutoCleanup();
@@ -122,16 +116,6 @@ public class PlatformService {
             LOGGER.info("Watcher for PipelineRun {} is closing.", pipelineRunName);
         } catch (Exception e) {
             LOGGER.error("Watcher for {} failed.", pipelineRunName, e);
-        } finally {
-            LOGGER.info("Cleaning up resources for PipelineRun: {}", pipelineRunName);
-
-            if (cleanupCompletedPipelineRuns) {
-                resourceManager.deletePipelineRun(pipelineRunName);
-            } else {
-                LOGGER.info("Keeping PipelineRun {} for debugging (cleanup disabled)", pipelineRunName);
-            }
-
-            resourceManager.cleanupPipelineRunPVCs(pipelineRunName);
         }
     }
 
@@ -151,7 +135,6 @@ public class PlatformService {
                     pipelineRun.getMetadata().getNamespace(),
                     pipelineRun.getMetadata().getName());
 
-            LOGGER.info("Constructed Tekton URL: {}", pipelineRunUrl);
             return pipelineRunUrl;
         } catch (Exception e) {
             LOGGER.error(
@@ -248,37 +231,24 @@ public class PlatformService {
 
     /**
      * Cancels a running pipeline for the given job.
+     * Uses proper Tekton cancellation to preserve execution history.
      *
      * @param job the job whose pipeline should be cancelled
      * @return true if cancellation was successful, false if pipeline was already completed/failed
      */
-    public boolean cancelTektonPipelineRun(@Nonnull Job job) {
-        String pipelineRunName = resourceManager.extractPipelineRunName(job.getTektonUrl());
+    public boolean cancelTektonPipelineRun(@Nonnull String tektonUrl, @Nonnull Long jobId) {
+        String pipelineRunName = resourceManager.extractPipelineRunName(tektonUrl);
         if (pipelineRunName == null) {
-            LOGGER.warn("Cannot cancel job {}: no pipeline run name found", job.getId());
+            LOGGER.warn("Cannot cancel job {}: no pipeline run name found", jobId);
             return false;
         }
 
         try {
-            PipelineRun pipelineRun = resourceManager.getPipelineRun(pipelineRunName);
-
-            if (pipelineRun == null) {
-                LOGGER.warn("PipelineRun {} not found - may have already completed", pipelineRunName);
-                return false;
-            }
-
-            if (resourceManager.isPipelineCompleted(pipelineRun)) {
-                LOGGER.info("PipelineRun {} already completed - cannot cancel", pipelineRunName);
-                return false;
-            }
-
-            resourceManager.deletePipelineRun(pipelineRunName);
-            managedExecutor.execute(() -> resourceManager.cleanupPipelineRunPVCs(pipelineRunName));
-
-            return true;
+            LOGGER.info("Attempting to cancel PipelineRun {} for job ID: {}", pipelineRunName, jobId);
+            return resourceManager.cancelPipelineRun(pipelineRunName);
 
         } catch (Exception e) {
-            LOGGER.error("Error cancelling PipelineRun {} for job ID: {}", pipelineRunName, job.getId(), e);
+            LOGGER.error("Error cancelling PipelineRun {} for job ID: {}", pipelineRunName, jobId, e);
             return false;
         }
     }

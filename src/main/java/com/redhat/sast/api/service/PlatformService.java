@@ -37,7 +37,7 @@ public class PlatformService {
 
     // Secret names
     private static final String GITLAB_TOKEN_SECRET = "gitlab-token-secret";
-    private static final String DEFAULT_LLM_SECRET = "sast-ai-default-llm-creds";
+    static final String DEFAULT_LLM_SECRET = "sast-ai-default-llm-creds";
     private static final String GOOGLE_SA_SECRET = "google-service-account-secret";
 
     private final TektonClient tektonClient;

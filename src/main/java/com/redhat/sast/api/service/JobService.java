@@ -1,7 +1,10 @@
 package com.redhat.sast.api.service;
 
+import static com.redhat.sast.api.service.PlatformService.DEFAULT_LLM_SECRET;
+
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.eclipse.microprofile.context.ManagedExecutor;
@@ -31,6 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class JobService {
 
+    private static final boolean DEFAULT_USE_FALSE_POSITIVE_FILE = true;
+
     private final JobRepository jobRepository;
     private final JobSettingsRepository jobSettingsRepository;
     private final PlatformService platformService;
@@ -43,36 +48,37 @@ public class JobService {
 
         final Long jobId = job.getId();
         final List<Param> pipelineParams = parameterMapper.extractPipelineParams(job);
-        final String llmSecretName =
-                (job.getJobSettings() != null) ? job.getJobSettings().getSecretName() : "sast-ai-default-llm-creds";
+        final String llmSecretName = Optional.ofNullable(job.getJobSettings())
+                .map(JobSettings::getSecretName)
+                .orElse(DEFAULT_LLM_SECRET);
 
         managedExecutor.execute(() -> {
             try {
                 LOGGER.info("Starting async pipeline execution for job ID: {}", jobId);
                 platformService.startSastAIWorkflow(jobId, pipelineParams, llmSecretName);
             } catch (Exception e) {
-                LOGGER.error("Failed to start pipeline for job ID: {}", jobId, e);
-                try {
-                    managedExecutor.execute(() -> updateJobStatusToFailed(jobId, e));
-                } catch (Exception updateException) {
-                    LOGGER.error("Failed to update job status for job ID: {}", jobId, updateException);
-                }
+                handleAsyncJobFailure(jobId, e);
             }
         });
 
         return convertToResponseDto(job);
     }
 
-    public void cancelJob(@Nonnull Long jobId) {
-        final Job job = jobRepository.findById(jobId);
-        if (job == null) {
-            throw new IllegalArgumentException("Job cannot be found with id: " + jobId);
-        }
+    @Transactional
+    public Job createJobEntity(JobCreationDto jobCreationDto) {
+        Job job = getJobFromDto(jobCreationDto);
+        jobRepository.persist(job);
 
-        JobStatus status = job.getStatus();
-        if (!(status == JobStatus.RUNNING || status == JobStatus.SCHEDULED || status == JobStatus.PENDING)) {
-            throw new IllegalStateException("Job cannot be cancelled in status: " + job.getStatus());
-        }
+        JobSettings settings = createDefaultJobSettings(job, jobCreationDto);
+        jobSettingsRepository.persist(settings);
+
+        job.setJobSettings(settings);
+        return job;
+    }
+
+    public void cancelJob(@Nonnull Long jobId) {
+        final Job job = findJobOrThrow(jobId);
+        validateJobForCancellation(job);
         String tektonUrl = job.getTektonUrl();
 
         updateJobStatus(jobId, JobStatus.CANCELLED);
@@ -91,11 +97,7 @@ public class JobService {
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public void updateJobStatus(@Nonnull Long jobId, @Nonnull JobStatus newStatus) {
 
-        final Job job = jobRepository.findById(jobId);
-        if (job == null) {
-            LOGGER.warn("Job with ID {} not found when trying to update status to {}", jobId, newStatus);
-            throw new IllegalArgumentException("Job not found with ID: " + jobId);
-        }
+        final Job job = findJobOrThrow(jobId);
 
         JobStatus currentStatus = job.getStatus();
         if (!isValidStatusTransition(currentStatus, newStatus)) {
@@ -122,55 +124,10 @@ public class JobService {
 
     @Transactional
     public void updateJobTektonUrl(@Nonnull Long jobId, @Nonnull String tektonUrl) {
-        Job job = jobRepository.findById(jobId);
-        if (job != null) {
-            job.setTektonUrl(tektonUrl);
-            jobRepository.persist(job);
-            LOGGER.info("Updated job {} with Tekton URL: {}", jobId, tektonUrl);
-        } else {
-            LOGGER.warn("Job with ID {} not found when trying to update Tekton URL", jobId);
-        }
-    }
-
-    @Transactional
-    public Job createJobEntity(JobCreationDto jobCreationDto) {
-        Job job = getJobFromDto(jobCreationDto);
+        Job job = findJobOrThrow(jobId);
+        job.setTektonUrl(tektonUrl);
         jobRepository.persist(job);
-
-        LOGGER.debug("Creating JobSettings with default secretName: '{}'", ApplicationConstants.DEFAULT_SECRET_NAME);
-
-        JobSettings settings = new JobSettings();
-        settings.setJob(job);
-        settings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
-        Boolean useKnownFalsePositiveFile = jobCreationDto.getUseKnownFalsePositiveFile();
-        settings.setUseKnownFalsePositiveFile(useKnownFalsePositiveFile != null ? useKnownFalsePositiveFile : true);
-        jobSettingsRepository.persist(settings);
-
-        job.setJobSettings(settings);
-
-        LOGGER.debug("Persisted JobSettings with secretName: '{}'", settings.getSecretName());
-
-        return job;
-    }
-
-    private Job getJobFromDto(JobCreationDto jobCreationDto) {
-        Job job = new Job();
-
-        job.setPackageNvr(jobCreationDto.getPackageNvr());
-
-        job.setProjectName(nvrResolutionService.resolveProjectName(jobCreationDto.getPackageNvr()));
-        job.setProjectVersion(nvrResolutionService.resolveProjectVersion(jobCreationDto.getPackageNvr()));
-        job.setPackageName(nvrResolutionService.resolvePackageName(jobCreationDto.getPackageNvr()));
-        job.setPackageSourceCodeUrl(nvrResolutionService.resolveSourceCodeUrl(jobCreationDto.getPackageNvr()));
-        job.setKnownFalsePositivesUrl(
-                nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
-
-        // Set input source - always Google Sheet for now
-        job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
-        job.setGSheetUrl(jobCreationDto.getInputSourceUrl());
-
-        job.setStatus(JobStatus.PENDING);
-        return job;
+        LOGGER.info("Updated job {} with Tekton URL: {}", jobId, tektonUrl);
     }
 
     public List<JobResponseDto> getAllJobs(String packageName, JobStatus status, int page, int size) {
@@ -180,11 +137,64 @@ public class JobService {
     }
 
     public JobResponseDto getJobDtoByJobId(@Nonnull Long jobId) {
+        Job job = findJobOrThrow(jobId);
+        return convertToResponseDto(job);
+    }
+
+    private JobResponseDto convertToResponseDto(Job job) {
+        return JobMapper.INSTANCE.jobToJobResponseDto(job);
+    }
+
+    public Job getJobEntityById(@Nonnull Long jobId) {
+        return jobRepository.findById(jobId);
+    }
+
+    @Transactional
+    public void persistJob(@Nonnull Job job) {
+        jobRepository.persist(job);
+    }
+
+    private Job findJobOrThrow(Long jobId) {
         Job job = jobRepository.findById(jobId);
         if (job == null) {
             throw new IllegalArgumentException("Job not found with id: " + jobId);
         }
-        return convertToResponseDto(job);
+        return job;
+    }
+
+    private void validateJobForCancellation(Job job) {
+        JobStatus status = job.getStatus();
+        if (!isCancellableStatus(status)) {
+            throw new IllegalStateException("Job cannot be cancelled in status: " + status);
+        }
+    }
+
+    private boolean isCancellableStatus(JobStatus status) {
+        return status == JobStatus.RUNNING || status == JobStatus.SCHEDULED || status == JobStatus.PENDING;
+    }
+
+    private void handleAsyncJobFailure(Long jobId, Exception e) {
+        LOGGER.error("Failed to start pipeline for job ID: {}", jobId, e);
+        managedExecutor.execute(() -> {
+            try {
+                updateJobStatus(jobId, JobStatus.FAILED);
+            } catch (Exception updateException) {
+                LOGGER.error("Failed to update job status for job ID: {}", jobId, updateException);
+            }
+        });
+    }
+
+    private JobSettings createDefaultJobSettings(Job job, JobCreationDto dto) {
+        LOGGER.debug("Creating JobSettings with default secretName: '{}'", ApplicationConstants.DEFAULT_SECRET_NAME);
+
+        JobSettings settings = new JobSettings();
+        settings.setJob(job);
+        settings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
+        settings.setUseKnownFalsePositiveFile(
+                Optional.ofNullable(dto.getUseKnownFalsePositiveFile()).orElse(DEFAULT_USE_FALSE_POSITIVE_FILE));
+
+        LOGGER.debug("Persisted JobSettings with secretName: '{}'", settings.getSecretName());
+        return settings;
     }
 
     private boolean isValidStatusTransition(JobStatus from, JobStatus to) {
@@ -200,33 +210,24 @@ public class JobService {
         };
     }
 
-    private void updateJobStatusToFailed(@Nonnull Long jobId, Exception cause) {
-        try {
-            // This will use the DataService's REQUIRES_NEW transaction
-            // to safely update the job status
-            updateJobStatus(jobId, JobStatus.FAILED);
-            LOGGER.info("Updated job ID {} status to FAILED due to pipeline error: {}", jobId, cause.getMessage());
-        } catch (Exception e) {
-            LOGGER.error("Critical: Failed to update job status to FAILED for job ID: {}", jobId, e);
-        }
-    }
+    private Job getJobFromDto(@Nonnull JobCreationDto jobCreationDto) {
+        Job job = new Job();
 
-    private JobResponseDto convertToResponseDto(Job job) {
-        return JobMapper.INSTANCE.jobToJobResponseDto(job);
-    }
+        job.setPackageNvr(jobCreationDto.getPackageNvr());
 
-    /**
-     * Gets the Job entity by ID for batch processing
-     */
-    public Job getJobEntityById(@Nonnull Long jobId) {
-        return jobRepository.findById(jobId);
-    }
+        // Resolve package information using NVR service
+        job.setProjectName(nvrResolutionService.resolveProjectName(jobCreationDto.getPackageNvr()));
+        job.setProjectVersion(nvrResolutionService.resolveProjectVersion(jobCreationDto.getPackageNvr()));
+        job.setPackageName(nvrResolutionService.resolvePackageName(jobCreationDto.getPackageNvr()));
+        job.setPackageSourceCodeUrl(nvrResolutionService.resolveSourceCodeUrl(jobCreationDto.getPackageNvr()));
+        job.setKnownFalsePositivesUrl(
+                nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
 
-    /**
-     * Persists a Job entity for batch processing
-     */
-    @Transactional
-    public void persistJob(@Nonnull Job job) {
-        jobRepository.persist(job);
+        // Set input source - always Google Sheet for now
+        job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
+        job.setGSheetUrl(jobCreationDto.getInputSourceUrl());
+
+        job.setStatus(JobStatus.PENDING);
+        return job;
     }
 }

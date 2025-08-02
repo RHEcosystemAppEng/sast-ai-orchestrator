@@ -1,7 +1,10 @@
 package com.redhat.sast.api.service;
 
+import static com.redhat.sast.api.service.PlatformService.DEFAULT_LLM_SECRET;
+
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -11,6 +14,7 @@ import com.redhat.sast.api.enums.BatchStatus;
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobBatch;
+import com.redhat.sast.api.model.JobSettings;
 import com.redhat.sast.api.platform.PipelineParameterMapper;
 import com.redhat.sast.api.repository.JobBatchRepository;
 import com.redhat.sast.api.util.input.CsvConverter;
@@ -41,15 +45,11 @@ public class JobBatchService {
     private final CsvConverter csvConverter;
     private final PipelineParameterMapper parameterMapper;
 
-    /**
-     * Submits a batch job for processing.
-     */
     public JobBatchResponseDto submitBatch(JobBatchSubmissionDto submissionDto) {
         JobBatch batch = createInitialBatch(submissionDto);
 
         JobBatchResponseDto response = convertToResponseDto(batch);
 
-        // Start async processing
         managedExecutor.execute(() -> executeBatchProcessing(
                 batch.getId(), batch.getBatchGoogleSheetUrl(), batch.getUseKnownFalsePositiveFile()));
 
@@ -135,9 +135,9 @@ public class JobBatchService {
                 final Job createdJob = createJobInNewTransaction(jobDto);
                 final Long jobId = createdJob.getId();
                 final List<Param> pipelineParams = parameterMapper.extractPipelineParams(createdJob);
-                final String llmSecretName = (createdJob.getJobSettings() != null)
-                        ? createdJob.getJobSettings().getSecretName()
-                        : "sast-ai-default-llm-creds";
+                final String llmSecretName = Optional.ofNullable(createdJob.getJobSettings())
+                        .map(JobSettings::getSecretName)
+                        .orElse(DEFAULT_LLM_SECRET);
 
                 associateJobToBatchInNewTransaction(jobId, batchId);
 
@@ -175,14 +175,6 @@ public class JobBatchService {
             job.setJobBatch(batch);
             jobService.persistJob(job);
         }
-    }
-
-    /**
-     * Updates job status in a new transaction
-     */
-    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
-    public void updateJobStatusInNewTransaction(Long jobId, JobStatus status) {
-        jobService.updateJobStatus(jobId, status);
     }
 
     /**
@@ -262,28 +254,6 @@ public class JobBatchService {
             throw new IllegalArgumentException("Batch not found with id: " + batchId);
         }
         return convertToResponseDto(batch);
-    }
-
-    @Transactional
-    public void updateBatchStatus(@Nonnull Long batchId, @Nonnull BatchStatus status) {
-        JobBatch batch = jobBatchRepository.findById(batchId);
-        if (batch != null) {
-            batch.setStatus(status);
-            jobBatchRepository.persist(batch);
-        }
-    }
-
-    @Transactional
-    public void updateBatchStatus(
-            @Nonnull Long batchId, @Nonnull BatchStatus status, int totalJobs, int completedJobs, int failedJobs) {
-        JobBatch batch = jobBatchRepository.findById(batchId);
-        if (batch != null) {
-            batch.setStatus(status);
-            batch.setTotalJobs(totalJobs);
-            batch.setCompletedJobs(completedJobs);
-            batch.setFailedJobs(failedJobs);
-            jobBatchRepository.persist(batch);
-        }
     }
 
     /**

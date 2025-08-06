@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -21,6 +22,7 @@ import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.redhat.sast.api.util.input.InputSourceResolver;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,9 +36,29 @@ public class GoogleSheetsService {
     private static final List<String> SCOPES = Collections.singletonList(SheetsScopes.SPREADSHEETS_READONLY);
 
     @ConfigProperty(name = "google.service.account.secret.path")
-    String serviceAccountSecretPath;
+    Optional<String> serviceAccountSecretPath;
 
     private final InputSourceResolver inputSourceResolver;
+
+    @PostConstruct
+    void logConfiguration() {
+        String path = getServiceAccountPath();
+        LOGGER.debug("GoogleSheetsService initialized with service account path: {}", path);
+    }
+
+    private String getServiceAccountPath() {
+        String envPath = System.getenv("GOOGLE_SERVICE_ACCOUNT_SECRET_PATH");
+        if (envPath != null && !envPath.isEmpty()) {
+            return envPath;
+        }
+        
+        if (serviceAccountSecretPath.isPresent()) {
+            return serviceAccountSecretPath.get();
+        }
+        
+        throw new IllegalStateException(
+            "Google service account path not configured. Please ensure GOOGLE_SERVICE_ACCOUNT_SECRET_PATH environment variable is set.");
+    }
 
     /**
      * Reads a Google Sheet using service account authentication and returns the raw sheet data.
@@ -84,10 +106,31 @@ public class GoogleSheetsService {
      */
     public boolean isServiceAccountAvailable() {
         try {
-            Path credentialsPath = Paths.get(serviceAccountSecretPath);
-            return Files.exists(credentialsPath) && Files.isReadable(credentialsPath);
+            String path = getServiceAccountPath();
+            LOGGER.info("Checking service account availability at path: {}", path);
+            Path credentialsPath = Paths.get(path);
+            boolean exists = Files.exists(credentialsPath);
+            boolean readable = Files.isReadable(credentialsPath);
+            LOGGER.info("Service account file exists: {}, readable: {}", exists, readable);
+
+            if (!exists) {
+                LOGGER.error("Service account file does not exist at path: {}", path);
+            }
+            if (!readable) {
+                LOGGER.error("Service account file is not readable at path: {}", path);
+            }
+
+            // Additional debugging
+            try {
+                LOGGER.info("Parent directory exists: {}", Files.exists(credentialsPath.getParent()));
+                LOGGER.info("Is directory: {}", Files.isDirectory(credentialsPath.getParent()));
+            } catch (Exception dirException) {
+                LOGGER.error("Error checking parent directory: {}", dirException.getMessage());
+            }
+
+            return exists && readable;
         } catch (Exception e) {
-            LOGGER.debug("Service account file not available: {}", e.getMessage());
+            LOGGER.error("Exception while checking service account file availability: {}", e.getMessage(), e);
             return false;
         }
     }
@@ -96,12 +139,13 @@ public class GoogleSheetsService {
      * Validates that the service account JSON file exists and is readable.
      */
     private void validateServiceAccountFile() throws IOException {
-        Path credentialsPath = Paths.get(serviceAccountSecretPath);
+        String path = getServiceAccountPath();
+        Path credentialsPath = Paths.get(path);
         if (!Files.exists(credentialsPath)) {
-            throw new IOException("Service account file not found at: " + serviceAccountSecretPath);
+            throw new IOException("Service account file not found at: " + path);
         }
         if (!Files.isReadable(credentialsPath)) {
-            throw new IOException("Service account file is not readable: " + serviceAccountSecretPath);
+            throw new IOException("Service account file is not readable: " + path);
         }
     }
 
@@ -109,9 +153,9 @@ public class GoogleSheetsService {
      * Creates an authenticated Sheets service instance.
      */
     private Sheets createSheetsService() throws Exception {
-        GoogleCredentials credentials = ServiceAccountCredentials.fromStream(
-                        new FileInputStream(serviceAccountSecretPath))
-                .createScoped(SCOPES);
+        String path = getServiceAccountPath();
+        GoogleCredentials credentials =
+                ServiceAccountCredentials.fromStream(new FileInputStream(path)).createScoped(SCOPES);
 
         return new Sheets.Builder(
                         GoogleNetHttpTransport.newTrustedTransport(),

@@ -51,13 +51,13 @@ public class GoogleSheetsService {
         if (envPath != null && !envPath.isEmpty()) {
             return envPath;
         }
-        
+
         if (serviceAccountSecretPath.isPresent()) {
             return serviceAccountSecretPath.get();
         }
-        
+
         throw new IllegalStateException(
-            "Google service account path not configured. Please ensure GOOGLE_SERVICE_ACCOUNT_SECRET_PATH environment variable is set.");
+                "Google service account path not configured. Please ensure GOOGLE_SERVICE_ACCOUNT_SECRET_PATH environment variable is set.");
     }
 
     /**
@@ -107,11 +107,11 @@ public class GoogleSheetsService {
     public boolean isServiceAccountAvailable() {
         try {
             String path = getServiceAccountPath();
-            LOGGER.info("Checking service account availability at path: {}", path);
+            LOGGER.debug("Checking service account availability at path: {}", path);
             Path credentialsPath = Paths.get(path);
             boolean exists = Files.exists(credentialsPath);
             boolean readable = Files.isReadable(credentialsPath);
-            LOGGER.info("Service account file exists: {}, readable: {}", exists, readable);
+            LOGGER.debug("Service account file exists: {}, readable: {}", exists, readable);
 
             if (!exists) {
                 LOGGER.error("Service account file does not exist at path: {}", path);
@@ -120,17 +120,9 @@ public class GoogleSheetsService {
                 LOGGER.error("Service account file is not readable at path: {}", path);
             }
 
-            // Additional debugging
-            try {
-                LOGGER.info("Parent directory exists: {}", Files.exists(credentialsPath.getParent()));
-                LOGGER.info("Is directory: {}", Files.isDirectory(credentialsPath.getParent()));
-            } catch (Exception dirException) {
-                LOGGER.error("Error checking parent directory: {}", dirException.getMessage());
-            }
-
             return exists && readable;
         } catch (Exception e) {
-            LOGGER.error("Exception while checking service account file availability: {}", e.getMessage(), e);
+            LOGGER.debug("Service account file not available: {}", e.getMessage());
             return false;
         }
     }

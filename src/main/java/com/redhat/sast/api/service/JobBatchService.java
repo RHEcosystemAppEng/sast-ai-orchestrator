@@ -51,7 +51,10 @@ public class JobBatchService {
 
         // Start async processing
         managedExecutor.execute(() -> executeBatchProcessing(
-                batch.getId(), batch.getBatchGoogleSheetUrl(), batch.getUseKnownFalsePositiveFile()));
+                batch.getId(),
+                batch.getBatchGoogleSheetUrl(),
+                batch.getUseKnownFalsePositiveFile(),
+                batch.getSubmittedBy()));
 
         return response;
     }
@@ -60,7 +63,8 @@ public class JobBatchService {
     public JobBatch createInitialBatch(JobBatchSubmissionDto submissionDto) {
         JobBatch batch = new JobBatch();
         batch.setBatchGoogleSheetUrl(submissionDto.getBatchGoogleSheetUrl());
-        batch.setSubmittedBy(submissionDto.getSubmittedBy());
+        // Set submittedBy with default value "unknown" if not provided
+        batch.setSubmittedBy(submissionDto.getSubmittedBy() != null ? submissionDto.getSubmittedBy() : "unknown");
         batch.setUseKnownFalsePositiveFile(submissionDto.getUseKnownFalsePositiveFile());
         batch.setStatus(BatchStatus.PROCESSING);
 
@@ -75,7 +79,10 @@ public class JobBatchService {
      * Asynchronously processes a batch by parsing input files and creating individual jobs
      */
     public void executeBatchProcessing(
-            @Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl, Boolean useKnownFalsePositiveFile) {
+            @Nonnull Long batchId,
+            @Nonnull String batchGoogleSheetUrl,
+            Boolean useKnownFalsePositiveFile,
+            String submittedBy) {
         try {
             LOGGER.debug("Starting async processing for batch ID: {}", batchId);
             List<JobCreationDto> jobDtos = fetchAndParseJobsFromSheet(batchGoogleSheetUrl, useKnownFalsePositiveFile);
@@ -89,7 +96,7 @@ public class JobBatchService {
             LOGGER.debug(
                     "Batch {}: Found {} jobs to process. Starting sequential processing.", batchId, jobDtos.size());
 
-            processJobs(batchId, jobDtos);
+            processJobs(batchId, jobDtos, submittedBy);
 
         } catch (Exception e) {
             LOGGER.error("Failed to process batch {}: {}", batchId, e.getMessage(), e);
@@ -126,12 +133,14 @@ public class JobBatchService {
     /**
      * Processes a list of jobs sequentially.
      */
-    private void processJobs(Long batchId, List<JobCreationDto> jobDtos) {
+    private void processJobs(Long batchId, List<JobCreationDto> jobDtos, String batchSubmittedBy) {
         final AtomicInteger completedCount = new AtomicInteger(0);
         final AtomicInteger failedCount = new AtomicInteger(0);
 
         for (JobCreationDto jobDto : jobDtos) {
             try {
+                jobDto.setSubmittedBy(batchSubmittedBy);
+
                 final Job createdJob = createJobInNewTransaction(jobDto);
                 final Long jobId = createdJob.getId();
                 final List<Param> pipelineParams = parameterMapper.extractPipelineParams(createdJob);

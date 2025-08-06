@@ -43,7 +43,7 @@ Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosy
 {
   "packageNvr": "package-name-version-release",
   "inputSourceUrl": "https://example.com/source.zip",
-  "submittedBy": "user@example.com", # (optional)
+  "submittedBy": "user@example.com", # (optional, defaults to "unknown")
   "useKnownFalsePositiveFile": false # (optional)
 }
 ```
@@ -129,7 +129,7 @@ Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosy
 ```json
 {
   "batchGoogleSheetUrl": "https://docs.google.com/spreadsheets/d/...",
-  "submittedBy": "user@example.com", # (optional)
+  "submittedBy": "user@example.com", # (optional, defaults to "unknown")
   "useKnownFalsePositiveFile": false # (optional)
 }
 ```

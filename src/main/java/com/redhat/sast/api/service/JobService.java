@@ -193,8 +193,8 @@ public class JobService {
         }
 
         return switch (from) {
-            case PENDING -> to == JobStatus.SCHEDULED || to == JobStatus.CANCELLED;
-            case SCHEDULED -> to == JobStatus.RUNNING || to == JobStatus.CANCELLED;
+            case PENDING -> to == JobStatus.SCHEDULED || to == JobStatus.CANCELLED || to == JobStatus.FAILED;
+            case SCHEDULED -> to == JobStatus.RUNNING || to == JobStatus.CANCELLED || to == JobStatus.FAILED;
             case RUNNING -> to == JobStatus.COMPLETED || to == JobStatus.FAILED || to == JobStatus.CANCELLED;
             default -> false;
         };

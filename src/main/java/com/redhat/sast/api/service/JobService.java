@@ -169,6 +169,9 @@ public class JobService {
         job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
         job.setGSheetUrl(jobCreationDto.getInputSourceUrl());
 
+        // Set submittedBy with default value "unknown" if not provided
+        job.setSubmittedBy(jobCreationDto.getSubmittedBy() != null ? jobCreationDto.getSubmittedBy() : "unknown");
+
         job.setStatus(JobStatus.PENDING);
         return job;
     }

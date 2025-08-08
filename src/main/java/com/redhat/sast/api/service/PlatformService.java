@@ -9,7 +9,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
 import com.redhat.sast.api.platform.KubernetesResourceManager;
-import com.redhat.sast.api.platform.PipelineParameterMapper;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
 
 import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
@@ -44,7 +43,6 @@ public class PlatformService {
     private final ManagedExecutor managedExecutor;
     private final JobService jobService;
     private final KubernetesResourceManager resourceManager;
-    private final PipelineParameterMapper parameterMapper;
 
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;

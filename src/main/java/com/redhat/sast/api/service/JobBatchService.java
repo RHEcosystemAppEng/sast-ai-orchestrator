@@ -92,11 +92,13 @@ public class JobBatchService {
                 return;
             }
 
+            jobDtos.forEach(dto -> dto.setSubmittedBy(submittedBy));
+
             updateBatchTotalJobs(batchId, jobDtos.size());
             LOGGER.debug(
                     "Batch {}: Found {} jobs to process. Starting sequential processing.", batchId, jobDtos.size());
 
-            processJobs(batchId, jobDtos, submittedBy);
+            processJobs(batchId, jobDtos);
 
         } catch (Exception e) {
             LOGGER.error("Failed to process batch {}: {}", batchId, e.getMessage(), e);
@@ -133,14 +135,12 @@ public class JobBatchService {
     /**
      * Processes a list of jobs sequentially.
      */
-    private void processJobs(Long batchId, List<JobCreationDto> jobDtos, String batchSubmittedBy) {
+    private void processJobs(Long batchId, List<JobCreationDto> jobDtos) {
         final AtomicInteger completedCount = new AtomicInteger(0);
         final AtomicInteger failedCount = new AtomicInteger(0);
 
         for (JobCreationDto jobDto : jobDtos) {
             try {
-                jobDto.setSubmittedBy(batchSubmittedBy);
-
                 final Job createdJob = createJobInNewTransaction(jobDto);
                 final Long jobId = createdJob.getId();
                 final List<Param> pipelineParams = parameterMapper.extractPipelineParams(createdJob);

@@ -37,6 +37,7 @@ public class JobService {
     private final ManagedExecutor managedExecutor;
     private final NvrResolutionService nvrResolutionService;
     private final PipelineParameterMapper parameterMapper;
+    private final UrlValidationService urlValidationService;
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
         final Job job = createJobEntity(jobCreationDto);
@@ -142,13 +143,24 @@ public class JobService {
         JobSettings settings = new JobSettings();
         settings.setJob(job);
         settings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
+
         Boolean useKnownFalsePositiveFile = jobCreationDto.getUseKnownFalsePositiveFile();
-        settings.setUseKnownFalsePositiveFile(useKnownFalsePositiveFile != null ? useKnownFalsePositiveFile : true);
+        boolean shouldUseFile = useKnownFalsePositiveFile != null ? useKnownFalsePositiveFile : true;
+
+        if (shouldUseFile && job.getKnownFalsePositivesUrl() != null) {
+            if (!urlValidationService.isUrlAccessible(job.getKnownFalsePositivesUrl())) {
+                LOGGER.info(
+                        "Known false positives file not found for package '{}' at URL: {}. Setting useKnownFalsePositiveFile to false.",
+                        job.getPackageNvr(),
+                        job.getKnownFalsePositivesUrl());
+                shouldUseFile = false;
+            }
+        }
+
+        settings.setUseKnownFalsePositiveFile(shouldUseFile);
         jobSettingsRepository.persist(settings);
 
         job.setJobSettings(settings);
-
-        LOGGER.debug("Persisted JobSettings with secretName: '{}'", settings.getSecretName());
 
         return job;
     }

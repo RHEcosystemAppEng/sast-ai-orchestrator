@@ -43,6 +43,10 @@ public class UrlValidationService {
                     isAccessible);
 
             return isAccessible;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.debug("URL accessibility check interrupted for '{}': {}", url, e.getMessage());
+            return false;
         } catch (Exception e) {
             LOGGER.debug("Failed to check URL accessibility for '{}': {}", url, e.getMessage());
             return false;

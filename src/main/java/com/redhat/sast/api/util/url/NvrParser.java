@@ -17,7 +17,7 @@ public class NvrParser {
 
     // Pattern to match NVR: package name, version (starts with digit), and release (contains .el)
     private static final Pattern NVR_PATTERN = Pattern.compile(
-            "^((?:[a-zA-Z0-9._+-](?!-[0-9]))*[a-zA-Z0-9._+])-([0-9][a-zA-Z0-9.]*)-([a-zA-Z0-9.]*\\.el\\d+.*)$");
+            "^([a-zA-Z][a-zA-Z0-9._-]{0,80}?(?<!-))-([0-9][a-zA-Z0-9.~+]{0,40})-([0-9][a-zA-Z0-9.+_]{0,30}\\.el[0-9]{1,2}.{0,20}?)$");
 
     /**
      * Extracts the package name from an NVR string.
@@ -87,7 +87,7 @@ public class NvrParser {
         }
 
         // Look for pattern .elX where X is the version number
-        Pattern elPattern = Pattern.compile("\\.el(\\d+)(?:[._]|$)");
+        Pattern elPattern = Pattern.compile("\\.el(\\d+)(?:[._+]|$)");
         Matcher matcher = elPattern.matcher(release);
         if (matcher.find()) {
             return matcher.group(1); // Return just the number part

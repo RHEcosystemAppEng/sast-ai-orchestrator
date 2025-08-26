@@ -77,6 +77,9 @@ public class Job {
     @Column(name = "last_updated_at")
     private LocalDateTime lastUpdatedAt;
 
+    @Column(name = "submitted_by")
+    private String submittedBy;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_batch_id")
     private JobBatch jobBatch;

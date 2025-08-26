@@ -51,7 +51,10 @@ public class JobBatchService {
 
         // Start async processing
         managedExecutor.execute(() -> executeBatchProcessing(
-                batch.getId(), batch.getBatchGoogleSheetUrl(), batch.getUseKnownFalsePositiveFile()));
+                batch.getId(),
+                batch.getBatchGoogleSheetUrl(),
+                batch.getUseKnownFalsePositiveFile(),
+                batch.getSubmittedBy()));
 
         return response;
     }
@@ -60,7 +63,8 @@ public class JobBatchService {
     public JobBatch createInitialBatch(JobBatchSubmissionDto submissionDto) {
         JobBatch batch = new JobBatch();
         batch.setBatchGoogleSheetUrl(submissionDto.getBatchGoogleSheetUrl());
-        batch.setSubmittedBy(submissionDto.getSubmittedBy());
+        // Set submittedBy with default value "unknown" if not provided
+        batch.setSubmittedBy(submissionDto.getSubmittedBy() != null ? submissionDto.getSubmittedBy() : "unknown");
         batch.setUseKnownFalsePositiveFile(submissionDto.getUseKnownFalsePositiveFile());
         batch.setStatus(BatchStatus.PROCESSING);
 
@@ -75,7 +79,10 @@ public class JobBatchService {
      * Asynchronously processes a batch by parsing input files and creating individual jobs
      */
     public void executeBatchProcessing(
-            @Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl, Boolean useKnownFalsePositiveFile) {
+            @Nonnull Long batchId,
+            @Nonnull String batchGoogleSheetUrl,
+            Boolean useKnownFalsePositiveFile,
+            String submittedBy) {
         try {
             LOGGER.debug("Starting async processing for batch ID: {}", batchId);
             List<JobCreationDto> jobDtos = fetchAndParseJobsFromSheet(batchGoogleSheetUrl, useKnownFalsePositiveFile);
@@ -84,6 +91,8 @@ public class JobBatchService {
                 updateBatchStatusInNewTransaction(batchId, BatchStatus.COMPLETED_EMPTY, 0, 0, 0);
                 return;
             }
+
+            jobDtos.forEach(dto -> dto.setSubmittedBy(submittedBy));
 
             updateBatchTotalJobs(batchId, jobDtos.size());
             LOGGER.debug(

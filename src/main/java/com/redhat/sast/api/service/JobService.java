@@ -144,18 +144,7 @@ public class JobService {
         settings.setJob(job);
         settings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
 
-        Boolean useKnownFalsePositiveFile = jobCreationDto.getUseKnownFalsePositiveFile();
-        boolean shouldUseFile = useKnownFalsePositiveFile != null ? useKnownFalsePositiveFile : true;
-
-        if (shouldUseFile && job.getKnownFalsePositivesUrl() != null) {
-            if (!urlValidationService.isUrlAccessible(job.getKnownFalsePositivesUrl())) {
-                LOGGER.info(
-                        "Known false positives file not found for package '{}' at URL: {}. Setting useKnownFalsePositiveFile to false.",
-                        job.getPackageNvr(),
-                        job.getKnownFalsePositivesUrl());
-                shouldUseFile = false;
-            }
-        }
+        boolean shouldUseFile = shouldUseFalsePositiveFile(job, jobCreationDto);
 
         settings.setUseKnownFalsePositiveFile(shouldUseFile);
         jobSettingsRepository.persist(settings);
@@ -221,6 +210,25 @@ public class JobService {
         } catch (Exception e) {
             LOGGER.error("Critical: Failed to update job status to FAILED for job ID: {}", jobId, e);
         }
+    }
+
+    private boolean shouldUseFalsePositiveFile(Job job, JobCreationDto jobCreationDto) {
+        Boolean useFromDto = jobCreationDto.getUseKnownFalsePositiveFile();
+        boolean defaultToUse = useFromDto != null ? useFromDto : true;
+
+        if (!defaultToUse || job.getKnownFalsePositivesUrl() == null) {
+            return defaultToUse;
+        }
+
+        if (urlValidationService.isUrlAccessible(job.getKnownFalsePositivesUrl())) {
+            return true;
+        }
+
+        LOGGER.info(
+                "Known false positives file not found for package '{}' at URL: {}. Setting useKnownFalsePositiveFile to false.",
+                job.getPackageNvr(),
+                job.getKnownFalsePositivesUrl());
+        return false;
     }
 
     private JobResponseDto convertToResponseDto(Job job) {

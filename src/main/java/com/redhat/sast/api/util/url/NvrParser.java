@@ -17,7 +17,7 @@ public class NvrParser {
 
     // Pattern to match NVR: package name, version (starts with digit), and release (contains .el)
     private static final Pattern NVR_PATTERN =
-            Pattern.compile("^(.+)-([0-9][a-zA-Z0-9.]*)-([a-zA-Z0-9.]*\\.el\\d+.*)$");
+            Pattern.compile("^(.++)-([0-9][a-zA-Z0-9.]*+)-([a-zA-Z0-9.]*+\\.el\\d++.*)$");
 
     /**
      * Extracts the package name from an NVR string.

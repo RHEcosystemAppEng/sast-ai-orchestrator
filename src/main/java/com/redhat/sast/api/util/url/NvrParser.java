@@ -15,8 +15,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 @ApplicationScoped
 public class NvrParser {
 
-    // Pattern to match NVR: package name followed by version (starts with digit)
-    private static final Pattern NVR_PATTERN = Pattern.compile("^([a-zA-Z0-9._+]+?)-([0-9][a-zA-Z0-9.-]+)$");
+    // Pattern to match NVR: package name, version (starts with digit), and release (contains .el)
+    private static final Pattern NVR_PATTERN = Pattern.compile(
+            "^([a-zA-Z][a-zA-Z\\d._-]{0,80}(?<!-))-([\\d][a-zA-Z\\d.~+]{0,40})-([\\d][a-zA-Z\\d.+_]{0,30}\\.el\\d{1,2}.{0,20})$");
 
     /**
      * Extracts the package name from an NVR string.
@@ -31,7 +32,7 @@ public class NvrParser {
 
         Matcher matcher = NVR_PATTERN.matcher(nvr.trim());
         if (matcher.matches()) {
-            return matcher.group(1);
+            return matcher.group(1); // Package name
         }
 
         return null;
@@ -50,12 +51,7 @@ public class NvrParser {
 
         Matcher matcher = NVR_PATTERN.matcher(nvr.trim());
         if (matcher.matches()) {
-            String versionRelease = matcher.group(2); // e.g., "257-9.el10"
-            // Split on first dash to separate version from release
-            int firstDash = versionRelease.indexOf('-');
-            if (firstDash > 0) {
-                return versionRelease.substring(0, firstDash); // e.g., "257"
-            }
+            return matcher.group(2); // Version
         }
         return null;
     }
@@ -73,12 +69,7 @@ public class NvrParser {
 
         Matcher matcher = NVR_PATTERN.matcher(nvr.trim());
         if (matcher.matches()) {
-            String versionRelease = matcher.group(2); // e.g., "257-9.el10"
-            // Split on first dash to separate version from release
-            int firstDash = versionRelease.indexOf('-');
-            if (firstDash > 0 && firstDash < versionRelease.length() - 1) {
-                return versionRelease.substring(firstDash + 1); // e.g., "9.el10"
-            }
+            return matcher.group(3); // Release
         }
         return null;
     }
@@ -96,7 +87,7 @@ public class NvrParser {
         }
 
         // Look for pattern .elX where X is the version number
-        Pattern elPattern = Pattern.compile("\\.el(\\d+)(?:\\.|$)");
+        Pattern elPattern = Pattern.compile("\\.el(\\d+)(?:[._+]|$)");
         Matcher matcher = elPattern.matcher(release);
         if (matcher.find()) {
             return matcher.group(1); // Return just the number part

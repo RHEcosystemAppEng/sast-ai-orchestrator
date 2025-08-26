@@ -6,6 +6,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 
@@ -14,10 +16,14 @@ import lombok.extern.slf4j.Slf4j;
 public class UrlValidationService {
 
     private final HttpClient httpClient;
+    private final Duration requestTimeout;
 
-    public UrlValidationService() {
+    public UrlValidationService(
+            @ConfigProperty(name = "url-validation.connection-timeout", defaultValue = "5s") Duration connectionTimeout,
+            @ConfigProperty(name = "url-validation.request-timeout", defaultValue = "30s") Duration requestTimeout) {
         this.httpClient =
-                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+                HttpClient.newBuilder().connectTimeout(connectionTimeout).build();
+        this.requestTimeout = requestTimeout;
     }
 
     public boolean isUrlAccessible(String url) {
@@ -30,7 +36,7 @@ public class UrlValidationService {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .method("HEAD", HttpRequest.BodyPublishers.noBody())
-                    .timeout(Duration.ofSeconds(10))
+                    .timeout(requestTimeout)
                     .build();
 
             HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());

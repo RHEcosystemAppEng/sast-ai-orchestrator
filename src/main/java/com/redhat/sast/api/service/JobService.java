@@ -37,6 +37,7 @@ public class JobService {
     private final ManagedExecutor managedExecutor;
     private final NvrResolutionService nvrResolutionService;
     private final PipelineParameterMapper parameterMapper;
+    private final UrlValidationService urlValidationService;
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
         final Job job = createJobEntity(jobCreationDto);
@@ -142,13 +143,13 @@ public class JobService {
         JobSettings settings = new JobSettings();
         settings.setJob(job);
         settings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
-        Boolean useKnownFalsePositiveFile = jobCreationDto.getUseKnownFalsePositiveFile();
-        settings.setUseKnownFalsePositiveFile(useKnownFalsePositiveFile != null ? useKnownFalsePositiveFile : true);
+
+        boolean shouldUseFile = shouldUseFalsePositiveFile(job, jobCreationDto);
+
+        settings.setUseKnownFalsePositiveFile(shouldUseFile);
         jobSettingsRepository.persist(settings);
 
         job.setJobSettings(settings);
-
-        LOGGER.debug("Persisted JobSettings with secretName: '{}'", settings.getSecretName());
 
         return job;
     }
@@ -212,6 +213,25 @@ public class JobService {
         } catch (Exception e) {
             LOGGER.error("Critical: Failed to update job status to FAILED for job ID: {}", jobId, e);
         }
+    }
+
+    private boolean shouldUseFalsePositiveFile(Job job, JobCreationDto jobCreationDto) {
+        Boolean useFromDto = jobCreationDto.getUseKnownFalsePositiveFile();
+        boolean defaultToUse = useFromDto != null ? useFromDto : true;
+
+        if (!defaultToUse || job.getKnownFalsePositivesUrl() == null) {
+            return defaultToUse;
+        }
+
+        if (urlValidationService.isUrlAccessible(job.getKnownFalsePositivesUrl())) {
+            return true;
+        }
+
+        LOGGER.info(
+                "Known false positives file not found for package '{}' at URL: {}. Setting useKnownFalsePositiveFile to false.",
+                job.getPackageNvr(),
+                job.getKnownFalsePositivesUrl());
+        return false;
     }
 
     private JobResponseDto convertToResponseDto(Job job) {

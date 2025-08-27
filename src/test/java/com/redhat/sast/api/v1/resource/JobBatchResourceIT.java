@@ -18,7 +18,7 @@ import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 
 @DisplayName("Job Batch Resource Integration Tests")
-public class JobBatchResourceIT extends AbstractIntegrationTest {
+class JobBatchResourceIT extends AbstractIntegrationTest {
 
     @Test
     @DisplayName("Should submit a job batch successfully")

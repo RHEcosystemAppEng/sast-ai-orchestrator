@@ -20,7 +20,7 @@ import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 
 @DisplayName("Job Resource Integration Tests")
-public class JobResourceIT extends AbstractIntegrationTest {
+class JobResourceIT extends AbstractIntegrationTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JobResourceIT.class);
 

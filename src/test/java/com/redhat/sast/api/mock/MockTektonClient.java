@@ -36,7 +36,7 @@ public class MockTektonClient {
         return "test-namespace";
     }
 
-    public MockKubernetesClient adapt(Class<KubernetesClient> type) {
+    public MockKubernetesClient adapt() {
         return new MockKubernetesClient();
     }
 
@@ -44,11 +44,15 @@ public class MockTektonClient {
         return type == KubernetesClient.class;
     }
 
-    public void close() {}
+    public void close() {
+        // No resources to clean up in mock implementation
+    }
 
     public static class MockKubernetesClient {
 
-        public void close() {}
+        public void close() {
+            // No resources to clean up in mock implementation
+        }
 
         public String getApiVersion() {
             return "v1";
@@ -68,6 +72,7 @@ public class MockTektonClient {
 
         public Object getKubernetesVersion() {
             return new Object() {
+                @SuppressWarnings("unused") // Method is called by external code using this mock
                 public String getGitVersion() {
                     return "v1.28.0+test";
                 }
@@ -80,7 +85,7 @@ public class MockTektonClient {
     }
 
     public static class MockPods {
-        public MockPods inNamespace(String namespace) {
+        public MockPods inNamespace() {
             return this;
         }
 

@@ -1,12 +1,10 @@
 package com.redhat.sast.api.mock;
 
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.fabric8.tekton.v1.Param;
 import io.fabric8.tekton.v1.PipelineRun;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -19,9 +17,7 @@ public class MockPlatformService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MockPlatformService.class);
 
-    public CompletableFuture<PipelineRun> createPipelineRun(
-            Long jobId, List<Param> pipelineParams, String llmSecretName) {
-
+    public CompletableFuture<PipelineRun> createPipelineRun(Long jobId) {
         LOGGER.debug("Creating mock pipeline run for job {}", jobId);
 
         PipelineRun mockPipelineRun = createMockPipelineRun(jobId);
@@ -29,7 +25,7 @@ public class MockPlatformService {
         return CompletableFuture.completedFuture(mockPipelineRun);
     }
 
-    public void startPipelineWatcher(PipelineRun pipelineRun, Long jobId) {
+    public void startPipelineWatcher(Long jobId) {
         LOGGER.debug("Starting mock pipeline watcher for job {}", jobId);
     }
 

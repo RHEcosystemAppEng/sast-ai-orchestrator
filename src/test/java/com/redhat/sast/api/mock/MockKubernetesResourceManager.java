@@ -16,7 +16,7 @@ public class MockKubernetesResourceManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MockKubernetesResourceManager.class);
 
-    public PersistentVolumeClaim createSharedWorkspacePvc(String pvcName, String size) {
+    public PersistentVolumeClaim createSharedWorkspacePvc(String pvcName) {
         LOGGER.debug("Creating mock shared workspace PVC: {}", pvcName);
 
         PersistentVolumeClaim pvc = new PersistentVolumeClaim();
@@ -28,7 +28,7 @@ public class MockKubernetesResourceManager {
         return pvc;
     }
 
-    public PersistentVolumeClaim createCacheWorkspacePvc(String pvcName, String size) {
+    public PersistentVolumeClaim createCacheWorkspacePvc(String pvcName) {
         LOGGER.debug("Creating mock cache workspace PVC: {}", pvcName);
 
         PersistentVolumeClaim pvc = new PersistentVolumeClaim();

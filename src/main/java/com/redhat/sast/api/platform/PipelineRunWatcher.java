@@ -67,6 +67,12 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
                         }
                         future.complete(null);
                         return;
+                    } else if ("Unknown".equalsIgnoreCase(condition.getStatus())
+                            && condition.getReason() != null
+                            && condition.getReason().contains("Running")) {
+                        LOGGER.info("PipelineRun {} is running.", pipelineRunName);
+                        jobService.updateJobStatus(jobId, JobStatus.RUNNING);
+                        return;
                     }
                 }
             }

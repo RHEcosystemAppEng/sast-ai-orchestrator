@@ -68,7 +68,8 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_REPO_REMOTE_URL, job.getPackageSourceCodeUrl()));
 
         Boolean useKnownFalsePositiveFile = getUseKnownFalsePositiveFileValue(job);
-        String falsePositivesUrl = useKnownFalsePositiveFile ? job.getKnownFalsePositivesUrl() : "";
+        String falsePositivesUrl =
+                Boolean.TRUE.equals(useKnownFalsePositiveFile) ? job.getKnownFalsePositivesUrl() : "";
         params.add(createParam(PARAM_FALSE_POSITIVES_URL, falsePositivesUrl));
 
         params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
 import com.redhat.sast.api.enums.BatchStatus;
@@ -41,6 +42,12 @@ public class JobBatchService {
     private final CsvConverter csvConverter;
     private final PipelineParameterMapper parameterMapper;
 
+    @ConfigProperty(name = "sast.ai.batch.job.polling.interval", defaultValue = "5000")
+    long jobPollingIntervalMs;
+
+    @ConfigProperty(name = "sast.ai.batch.job.timeout", defaultValue = "3600000")
+    long jobTimeoutMs;
+
     /**
      * Submits a batch job for processing.
      */
@@ -49,9 +56,11 @@ public class JobBatchService {
 
         JobBatchResponseDto response = convertToResponseDto(batch);
 
-        // Start async processing
         managedExecutor.execute(() -> executeBatchProcessing(
-                batch.getId(), batch.getBatchGoogleSheetUrl(), batch.getUseKnownFalsePositiveFile()));
+                batch.getId(),
+                batch.getBatchGoogleSheetUrl(),
+                batch.getUseKnownFalsePositiveFile(),
+                batch.getSubmittedBy()));
 
         return response;
     }
@@ -60,7 +69,8 @@ public class JobBatchService {
     public JobBatch createInitialBatch(JobBatchSubmissionDto submissionDto) {
         JobBatch batch = new JobBatch();
         batch.setBatchGoogleSheetUrl(submissionDto.getBatchGoogleSheetUrl());
-        batch.setSubmittedBy(submissionDto.getSubmittedBy());
+        // Set submittedBy with default value "unknown" if not provided
+        batch.setSubmittedBy(submissionDto.getSubmittedBy() != null ? submissionDto.getSubmittedBy() : "unknown");
         batch.setUseKnownFalsePositiveFile(submissionDto.getUseKnownFalsePositiveFile());
         batch.setStatus(BatchStatus.PROCESSING);
 
@@ -72,18 +82,23 @@ public class JobBatchService {
     }
 
     /**
-     * Asynchronously processes a batch by parsing input files and creating individual jobs
+     * Asynchronously processes a batch by parsing input files and creating individual jobs.
+     * Jobs within the batch are processed sequentially to prevent embedding model overload.
      */
     public void executeBatchProcessing(
-            @Nonnull Long batchId, @Nonnull String batchGoogleSheetUrl, Boolean useKnownFalsePositiveFile) {
+            @Nonnull Long batchId,
+            @Nonnull String batchGoogleSheetUrl,
+            Boolean useKnownFalsePositiveFile,
+            String submittedBy) {
         try {
-            LOGGER.debug("Starting async processing for batch ID: {}", batchId);
             List<JobCreationDto> jobDtos = fetchAndParseJobsFromSheet(batchGoogleSheetUrl, useKnownFalsePositiveFile);
 
             if (jobDtos.isEmpty()) {
                 updateBatchStatusInNewTransaction(batchId, BatchStatus.COMPLETED_EMPTY, 0, 0, 0);
                 return;
             }
+
+            jobDtos.forEach(dto -> dto.setSubmittedBy(submittedBy));
 
             updateBatchTotalJobs(batchId, jobDtos.size());
             LOGGER.debug(
@@ -124,16 +139,95 @@ public class JobBatchService {
     }
 
     /**
+     * Checks the current status of a job in a new transaction.
+     *
+     * @param jobId the ID of the job to check
+     * @return the current JobStatus, or null if job not found
+     */
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    public JobStatus getJobStatusInNewTransaction(@Nonnull Long jobId) {
+        Job job = jobService.getJobEntityById(jobId);
+        if (job == null) {
+            LOGGER.warn("Job {} not found during status check", jobId);
+            return null;
+        }
+        return job.getStatus();
+    }
+
+    /**
+     * Waits for a job to complete by polling its status.
+     *
+     * @param jobId the ID of the job to wait for
+     * @return true if job completed successfully, false if failed/cancelled/timeout
+     */
+    private boolean waitForJobCompletion(@Nonnull Long jobId) {
+        long startTime = System.currentTimeMillis();
+        long timeoutTime = startTime + jobTimeoutMs;
+
+        while (System.currentTimeMillis() < timeoutTime) {
+            try {
+                JobStatus status = getJobStatusInNewTransaction(jobId);
+                if (status == null) {
+                    LOGGER.warn("Job {} not found during polling", jobId);
+                    return false;
+                }
+
+                LOGGER.debug("Polling job {} status: {}", jobId, status);
+
+                switch (status) {
+                    case COMPLETED:
+                        LOGGER.debug("Job {} completed successfully", jobId);
+                        return true;
+                    case FAILED, CANCELLED:
+                        LOGGER.warn("Job {} finished with status: {}", jobId, status);
+                        return false;
+                    case PENDING, SCHEDULED, RUNNING:
+                        // Job is still processing, continue polling
+                        break;
+                    default:
+                        LOGGER.warn("Job {} has unexpected status: {}", jobId, status);
+                        break;
+                }
+
+                Thread.sleep(jobPollingIntervalMs);
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOGGER.error("Job polling interrupted for job {}", jobId, e);
+                return false;
+            } catch (Exception e) {
+                LOGGER.error("Error polling job {} status", jobId, e);
+                return false;
+            }
+        }
+
+        LOGGER.error("Job {} timed out after {}ms", jobId, jobTimeoutMs);
+        return false;
+    }
+
+    /**
      * Processes a list of jobs sequentially.
      */
     private void processJobs(Long batchId, List<JobCreationDto> jobDtos) {
         final AtomicInteger completedCount = new AtomicInteger(0);
         final AtomicInteger failedCount = new AtomicInteger(0);
 
-        for (JobCreationDto jobDto : jobDtos) {
+        LOGGER.debug("Batch {}: Starting sequential processing of {} jobs", batchId, jobDtos.size());
+
+        for (int i = 0; i < jobDtos.size(); i++) {
+            JobCreationDto jobDto = jobDtos.get(i);
+            Long jobId = null;
+
             try {
+                LOGGER.debug(
+                        "Batch {}: Processing job {}/{} (Package: {})",
+                        batchId,
+                        i + 1,
+                        jobDtos.size(),
+                        jobDto.getPackageNvr());
+
                 final Job createdJob = createJobInNewTransaction(jobDto);
-                final Long jobId = createdJob.getId();
+                jobId = createdJob.getId();
                 final List<Param> pipelineParams = parameterMapper.extractPipelineParams(createdJob);
                 final String llmSecretName = (createdJob.getJobSettings() != null)
                         ? createdJob.getJobSettings().getSecretName()
@@ -141,17 +235,50 @@ public class JobBatchService {
 
                 associateJobToBatchInNewTransaction(jobId, batchId);
 
-                managedExecutor.execute(
-                        () -> platformService.startSastAIWorkflow(jobId, pipelineParams, llmSecretName));
-                completedCount.incrementAndGet();
+                LOGGER.debug(
+                        "Batch {}: Starting pipeline for job {} (Package: {})", batchId, jobId, jobDto.getPackageNvr());
+
+                platformService.startSastAIWorkflow(jobId, pipelineParams, llmSecretName);
+
+                boolean jobCompleted = waitForJobCompletion(jobId);
+
+                if (jobCompleted) {
+                    completedCount.incrementAndGet();
+                    LOGGER.debug(
+                            "Batch {}: Job {} completed successfully ({}/{} total)",
+                            batchId,
+                            jobId,
+                            completedCount.get(),
+                            jobDtos.size());
+                } else {
+                    failedCount.incrementAndGet();
+                    LOGGER.warn(
+                            "Batch {}: Job {} failed or timed out ({}/{} failed)",
+                            batchId,
+                            jobId,
+                            failedCount.get(),
+                            jobDtos.size());
+                }
 
             } catch (Exception e) {
                 failedCount.incrementAndGet();
-                LOGGER.error("Failed during processing of a single job for batch {}", batchId, e);
+                LOGGER.error(
+                        "Batch {}: Failed during processing of job {} for package {}",
+                        batchId,
+                        jobId,
+                        jobDto.getPackageNvr(),
+                        e);
             } finally {
                 updateBatchProgressInNewTransaction(batchId, completedCount.get(), failedCount.get());
             }
         }
+
+        LOGGER.info(
+                "Batch {}: Sequential processing completed. Total: {}, Completed: {}, Failed: {}",
+                batchId,
+                jobDtos.size(),
+                completedCount.get(),
+                failedCount.get());
         finalizeBatch(batchId, jobDtos.size(), completedCount.get(), failedCount.get());
     }
 

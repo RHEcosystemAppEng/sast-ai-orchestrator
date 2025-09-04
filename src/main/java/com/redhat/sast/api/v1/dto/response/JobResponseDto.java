@@ -61,4 +61,7 @@ public class JobResponseDto {
 
     @JsonProperty("batchId")
     private Long batchId;
+
+    @JsonProperty("submittedBy")
+    private String submittedBy;
 }

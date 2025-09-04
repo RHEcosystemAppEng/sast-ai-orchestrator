@@ -23,6 +23,9 @@ public class JobCreationDto {
     @JsonProperty("useKnownFalsePositiveFile")
     private Boolean useKnownFalsePositiveFile;
 
+    @JsonProperty("submittedBy")
+    private String submittedBy;
+
     public JobCreationDto(String packageNvr, String inputSourceUrl) {
         this.packageNvr = packageNvr;
         this.inputSourceUrl = inputSourceUrl;

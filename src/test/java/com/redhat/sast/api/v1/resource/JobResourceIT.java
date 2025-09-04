@@ -40,7 +40,7 @@ class JobResourceIT extends AbstractIntegrationTest {
         LOGGER.debug("Response Status: {}", response.statusCode());
         LOGGER.debug("Response Body: {}", response.body().asString());
 
-        Long jobId = response.jsonPath().getLong("id");
+        Long jobId = response.jsonPath().getLong("jobId");
         assertNotNull(jobId);
     }
 
@@ -56,13 +56,13 @@ class JobResourceIT extends AbstractIntegrationTest {
                 .statusCode(201)
                 .extract()
                 .jsonPath()
-                .getLong("id");
+                .getLong("jobId");
 
         given().when()
                 .get("/api/v1/jobs/{jobId}", jobId)
                 .then()
                 .statusCode(200)
-                .body("id", equalTo(jobId.intValue()))
+                .body("jobId", equalTo(jobId.intValue()))
                 .body("packageNvr", equalTo("units-2.22-8.el10"))
                 .body("status", equalTo("PENDING"));
     }
@@ -148,17 +148,29 @@ class JobResourceIT extends AbstractIntegrationTest {
                 .statusCode(201)
                 .extract()
                 .jsonPath()
-                .getLong("id");
+                .getLong("jobId");
 
-        given().when().post("/api/v1/jobs/{jobId}/cancel", jobId).then().statusCode(200);
+        given().contentType(ContentType.JSON)
+                .when()
+                .post("/api/v1/jobs/{jobId}/cancel", jobId)
+                .then()
+                .statusCode(200);
 
-        given().when().get("/api/v1/jobs/{jobId}", jobId).then().statusCode(200).body("id", equalTo(jobId.intValue()));
+        given().when()
+                .get("/api/v1/jobs/{jobId}", jobId)
+                .then()
+                .statusCode(200)
+                .body("jobId", equalTo(jobId.intValue()));
     }
 
     @Test
     @DisplayName("Should return 404 when cancelling non-existent job")
     void shouldReturn404WhenCancellingNonExistentJob() {
-        given().when().post("/api/v1/jobs/{jobId}/cancel", 99999).then().statusCode(404);
+        given().contentType(ContentType.JSON)
+                .when()
+                .post("/api/v1/jobs/{jobId}/cancel", 99999)
+                .then()
+                .statusCode(404);
     }
 
     @Test
@@ -196,7 +208,7 @@ class JobResourceIT extends AbstractIntegrationTest {
                 .post("/api/v1/jobs/simple")
                 .then()
                 .statusCode(201)
-                .body("id", notNullValue())
+                .body("jobId", notNullValue())
                 .body("status", equalTo("PENDING"));
     }
 }

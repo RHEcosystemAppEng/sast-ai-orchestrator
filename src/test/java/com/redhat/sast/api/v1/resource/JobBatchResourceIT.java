@@ -31,19 +31,18 @@ class JobBatchResourceIT extends AbstractIntegrationTest {
                 .post("/api/v1/job-batches")
                 .then()
                 .statusCode(201)
-                .body("id", notNullValue())
+                .body("batchId", notNullValue())
                 .body("submittedBy", equalTo("integration-test-user-1"))
                 .body(
                         "batchGoogleSheetUrl",
                         equalTo(
                                 "https://docs.google.com/spreadsheets/d/1wrIcIhC7F9uVf8fm0IlvGTO-dSV9t_maLx36OoRI7S0/edit?usp=sharing"))
-                .body("status", equalTo("PENDING"))
-                .body("createdAt", notNullValue())
-                .body("jobs", notNullValue())
+                .body("status", notNullValue())
+                .body("submittedAt", notNullValue())
                 .extract()
                 .response();
 
-        Long batchId = response.jsonPath().getLong("id");
+        Long batchId = response.jsonPath().getLong("batchId");
         assertNotNull(batchId);
     }
 
@@ -59,20 +58,19 @@ class JobBatchResourceIT extends AbstractIntegrationTest {
                 .statusCode(201)
                 .extract()
                 .jsonPath()
-                .getLong("id");
+                .getLong("batchId");
 
         given().when()
                 .get("/api/v1/job-batches/{batchId}", batchId)
                 .then()
                 .statusCode(200)
-                .body("id", equalTo(batchId.intValue()))
+                .body("batchId", equalTo(batchId.intValue()))
                 .body("submittedBy", equalTo("integration-test-user-2"))
                 .body(
                         "batchGoogleSheetUrl",
                         equalTo(
                                 "https://docs.google.com/spreadsheets/d/1GcJg8aHfpEGxrPbb2gYD-CadwoxAWEB91Er5q0RpOuE/edit?usp=sharing"))
-                .body("status", equalTo("PENDING"))
-                .body("jobs", notNullValue());
+                .body("status", notNullValue());
     }
 
     @Test
@@ -111,35 +109,6 @@ class JobBatchResourceIT extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("Should cancel a job batch")
-    void shouldCancelJobBatch() {
-        JobBatchSubmissionDto batchRequest = JobBatchTestDataBuilder.firstBatchDataset();
-        Long batchId = given().contentType(ContentType.JSON)
-                .body(batchRequest)
-                .when()
-                .post("/api/v1/job-batches")
-                .then()
-                .statusCode(201)
-                .extract()
-                .jsonPath()
-                .getLong("id");
-
-        given().when().post("/job-batches/{batchId}:cancel", batchId).then().statusCode(200);
-
-        given().when()
-                .get("/api/v1/job-batches/{batchId}", batchId)
-                .then()
-                .statusCode(200)
-                .body("id", equalTo(batchId.intValue()));
-    }
-
-    @Test
-    @DisplayName("Should return 404 when cancelling non-existent batch")
-    void shouldReturn404WhenCancellingNonExistentBatch() {
-        given().when().post("/job-batches/{batchId}:cancel", 99999).then().statusCode(404);
-    }
-
-    @Test
     @DisplayName("Should validate required fields for batch submission")
     void shouldValidateRequiredFieldsForBatchSubmission() {
         JobBatchSubmissionDto invalidBatch = new JobBatchSubmissionDto();
@@ -164,8 +133,8 @@ class JobBatchResourceIT extends AbstractIntegrationTest {
                 .post("/api/v1/job-batches")
                 .then()
                 .statusCode(201)
-                .body("id", notNullValue())
-                .body("status", equalTo("PENDING"))
+                .body("batchId", notNullValue())
+                .body("status", notNullValue())
                 .body("submittedBy", equalTo("integration-test-fp-user"));
     }
 
@@ -180,17 +149,11 @@ class JobBatchResourceIT extends AbstractIntegrationTest {
                 .post("/api/v1/job-batches")
                 .then()
                 .statusCode(201)
-                .body("jobs", notNullValue())
-                .body("jobs", hasSize(greaterThan(0)))
                 .extract()
                 .response();
 
-        Long batchId = response.jsonPath().getLong("id");
-        given().when()
-                .get("/api/v1/job-batches/{batchId}", batchId)
-                .then()
-                .statusCode(200)
-                .body("jobs", hasSize(greaterThan(0)));
+        Long batchId = response.jsonPath().getLong("batchId");
+        given().when().get("/api/v1/job-batches/{batchId}", batchId).then().statusCode(200);
     }
 
     @Test

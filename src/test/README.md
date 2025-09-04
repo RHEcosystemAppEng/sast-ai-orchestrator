@@ -23,12 +23,7 @@ src/test/java/com/redhat/sast/api/
 
 ## Running Tests
 
-### Run all tests
-```bash
-./mvnw test
-```
-
-### Run only integration tests
+### Run integration tests
 ```bash
 ./mvnw test -Dtest="*IT"
 ```

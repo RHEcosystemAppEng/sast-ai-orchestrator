@@ -79,7 +79,7 @@ public class CsvJobParser {
                     .filter(Predicate.not(this::isRecordEmpty))
                     .map(record -> {
                         try {
-                            return createJobFromRecord(record, headerRecord);
+                            return createJobFromRecord(record, headerRecord, useKnownFalsePositiveFile);
                         } catch (IllegalArgumentException e) {
                             LOGGER.warn("Skipping record at line {}: {}", record.getRecordNumber(), e.getMessage());
                             return null;
@@ -134,7 +134,7 @@ public class CsvJobParser {
         return foundHeaders.values().stream().allMatch(Boolean::booleanValue);
     }
 
-    private JobCreationDto createJobFromRecord(CSVRecord record, CSVRecord headerRecord) {
+    private JobCreationDto createJobFromRecord(CSVRecord record, CSVRecord headerRecord, Boolean useKnownFalsePositiveFile) {
         int nvrIndex = findColumnIndex(headerRecord, "nvr");
         int googleSheetIndex = findColumnIndex(headerRecord, "googleSheetUrl");
 
@@ -142,6 +142,7 @@ public class CsvJobParser {
         String googleSheetUrl = getFieldValue(record, googleSheetIndex);
 
         JobCreationDto job = new JobCreationDto(packageNvr, googleSheetUrl);
+        job.setUseKnownFalsePositiveFile(useKnownFalsePositiveFile);
 
         validateRequiredFields(job, record.getRecordNumber());
         return job;

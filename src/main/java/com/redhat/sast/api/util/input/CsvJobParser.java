@@ -134,7 +134,8 @@ public class CsvJobParser {
         return foundHeaders.values().stream().allMatch(Boolean::booleanValue);
     }
 
-    private JobCreationDto createJobFromRecord(CSVRecord record, CSVRecord headerRecord, Boolean useKnownFalsePositiveFile) {
+    private JobCreationDto createJobFromRecord(
+            CSVRecord record, CSVRecord headerRecord, Boolean useKnownFalsePositiveFile) {
         int nvrIndex = findColumnIndex(headerRecord, "nvr");
         int googleSheetIndex = findColumnIndex(headerRecord, "googleSheetUrl");
 

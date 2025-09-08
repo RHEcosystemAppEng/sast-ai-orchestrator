@@ -23,9 +23,23 @@ src/test/java/com/redhat/sast/api/
 
 ## Running Tests
 
-### Run integration tests
+### Prerequisites
+- **Docker** must be running (TestContainers automatically creates PostgreSQL containers)
+- **No manual database setup required** - TestContainers handles everything automatically
+
+### Standard approach (works in most cases)
 ```bash
 ./mvnw test -Dtest="*IT"
+```
+
+### Alternative: Complete build and test pipeline
+```bash
+# Option 1 (Complete build and test)
+./mvnw clean verify -DskipITs=false
+
+# Option 2 (for faster development iterations)
+./mvnw clean package -DskipTests
+./mvnw failsafe:integration-test failsafe:verify -DskipITs=false
 ```
 
 ### Run specific test class
@@ -36,8 +50,17 @@ src/test/java/com/redhat/sast/api/
 
 ### Run with debug logging
 ```bash
-./mvnw test -Dquarkus.log.level=DEBUG
+./mvnw test -Dtest="*IT" -Dquarkus.log.level=DEBUG
 ```
+
+### macOS Users
+If you encounter TestContainers connection issues on macOS, set this environment variable:
+```bash
+export TESTCONTAINERS_RYUK_DISABLED=true
+./mvnw test -Dtest="*IT"
+```
+
+**Why this happens**: The Ryuk container (TestContainers' self-cleaning mechanism) sometimes doesn't work properly on macOS, causing connection refused errors.
 
 ## Test Configuration
 

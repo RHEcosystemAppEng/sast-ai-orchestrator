@@ -235,4 +235,18 @@ imagePullSecrets: []
 labels: {}
 
 ## Additional annotations for all resources
-annotations: {} 
+annotations: {}
+
+## Dataset storage configuration
+dataset:
+  storage:
+    # Enable dataset storage PVCs
+    enabled: false
+    # Storage size for dataset PVCs
+    size: 100Gi
+    # Storage class (empty for default)
+    storageClass: ""
+    # Access control configuration
+    accessControl:
+      # Enable RBAC for dataset access
+      enabled: false 

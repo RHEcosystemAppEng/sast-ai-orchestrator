@@ -1,0 +1,49 @@
+{{- if .Values.dataset.storage.enabled }}
+# Read-Write PVC for authorized dataset administrators
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-dataset-storage-rw
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: dataset-storage
+    access-mode: read-write
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.dataset.storage.size }}
+  {{- if .Values.dataset.storage.storageClass }}
+  storageClassName: {{ .Values.dataset.storage.storageClass }}
+  {{- end }}
+---
+# Read-Only PVC for general dataset access
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-dataset-storage-ro
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: dataset-storage
+    access-mode: read-only
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: {{ .Values.dataset.storage.size }}
+  {{- if .Values.dataset.storage.storageClass }}
+  storageClassName: {{ .Values.dataset.storage.storageClass }}
+  {{- end }}
+{{- end }}

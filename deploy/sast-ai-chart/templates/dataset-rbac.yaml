@@ -1,0 +1,138 @@
+{{- if and .Values.dataset.storage.enabled .Values.dataset.storage.accessControl.enabled }}
+# Dataset Administrator Role - Read-Write access to dataset storage
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-dataset-admin
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: dataset-access-control
+    access-level: admin
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+rules:
+  # Full access to dataset PVCs
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    resourceNames: 
+      - "{{ include "sast-ai.fullname" . }}-dataset-storage-rw"
+      - "{{ include "sast-ai.fullname" . }}-dataset-storage-ro"
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Access to pods that mount dataset storage
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  # Access to configmaps for dataset configuration
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+# Dataset Reader Role - Read-Only access to dataset storage
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-dataset-reader
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: dataset-access-control
+    access-level: reader
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+rules:
+  # Read-only access to dataset PVCs
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    resourceNames: 
+      - "{{ include "sast-ai.fullname" . }}-dataset-storage-ro"
+    verbs: ["get", "list", "watch"]
+  # Read-only access to pods for monitoring
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Read access to dataset configuration
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+# Service Account for Dataset Administrators
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-dataset-admin-sa
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: dataset-access-control
+    access-level: admin
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+---
+# Service Account for Dataset Readers
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-dataset-reader-sa
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: dataset-access-control
+    access-level: reader
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+---
+# RoleBinding for Dataset Administrators
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-dataset-admin-binding
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: dataset-access-control
+    access-level: admin
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "sast-ai.fullname" . }}-dataset-admin
+subjects:
+- kind: ServiceAccount
+  name: {{ include "sast-ai.fullname" . }}-dataset-admin-sa
+  namespace: {{ .Release.Namespace }}
+---
+# RoleBinding for Dataset Readers
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-dataset-reader-binding
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: dataset-access-control
+    access-level: reader
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "sast-ai.fullname" . }}-dataset-reader
+subjects:
+- kind: ServiceAccount
+  name: {{ include "sast-ai.fullname" . }}-dataset-reader-sa
+  namespace: {{ .Release.Namespace }}
+{{- end }}

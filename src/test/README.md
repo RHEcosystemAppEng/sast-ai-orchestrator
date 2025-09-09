@@ -26,6 +26,7 @@ src/test/java/com/redhat/sast/api/
 ### Prerequisites
 - **Docker** must be running (TestContainers automatically creates PostgreSQL containers)
 - **No manual database setup required** - TestContainers handles everything automatically
+- **No Kubernetes cluster required** - Platform services are automatically mocked in test mode
 
 ### Standard approach (works in most cases)
 ```bash
@@ -34,10 +35,6 @@ src/test/java/com/redhat/sast/api/
 
 ### Alternative: Complete build and test pipeline
 ```bash
-# Option 1 (Complete build and test)
-./mvnw clean verify -DskipITs=false
-
-# Option 2 (for faster development iterations)
 ./mvnw clean package -DskipTests
 ./mvnw failsafe:integration-test failsafe:verify -DskipITs=false
 ```
@@ -65,9 +62,17 @@ export TESTCONTAINERS_RYUK_DISABLED=true
 ## Test Configuration
 
 - **Database**: PostgreSQL 15 TestContainer with automatic schema creation
-- **Mocks**: Kubernetes, Tekton, and Platform services are mocked to avoid external dependencies
+- **Platform Mocking**: When `quarkus.profile=test`, all Kubernetes/Tekton operations are automatically bypassed
 - **Profile**: Uses `test` profile with configuration overrides in `TestProfile.java`
 - **Data**: Fresh database created for each test class using `drop-and-create` strategy
+
+### How Mocking Works
+
+The integration tests use a **simple profile-based mocking approach**:
+
+- **PlatformService**: Skips all Kubernetes operations (PVC creation, PipelineRun creation) when `profile=test`
+- **PipelineParameterMapper**: Returns mock LLM credentials instead of reading Kubernetes secrets
+- **No external dependencies**: Tests work regardless of local Kubernetes configuration
 
 ## Test Coverage
 

@@ -30,9 +30,7 @@ public class TestProfile implements QuarkusTestProfile {
 
     @Override
     public Set<Class<?>> getEnabledAlternatives() {
-        return Set.of(
-                com.redhat.sast.api.mock.MockTektonClient.class,
-                com.redhat.sast.api.mock.MockPlatformService.class,
-                com.redhat.sast.api.mock.MockKubernetesResourceManager.class);
+        // Using profile-based mocking
+        return Set.of();
     }
 }

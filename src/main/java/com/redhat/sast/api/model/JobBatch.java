@@ -15,11 +15,12 @@ import lombok.NoArgsConstructor;
 @Table(name = "job_batch")
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = "jobs")
+@EqualsAndHashCode(exclude = {"jobs", "jobBatchExecutionContext", "jobBatchRunDefinition"})
 public class JobBatch {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
     @Column(name = "batch_google_sheet_url", nullable = false)
@@ -52,6 +53,13 @@ public class JobBatch {
 
     @OneToMany(mappedBy = "jobBatch", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Job> jobs;
+
+    @OneToOne(mappedBy = "jobBatch", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private JobBatchExecutionContext jobBatchExecutionContext;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "job_batch_run_definition_id")
+    private JobBatchRunDefinition jobBatchRunDefinition;
 
     @PrePersist
     public void prePersist() {

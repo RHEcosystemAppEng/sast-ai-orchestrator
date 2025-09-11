@@ -14,11 +14,12 @@ import lombok.NoArgsConstructor;
 @Table(name = "job")
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"jobBatch", "jobSettings"})
+@EqualsAndHashCode(exclude = {"jobBatch", "jobSettings", "jobTokenUsage", "jobMetrics"})
 public class Job {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
     @Column(name = "project_name")
@@ -86,6 +87,12 @@ public class Job {
 
     @OneToOne(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private JobSettings jobSettings;
+
+    @OneToOne(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private JobTokenUsage jobTokenUsage;
+
+    @OneToOne(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private JobMetrics jobMetrics;
 
     @PrePersist
     public void prePersist() {

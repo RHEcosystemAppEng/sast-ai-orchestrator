@@ -12,6 +12,7 @@ metadata:
   {{- with (include "sast-ai.annotations" .) }}
   annotations:
     {{- . | nindent 4 }}
+    storage.kubernetes.io/reclaim-policy: "{{ .Values.dataset.storage.reclaimPolicy | default "Retain" }}"
   {{- end }}
 spec:
   accessModes:
@@ -19,9 +20,7 @@ spec:
   resources:
     requests:
       storage: {{ .Values.dataset.storage.size }}
-  {{- if .Values.dataset.storage.storageClass }}
-  storageClassName: {{ .Values.dataset.storage.storageClass }}
-  {{- end }}
+  storageClassName: {{ .Values.dataset.storage.storageClass | default "sast-dataset-storage" }}
 ---
 # Read-Only PVC for general dataset access
 apiVersion: v1
@@ -36,6 +35,7 @@ metadata:
   {{- with (include "sast-ai.annotations" .) }}
   annotations:
     {{- . | nindent 4 }}
+    storage.kubernetes.io/reclaim-policy: "{{ .Values.dataset.storage.reclaimPolicy | default "Retain" }}"
   {{- end }}
 spec:
   accessModes:
@@ -43,7 +43,5 @@ spec:
   resources:
     requests:
       storage: {{ .Values.dataset.storage.size }}
-  {{- if .Values.dataset.storage.storageClass }}
-  storageClassName: {{ .Values.dataset.storage.storageClass }}
-  {{- end }}
+  storageClassName: {{ .Values.dataset.storage.storageClass | default "sast-dataset-storage" }}
 {{- end }}

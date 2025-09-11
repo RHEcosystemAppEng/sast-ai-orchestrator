@@ -244,8 +244,15 @@ dataset:
     enabled: false
     # Storage size for dataset PVCs
     size: 100Gi
-    # Storage class (empty for default)
-    storageClass: ""
+    # Storage class configuration
+    storageClass: "sast-dataset-storage"
+    reclaimPolicy: "Retain"
+    # ReadWriteMany required for multi-pod access (may impact performance)
+    accessMode: "ReadWriteMany"
+    performance:
+      createStorageClass: true
+      provisioner: "kubernetes.io/no-provisioner"
+      # Alternative: "csi-driver" for dynamic provisioning
     # Access control configuration
     accessControl:
       # Enable RBAC for dataset access

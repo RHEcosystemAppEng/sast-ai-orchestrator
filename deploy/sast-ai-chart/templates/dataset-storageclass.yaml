@@ -1,0 +1,94 @@
+{{- if and .Values.dataset.storage.enabled .Values.dataset.storage.performance.createStorageClass }}
+# StorageClass for SAST dataset storage with explicit reclaim policy
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.dataset.storage.storageClass }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: dataset-storage
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+    # Storage policy documentation
+    storage.kubernetes.io/description: "StorageClass for SAST dataset storage with data retention"
+  {{- end }}
+# Provisioner - adjust based on your cluster setup
+provisioner: {{ .Values.dataset.storage.performance.provisioner }}
+# Reclaim policy - CRITICAL for data retention
+reclaimPolicy: {{ .Values.dataset.storage.reclaimPolicy }}
+# Volume binding mode
+volumeBindingMode: {{ .Values.dataset.storage.performance.volumeBindingMode | default "WaitForFirstConsumer" }}
+# Allow volume expansion
+allowVolumeExpansion: {{ .Values.dataset.storage.performance.allowVolumeExpansion | default true }}
+# Parameters for the provisioner
+parameters:
+  # File system type
+  fsType: {{ .Values.dataset.storage.performance.fsType | default "ext4" }}
+  {{- if .Values.dataset.storage.performance.parameters }}
+  {{- toYaml .Values.dataset.storage.performance.parameters | nindent 2 }}
+  {{- end }}
+---
+# Documentation ConfigMap explaining storage considerations
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-storage-docs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: dataset-storage
+    type: documentation
+data:
+  README.md: |
+    # SAST Dataset Storage Configuration
+    
+    ## Critical Storage Settings
+    
+    **Reclaim Policy**: {{ .Values.dataset.storage.reclaimPolicy }}
+    - `Retain`: Data survives PVC deletion (RECOMMENDED for datasets)
+    - `Delete`: Data is destroyed when PVC is deleted (DANGEROUS for datasets)
+    
+    **Access Mode**: {{ .Values.dataset.storage.accessMode }}
+    - `ReadWriteMany`: Multiple pods can read/write (required for SAST workflows)
+    - `ReadWriteOnce`: Single pod access only (better performance, limited use)
+    
+    ## Performance Considerations
+    
+    **Node Locality**: Pods may be scheduled on different nodes than storage
+    - Impact: Network latency for large dataset access
+    - Mitigation: Use node affinity or network-attached storage
+    
+    **Storage Class**: {{ .Values.dataset.storage.storageClass }}
+    - Provisioner: {{ .Values.dataset.storage.performance.provisioner }}
+    - Check cluster storage capabilities before deployment
+    
+    ## Validation Commands
+    
+    ```bash
+    # Check storage class configuration
+    kubectl get storageclass {{ .Values.dataset.storage.storageClass }} -o yaml
+    
+    # Verify reclaim policy
+    kubectl get storageclass -o custom-columns=NAME:.metadata.name,RECLAIM:.reclaimPolicy
+    
+    # Check PVC status
+    kubectl get pvc -l component=dataset-storage
+    
+    # Monitor storage usage
+    kubectl describe pvc {{ include "sast-ai.fullname" . }}-dataset-storage-rw
+    ```
+    
+    ## Backup Strategy
+    
+    With `reclaimPolicy: Retain`, data survives PVC deletion but consider:
+    - CSI snapshots for point-in-time recovery
+    - DVC integration for version control
+    - External backup to S3/Azure/GCS
+    
+    ## Troubleshooting
+    
+    **PVC Pending**: Check storage class exists and provisioner is available
+    **Performance Issues**: Consider node affinity, storage type, and network setup
+    **Data Loss**: With `Retain` policy, manually delete PV after PVC deletion
+{{- end }}

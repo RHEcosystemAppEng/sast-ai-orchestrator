@@ -5,13 +5,13 @@ import com.redhat.sast.api.v1.dto.response.DatasetStorageHealthResponseDto;
 import com.redhat.sast.api.v1.dto.response.DatasetStorageInitializationResponseDto;
 import com.redhat.sast.api.v1.dto.response.ErrorResponseDto;
 
-import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -19,11 +19,11 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Path("/api/v1/dataset-storage")
 @Produces(MediaType.APPLICATION_JSON)
+@RequiredArgsConstructor
 @Slf4j
 public class DatasetStorageResource {
 
-    @Inject
-    DatasetStorageService datasetStorageService;
+    private final DatasetStorageService datasetStorageService;
 
     /**
      * Health check endpoint for dataset storage.

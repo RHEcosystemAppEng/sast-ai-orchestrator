@@ -4,7 +4,7 @@ import com.redhat.sast.api.platform.KubernetesResourceManager;
 import com.redhat.sast.api.v1.dto.response.DatasetStorageHealthResponseDto;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -12,11 +12,11 @@ import lombok.extern.slf4j.Slf4j;
  * Provides high-level operations for dataset storage management.
  */
 @ApplicationScoped
+@RequiredArgsConstructor
 @Slf4j
 public class DatasetStorageService {
 
-    @Inject
-    KubernetesResourceManager kubernetesResourceManager;
+    private final KubernetesResourceManager kubernetesResourceManager;
 
     /**
      * Initializes dataset storage if enabled and not already present.

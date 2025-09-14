@@ -8,7 +8,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "pricing_models")
+@Table(
+        name = "pricing_models",
+        indexes = {@Index(name = "idx_pricing_models_id", columnList = "pricing_model_id")})
 @Data
 @NoArgsConstructor
 public class PricingModel {

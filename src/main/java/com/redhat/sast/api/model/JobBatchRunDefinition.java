@@ -2,7 +2,6 @@ package com.redhat.sast.api.model;
 
 import java.time.LocalDateTime;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -11,17 +10,16 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "job_batch_run_definitions",
-        indexes = {
-            @Index(name = "idx_job_batch_run_def_definition_id", columnList = "definition_id"),
-            @Index(name = "idx_job_batch_run_def_name", columnList = "name"),
-            @Index(name = "idx_job_batch_run_def_version", columnList = "version"),
-            @Index(name = "idx_job_batch_run_def_git_hash", columnList = "git_hash"),
-            @Index(name = "idx_job_batch_run_def_created_at", columnList = "created_at")
-        })
+        indexes = {@Index(name = "idx_job_batch_run_def_id", columnList = "id")})
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(callSuper = true)
-public class JobBatchRunDefinition extends PanacheEntity {
+@EqualsAndHashCode
+public class JobBatchRunDefinition {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
 
     @Column(name = "definition_id", unique = true, nullable = false)
     private String definitionId;

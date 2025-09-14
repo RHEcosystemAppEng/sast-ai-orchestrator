@@ -11,7 +11,9 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "job")
+@Table(
+        name = "job",
+        indexes = {@Index(name = "idx_job_id", columnList = "id")})
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = {"jobBatch", "jobSettings", "jobTokenUsage", "jobMetrics"})

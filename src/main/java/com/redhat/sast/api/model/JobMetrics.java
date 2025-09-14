@@ -11,14 +11,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "job_metrics",
-        indexes = {
-            @Index(name = "idx_job_metrics_package_name", columnList = "package_name"),
-            @Index(name = "idx_job_metrics_precision", columnList = "precision"),
-            @Index(name = "idx_job_metrics_recall", columnList = "recall"),
-            @Index(name = "idx_job_metrics_f1_score", columnList = "f1_score"),
-            @Index(name = "idx_job_metrics_has_ground_truth", columnList = "has_ground_truth"),
-            @Index(name = "idx_job_metrics_created_at", columnList = "created_at")
-        })
+        indexes = {@Index(name = "idx_job_metrics_id", columnList = "id")})
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = "job")

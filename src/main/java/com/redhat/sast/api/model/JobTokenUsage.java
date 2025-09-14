@@ -11,11 +11,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "job_token_usage",
-        indexes = {
-            @Index(name = "idx_job_token_usage_created_at", columnList = "created_at"),
-            @Index(name = "idx_job_token_usage_total_tokens", columnList = "total_tokens"),
-            @Index(name = "idx_job_token_usage_estimated_cost", columnList = "estimated_cost")
-        })
+        indexes = {@Index(name = "idx_job_token_usage_id", columnList = "id")})
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = "job")

@@ -1,6 +1,7 @@
 package com.redhat.sast.api.model;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -9,25 +10,21 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
-        name = "job_batch_data_lineage",
-        indexes = {
-            @Index(name = "idx_job_batch_data_lineage_lineage_id", columnList = "lineage_id"),
-            @Index(name = "idx_job_batch_data_lineage_transformation_type", columnList = "transformation_type"),
-            @Index(name = "idx_job_batch_data_lineage_created_at", columnList = "created_at")
-        })
+        name = "job_batch_data_flow",
+        indexes = {@Index(name = "idx_job_batch_data_flow_id", columnList = "id")})
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = "jobBatch")
-public class JobBatchDataLineage {
+public class JobBatchDataFlow {
 
     @Id
     private Long id; // Shared primary key with JobBatch
 
-    @Column(name = "lineage_id", unique = true, nullable = false)
-    private String lineageId;
+    @Column(name = "flow_id", unique = true, nullable = false)
+    private String flowId;
 
     @Column(name = "input_artifacts", columnDefinition = "jsonb", nullable = false)
-    private String inputArtifacts;
+    private List<String> inputArtifacts;
 
     @Column(name = "transformation_type", length = 100, nullable = false)
     private String transformationType;

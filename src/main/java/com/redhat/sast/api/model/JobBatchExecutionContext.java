@@ -8,10 +8,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "job_batch_execution_context",
-        indexes = {
-            @Index(name = "idx_job_batch_execution_context_environment", columnList = "environment"),
-            @Index(name = "idx_job_batch_execution_context_config_version", columnList = "config_version")
-        })
+        indexes = {@Index(name = "idx_job_batch_execution_context_id", columnList = "id")})
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = {"jobBatch"})

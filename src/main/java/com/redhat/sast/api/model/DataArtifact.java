@@ -2,18 +2,24 @@ package com.redhat.sast.api.model;
 
 import java.time.LocalDateTime;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "data_artifacts")
+@Table(
+        name = "data_artifacts",
+        indexes = {@Index(name = "idx_data_artifacts_id", columnList = "id")})
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(callSuper = true)
-public class DataArtifact extends PanacheEntity {
+@EqualsAndHashCode
+public class DataArtifact {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
 
     @Column(name = "artifact_id", unique = true, nullable = false)
     private String artifactId;

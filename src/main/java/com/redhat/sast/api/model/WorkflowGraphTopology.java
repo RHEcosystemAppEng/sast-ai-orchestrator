@@ -1,6 +1,5 @@
 package com.redhat.sast.api.model;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -12,8 +11,13 @@ import lombok.NoArgsConstructor;
         indexes = {@Index(name = "idx_workflow_graph_topology_topology_id", columnList = "topology_id")})
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(callSuper = true)
-public class WorkflowGraphTopology extends PanacheEntity {
+@EqualsAndHashCode
+public class WorkflowGraphTopology {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
 
     @Column(name = "topology_id", unique = true, nullable = false)
     private Integer topologyId;

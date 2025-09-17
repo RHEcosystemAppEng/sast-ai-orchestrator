@@ -63,7 +63,7 @@ public class JobBatchResource {
     }
 
     @POST
-    @Path("/{batchId}:cancel")
+    @Path("/{batchId}/cancel")
     public Response cancelJobBatch(@PathParam("batchId") Long batchId) {
         try {
             jobBatchService.cancelJobBatch(batchId);

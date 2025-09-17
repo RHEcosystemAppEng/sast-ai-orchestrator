@@ -45,6 +45,8 @@ public class PlatformService {
     private final JobService jobService;
     private final KubernetesResourceManager resourceManager;
     private final PipelineParameterMapper parameterMapper;
+    private final DvcMetadataService dvcMetadataService;
+    private final DataArtifactService dataArtifactService;
 
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
@@ -111,7 +113,14 @@ public class PlatformService {
                 .pipelineRuns()
                 .inNamespace(namespace)
                 .withName(pipelineRunName)
-                .watch(new PipelineRunWatcher(pipelineRunName, jobId, future, jobService, resourceManager))) {
+                .watch(new PipelineRunWatcher(
+                        pipelineRunName,
+                        jobId,
+                        future,
+                        jobService,
+                        resourceManager,
+                        dvcMetadataService,
+                        dataArtifactService))) {
             future.join();
             LOGGER.info("Watcher for PipelineRun {} is closing.", pipelineRunName);
         } catch (Exception e) {

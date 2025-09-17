@@ -32,7 +32,7 @@ public class DvcMetadataService {
      * Looks for task results from the execute-ai-analysis task.
      */
     public void extractAndUpdateDvcMetadata(Long jobId, PipelineRun pipelineRun) {
-        log.debug(
+        LOGGER.debug(
                 "Extracting DVC metadata from PipelineRun: {} for job ID: {}",
                 pipelineRun.getMetadata().getName(),
                 jobId);
@@ -52,7 +52,7 @@ public class DvcMetadataService {
         String dvcIssuesCount = null;
 
         try {
-            log.debug("Extracting DVC metadata from PipelineRun task results");
+            LOGGER.debug("Extracting DVC metadata from PipelineRun task results");
 
             // Extract core DVC metadata (required)
             dvcDataVersion = extractTaskResult(pipelineRun, "dvc-data-version");
@@ -72,7 +72,7 @@ public class DvcMetadataService {
             dvcSastReportPath = extractTaskResult(pipelineRun, "dvc-sast-report-path");
             dvcIssuesCount = extractTaskResult(pipelineRun, "dvc-issues-count");
 
-            log.debug(
+            LOGGER.debug(
                     "Extracted additional DVC metadata - hash: {}, path: {}, type: {}",
                     dvcHash,
                     dvcPath,
@@ -91,7 +91,7 @@ public class DvcMetadataService {
 
             if (dvcPipelineStage == null || dvcPipelineStage.trim().isEmpty()) {
                 dvcPipelineStage = "sast_ai_analysis";
-                log.warn(
+                LOGGER.warn(
                         "Pipeline stage not provided by workflow for job {}, using default: {}",
                         jobId,
                         dvcPipelineStage);
@@ -100,7 +100,7 @@ public class DvcMetadataService {
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Error extracting DVC metadata from PipelineRun task results: {}", e.getMessage(), e);
+            LOGGER.error("Error extracting DVC metadata from PipelineRun task results: {}", e.getMessage(), e);
             throw new IllegalStateException(
                     String.format(
                             "Failed to extract DVC metadata from pipeline results for job %d: %s",
@@ -108,7 +108,7 @@ public class DvcMetadataService {
                     e);
         }
 
-        log.debug(
+        LOGGER.debug(
                 "Extracted DVC metadata for job {}: version={}, commit={}, stage={}",
                 jobId,
                 dvcDataVersion,
@@ -131,7 +131,7 @@ public class DvcMetadataService {
                     dvcSastReportPath,
                     dvcIssuesCount);
         } else {
-            log.warn("Incomplete DVC metadata for job {}, skipping data artifact creation", jobId);
+            LOGGER.warn("Incomplete DVC metadata for job {}, skipping data artifact creation", jobId);
         }
     }
 
@@ -143,7 +143,7 @@ public class DvcMetadataService {
      * @return Map containing all available DVC metadata fields
      */
     public Map<String, String> extractDvcMetadata(PipelineRun pipelineRun) {
-        log.debug(
+        LOGGER.debug(
                 "Extracting comprehensive DVC metadata from PipelineRun: {}",
                 pipelineRun.getMetadata().getName());
 
@@ -165,7 +165,7 @@ public class DvcMetadataService {
         addIfNotEmpty(metadata, "repoUrl", extractTaskResult(pipelineRun, "dvc-repo-url"));
         addIfNotEmpty(metadata, "repoBranch", extractTaskResult(pipelineRun, "dvc-repo-branch"));
 
-        log.debug("Extracted {} DVC metadata fields", metadata.size());
+        LOGGER.debug("Extracted {} DVC metadata fields", metadata.size());
         return metadata;
     }
 
@@ -185,7 +185,7 @@ public class DvcMetadataService {
             String sastReportPath,
             String issuesCount) {
 
-        log.debug("Creating data artifact for job {} with DVC metadata", jobId);
+        LOGGER.debug("Creating data artifact for job {} with DVC metadata", jobId);
 
         try {
             String artifactName = generateArtifactName(jobId, artifactType);
@@ -202,7 +202,7 @@ public class DvcMetadataService {
                 try {
                     metadata.put("issues_count", Integer.parseInt(issuesCount));
                 } catch (NumberFormatException e) {
-                    log.warn("Invalid issues count format: {}, setting to 0", issuesCount);
+                    LOGGER.warn("Invalid issues count format: {}, setting to 0", issuesCount);
                     metadata.put("issues_count", 0);
                 }
             }
@@ -210,7 +210,7 @@ public class DvcMetadataService {
             DataArtifact createdArtifact = dataArtifactService.createDataArtifact(
                     artifactType, artifactName, version, dvcPath, dvcHash, metadata);
 
-            log.debug(
+            LOGGER.debug(
                     "Created data artifact for job {}: {} (ID: {}, type: {}, version: {})",
                     jobId,
                     artifactName,
@@ -219,7 +219,7 @@ public class DvcMetadataService {
                     version);
 
         } catch (Exception e) {
-            log.error("Failed to create data artifact for job {}: {}", jobId, e.getMessage(), e);
+            LOGGER.error("Failed to create data artifact for job {}: {}", jobId, e.getMessage(), e);
         }
     }
 
@@ -250,15 +250,15 @@ public class DvcMetadataService {
                     if (resultName.equals(result.getName())) {
                         var paramValue = result.getValue();
                         String value = paramValue != null ? paramValue.getStringVal() : null;
-                        log.debug("Extracted task result {}: {}", resultName, value);
+                        LOGGER.debug("Extracted task result {}: {}", resultName, value);
                         return value;
                     }
                 }
             }
-            log.warn("Task result '{}' not found in PipelineRun", resultName);
+            LOGGER.warn("Task result '{}' not found in PipelineRun", resultName);
             return null;
         } catch (Exception e) {
-            log.error("Error extracting task result '{}': {}", resultName, e.getMessage(), e);
+            LOGGER.error("Error extracting task result '{}': {}", resultName, e.getMessage(), e);
             return null;
         }
     }

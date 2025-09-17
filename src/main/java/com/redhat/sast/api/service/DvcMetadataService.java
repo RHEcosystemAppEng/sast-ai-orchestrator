@@ -118,18 +118,19 @@ public class DvcMetadataService {
         jobService.updateJobDvcMetadata(jobId, dvcDataVersion, dvcCommitHash, dvcPipelineStage);
 
         if (dvcHash != null && dvcPath != null && dvcArtifactType != null) {
-            DvcArtifactMetadata metadata = new DvcArtifactMetadata(
-                    jobId,
-                    dvcDataVersion,
-                    dvcHash,
-                    dvcPath,
-                    dvcArtifactType,
-                    dvcAnalysisSummary,
-                    dvcRepoUrl,
-                    dvcRepoBranch,
-                    dvcSplitType,
-                    dvcSastReportPath,
-                    dvcIssuesCount);
+            DvcArtifactMetadata metadata = DvcArtifactMetadata.builder()
+                    .jobId(jobId)
+                    .version(dvcDataVersion)
+                    .dvcHash(dvcHash)
+                    .dvcPath(dvcPath)
+                    .artifactType(dvcArtifactType)
+                    .analysisSummary(dvcAnalysisSummary)
+                    .repoUrl(dvcRepoUrl)
+                    .repoBranch(dvcRepoBranch)
+                    .splitType(dvcSplitType)
+                    .sastReportPath(dvcSastReportPath)
+                    .issuesCount(dvcIssuesCount)
+                    .build();
             createDataArtifactFromDvcMetadata(metadata);
         } else {
             LOGGER.warn("Incomplete DVC metadata for job {}, skipping data artifact creation", jobId);

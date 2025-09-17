@@ -42,3 +42,10 @@ jobs:
           target/surefire-reports/
           target/failsafe-reports/
         retention-days: 7
+
+    - name: Report integration test failure
+      if: failure()
+      run: |
+        echo "❌ Integration tests failed!"
+        echo "Check the test reports artifact for detailed failure information."
+        exit 1

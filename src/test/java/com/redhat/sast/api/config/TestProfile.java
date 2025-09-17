@@ -29,7 +29,6 @@ public class TestProfile implements QuarkusTestProfile {
         config.put("quarkus.datasource.username", postgres.getUsername());
         config.put("quarkus.datasource.password", postgres.getPassword());
         config.put("quarkus.hibernate-orm.database.generation", "drop-and-create");
-        config.put("quarkus.hibernate-orm.log.sql", "true");
 
         config.put("sast.ai.workflow.namespace", "test-namespace");
         config.put("google.service.account.secret.path", "/tmp/test-service-account.json");

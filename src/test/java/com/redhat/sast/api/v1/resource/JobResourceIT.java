@@ -12,15 +12,18 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.redhat.sast.api.AbstractIntegrationTest;
 import com.redhat.sast.api.testdata.JobTestDataBuilder;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 
+import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 
+@QuarkusIntegrationTest
+@TestProfile(com.redhat.sast.api.config.TestProfile.class)
 @DisplayName("Job Resource Integration Tests")
-class JobResourceIT extends AbstractIntegrationTest {
+class JobResourceIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JobResourceIT.class);
 

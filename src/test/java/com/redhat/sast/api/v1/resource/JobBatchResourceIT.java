@@ -10,15 +10,18 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.redhat.sast.api.AbstractIntegrationTest;
 import com.redhat.sast.api.testdata.JobBatchTestDataBuilder;
 import com.redhat.sast.api.v1.dto.request.JobBatchSubmissionDto;
 
+import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 
+@QuarkusIntegrationTest
+@TestProfile(com.redhat.sast.api.config.TestProfile.class)
 @DisplayName("Job Batch Resource Integration Tests")
-class JobBatchResourceIT extends AbstractIntegrationTest {
+class JobBatchResourceIT {
 
     @Test
     @DisplayName("Should submit a job batch successfully")

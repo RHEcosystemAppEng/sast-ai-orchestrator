@@ -1,0 +1,46 @@
+name: Integration Tests
+
+on:
+  pull_request:
+    paths:
+      - 'sast-ai-orchestrator/**'
+      - '.github/workflows/integration-tests.yml'
+
+jobs:
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: 21
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Run integration tests
+      run: |
+        cd sast-ai-orchestrator
+        ./mvnw clean verify -Pit
+      env:
+        TESTCONTAINERS_RYUK_DISABLED: true
+
+    - name: Upload test reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-reports
+        path: |
+          sast-ai-orchestrator/target/surefire-reports/
+          sast-ai-orchestrator/target/failsafe-reports/
+        retention-days: 7

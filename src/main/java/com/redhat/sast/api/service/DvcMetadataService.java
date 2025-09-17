@@ -3,11 +3,11 @@ package com.redhat.sast.api.service;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.redhat.sast.api.dto.DvcArtifactMetadata;
 import com.redhat.sast.api.model.DataArtifact;
 
 import io.fabric8.tekton.v1.PipelineRun;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -20,11 +20,11 @@ public class DvcMetadataService {
 
     private final JobService jobService;
 
-    @Inject
-    DataArtifactService dataArtifactService;
+    private final DataArtifactService dataArtifactService;
 
-    public DvcMetadataService(JobService jobService) {
+    public DvcMetadataService(JobService jobService, DataArtifactService dataArtifactService) {
         this.jobService = jobService;
+        this.dataArtifactService = dataArtifactService;
     }
 
     /**
@@ -118,7 +118,7 @@ public class DvcMetadataService {
         jobService.updateJobDvcMetadata(jobId, dvcDataVersion, dvcCommitHash, dvcPipelineStage);
 
         if (dvcHash != null && dvcPath != null && dvcArtifactType != null) {
-            createDataArtifactFromDvcMetadata(
+            DvcArtifactMetadata metadata = new DvcArtifactMetadata(
                     jobId,
                     dvcDataVersion,
                     dvcHash,
@@ -130,6 +130,7 @@ public class DvcMetadataService {
                     dvcSplitType,
                     dvcSastReportPath,
                     dvcIssuesCount);
+            createDataArtifactFromDvcMetadata(metadata);
         } else {
             LOGGER.warn("Incomplete DVC metadata for job {}, skipping data artifact creation", jobId);
         }
@@ -172,61 +173,70 @@ public class DvcMetadataService {
     /**
      * Creates a data artifact using DVC metadata from Python workflow combined with business metadata from Java
      */
-    private void createDataArtifactFromDvcMetadata(
-            Long jobId,
-            String version,
-            String dvcHash,
-            String dvcPath,
-            String artifactType,
-            String analysisSummary,
-            String repoUrl,
-            String repoBranch,
-            String splitType,
-            String sastReportPath,
-            String issuesCount) {
-
-        LOGGER.debug("Creating data artifact for job {} with DVC metadata", jobId);
+    private void createDataArtifactFromDvcMetadata(DvcArtifactMetadata dvcMetadata) {
+        LOGGER.debug("Creating data artifact for job {} with DVC metadata", dvcMetadata.getJobId());
 
         try {
-            String artifactName = generateArtifactName(jobId, artifactType);
-
-            Map<String, Object> metadata = new HashMap<>();
-
-            if (analysisSummary != null) metadata.put("analysis_summary", analysisSummary);
-            if (repoUrl != null) metadata.put("source_code_repo", repoUrl);
-            if (repoBranch != null) metadata.put("repo_branch", repoBranch);
-
-            if (splitType != null) metadata.put("split_type", splitType);
-            if (sastReportPath != null) metadata.put("sast_report_path", sastReportPath);
-            if (issuesCount != null) {
-                try {
-                    metadata.put("issues_count", Integer.parseInt(issuesCount));
-                } catch (NumberFormatException e) {
-                    LOGGER.warn("Invalid issues count format: {}, setting to 0", issuesCount);
-                    metadata.put("issues_count", 0);
-                }
-            }
+            String artifactName = generateArtifactName();
+            Map<String, Object> metadata = buildMetadataMap(dvcMetadata);
 
             DataArtifact createdArtifact = dataArtifactService.createDataArtifact(
-                    artifactType, artifactName, version, dvcPath, dvcHash, metadata);
+                    dvcMetadata.getArtifactType(),
+                    artifactName,
+                    dvcMetadata.getVersion(),
+                    dvcMetadata.getDvcPath(),
+                    dvcMetadata.getDvcHash(),
+                    metadata);
 
             LOGGER.debug(
                     "Created data artifact for job {}: {} (ID: {}, type: {}, version: {})",
-                    jobId,
+                    dvcMetadata.getJobId(),
                     artifactName,
                     createdArtifact.getArtifactId(),
-                    artifactType,
-                    version);
+                    dvcMetadata.getArtifactType(),
+                    dvcMetadata.getVersion());
 
         } catch (Exception e) {
-            LOGGER.error("Failed to create data artifact for job {}: {}", jobId, e.getMessage(), e);
+            LOGGER.error("Failed to create data artifact for job {}: {}", dvcMetadata.getJobId(), e.getMessage(), e);
         }
+    }
+
+    /**
+     * Builds metadata map from DVC artifact metadata
+     */
+    private Map<String, Object> buildMetadataMap(DvcArtifactMetadata dvcMetadata) {
+        Map<String, Object> metadata = new HashMap<>();
+
+        if (dvcMetadata.getAnalysisSummary() != null)
+            metadata.put("analysis_summary", dvcMetadata.getAnalysisSummary());
+        if (dvcMetadata.getRepoUrl() != null) metadata.put("source_code_repo", dvcMetadata.getRepoUrl());
+        if (dvcMetadata.getRepoBranch() != null) metadata.put("repo_branch", dvcMetadata.getRepoBranch());
+        if (dvcMetadata.getSplitType() != null) metadata.put("split_type", dvcMetadata.getSplitType());
+        if (dvcMetadata.getSastReportPath() != null) metadata.put("sast_report_path", dvcMetadata.getSastReportPath());
+
+        metadata.put("issues_count", parseIssuesCount(dvcMetadata.getIssuesCount()));
+
+        return metadata;
+    }
+
+    /**
+     * Parses issues count with error handling
+     */
+    private int parseIssuesCount(String issuesCount) {
+        if (issuesCount != null) {
+            try {
+                return Integer.parseInt(issuesCount);
+            } catch (NumberFormatException e) {
+                LOGGER.warn("Invalid issues count format: {}, setting to 0", issuesCount);
+            }
+        }
+        return 0;
     }
 
     /**
      * Generate artifact name
      */
-    private String generateArtifactName(Long jobId, String artifactType) {
+    private String generateArtifactName() {
         return "default_artifact_name";
     }
 

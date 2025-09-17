@@ -6,13 +6,13 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.redhat.sast.api.exceptions.DataArtifactCreationException;
 import com.redhat.sast.api.model.DataArtifact;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.repository.DataArtifactRepository;
 
 import io.fabric8.tekton.v1.PipelineRun;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,11 +24,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DataArtifactService {
 
-    @Inject
-    DataArtifactRepository dataArtifactRepository;
+    private final DataArtifactRepository dataArtifactRepository;
+    private final ObjectMapper objectMapper;
 
-    @Inject
-    ObjectMapper objectMapper;
+    public DataArtifactService(DataArtifactRepository dataArtifactRepository, ObjectMapper objectMapper) {
+        this.dataArtifactRepository = dataArtifactRepository;
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * Creates a data artifact record for tracking
@@ -57,7 +59,7 @@ public class DataArtifactService {
 
         } catch (JsonProcessingException e) {
             LOGGER.error("Failed to serialize metadata for artifact {}: {}", name, e.getMessage(), e);
-            throw new RuntimeException("Failed to create data artifact", e);
+            throw new DataArtifactCreationException("Failed to create data artifact", e);
         }
     }
 
@@ -78,7 +80,7 @@ public class DataArtifactService {
                         job.getProjectName() + "_source_" + job.getId(),
                         version,
                         job.getPackageSourceCodeUrl(),
-                        calculateHash(job.getPackageSourceCodeUrl()),
+                        calculateHash(),
                         createBasicArtifactMetadata(job, "input"));
             }
 
@@ -87,7 +89,7 @@ public class DataArtifactService {
                     job.getProjectName() + "_report_" + job.getId(),
                     version,
                     "/shared-data/output/sast_ai_output.xlsx",
-                    calculateHash("excel_output"),
+                    calculateHash(),
                     createBasicArtifactMetadata(job, "output"));
 
             LOGGER.debug("Successfully created basic data artifacts for job {}", job.getId());
@@ -125,7 +127,7 @@ public class DataArtifactService {
     /**
      * Calculate simple hash for artifact (basic implementation)
      */
-    private String calculateHash(String identifier) {
+    private String calculateHash() {
         return "sha256:" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
     }
 
@@ -146,12 +148,12 @@ public class DataArtifactService {
      * Metadata structure for data artifacts
      */
     public static class ArtifactMetadata {
-        public String gitCommitHash;
-        public String pipelineStage;
-        public String artifactType;
-        public String projectName;
-        public String projectVersion;
-        public LocalDateTime createdAt;
+        private final String gitCommitHash;
+        private final String pipelineStage;
+        private final String artifactType;
+        private final String projectName;
+        private final String projectVersion;
+        private final LocalDateTime createdAt;
 
         public ArtifactMetadata(
                 String gitCommitHash,
@@ -166,6 +168,30 @@ public class DataArtifactService {
             this.projectName = projectName;
             this.projectVersion = projectVersion;
             this.createdAt = createdAt;
+        }
+
+        public String getGitCommitHash() {
+            return gitCommitHash;
+        }
+
+        public String getPipelineStage() {
+            return pipelineStage;
+        }
+
+        public String getArtifactType() {
+            return artifactType;
+        }
+
+        public String getProjectName() {
+            return projectName;
+        }
+
+        public String getProjectVersion() {
+            return projectVersion;
+        }
+
+        public LocalDateTime getCreatedAt() {
+            return createdAt;
         }
     }
 }

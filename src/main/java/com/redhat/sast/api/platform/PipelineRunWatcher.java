@@ -3,6 +3,8 @@ package com.redhat.sast.api.platform;
 import java.util.concurrent.CompletableFuture;
 
 import com.redhat.sast.api.enums.JobStatus;
+import com.redhat.sast.api.service.DataArtifactService;
+import com.redhat.sast.api.service.DvcMetadataService;
 import com.redhat.sast.api.service.JobService;
 
 import io.fabric8.knative.pkg.apis.Condition;
@@ -27,18 +29,24 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
     private final CompletableFuture<Void> future;
     private final JobService jobService;
     private final KubernetesResourceManager resourceManager;
+    private final DvcMetadataService dvcMetadataService;
+    private final DataArtifactService dataArtifactService;
 
     public PipelineRunWatcher(
             String pipelineRunName,
             long jobId,
             CompletableFuture<Void> future,
             JobService jobService,
-            KubernetesResourceManager resourceManager) {
+            KubernetesResourceManager resourceManager,
+            DvcMetadataService dvcMetadataService,
+            DataArtifactService dataArtifactService) {
         this.pipelineRunName = pipelineRunName;
         this.jobId = jobId;
         this.future = future;
         this.jobService = jobService;
         this.resourceManager = resourceManager;
+        this.dvcMetadataService = dvcMetadataService;
+        this.dataArtifactService = dataArtifactService;
     }
 
     @Override
@@ -53,6 +61,30 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
                 if (SUCCEEDED_CONDITION.equals(condition.getType())) {
                     if (STATUS_TRUE.equalsIgnoreCase(condition.getStatus())) {
                         LOGGER.info("PipelineRun {} succeeded.", pipelineRunName);
+
+                        try {
+                            dvcMetadataService.extractAndUpdateDvcMetadata(jobId, resource);
+                            LOGGER.debug("DVC metadata successfully extracted for job {}", jobId);
+                        } catch (Exception e) {
+                            LOGGER.error(
+                                    "Failed to extract DVC metadata for job {}, but job will still be marked as completed",
+                                    jobId,
+                                    e);
+                        }
+
+                        try {
+                            var job = jobService.getJobEntityById(jobId);
+                            if (job != null) {
+                                dataArtifactService.createJobExecutionArtifacts(job, resource);
+                                LOGGER.debug("Data artifacts successfully created for job {}", jobId);
+                            }
+                        } catch (Exception e) {
+                            LOGGER.error(
+                                    "Failed to create data artifacts for job {}, but job will still be marked as completed",
+                                    jobId,
+                                    e);
+                        }
+
                         jobService.updateJobStatus(jobId, JobStatus.COMPLETED);
                         future.complete(null);
                         return;

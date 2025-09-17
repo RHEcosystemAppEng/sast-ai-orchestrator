@@ -29,9 +29,7 @@ jobs:
         restore-keys: ${{ runner.os }}-m2
 
     - name: Run integration tests
-      run: |
-        cd sast-ai-orchestrator
-        ./mvnw clean verify -Pit
+      run: ./mvnw clean verify -Pit
       env:
         TESTCONTAINERS_RYUK_DISABLED: true
 
@@ -41,6 +39,6 @@ jobs:
       with:
         name: test-reports
         path: |
-          sast-ai-orchestrator/target/surefire-reports/
-          sast-ai-orchestrator/target/failsafe-reports/
+          target/surefire-reports/
+          target/failsafe-reports/
         retention-days: 7

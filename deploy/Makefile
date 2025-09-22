@@ -1,10 +1,13 @@
-NAMESPACE ?= sast-ai-workflow
+# Detect OpenShift vs Kubernetes
+KUBECTL_CMD := $(shell command -v oc 2>/dev/null || echo kubectl)
+
+# Get current namespace from kubectl/oc, fallback to sast-ai-workflow
+CURRENT_NAMESPACE := $(shell $(KUBECTL_CMD) config view --minify --output 'jsonpath={..namespace}' 2>/dev/null)
+NAMESPACE ?= $(if $(CURRENT_NAMESPACE),$(CURRENT_NAMESPACE),sast-ai-workflow)
+
 RELEASE_NAME ?= sast-ai-orchestrator
 CHART_PATH ?= ./sast-ai-chart
 HELM_TIMEOUT ?= 300s
-
-# Detect OpenShift vs Kubernetes
-KUBECTL_CMD := $(shell command -v oc 2>/dev/null || echo kubectl)
 
 .DEFAULT_GOAL := help
 

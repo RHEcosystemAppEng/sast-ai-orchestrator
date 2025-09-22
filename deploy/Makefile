@@ -1,10 +1,13 @@
-NAMESPACE ?= sast-ai-workflow
+# Detect OpenShift vs Kubernetes
+KUBECTL_CMD := $(shell command -v oc 2>/dev/null || echo kubectl)
+
+# Get current namespace from kubectl/oc, fallback to sast-ai-workflow
+CURRENT_NAMESPACE := $(shell $(KUBECTL_CMD) config view --minify --output 'jsonpath={..namespace}' 2>/dev/null)
+NAMESPACE ?= $(if $(CURRENT_NAMESPACE),$(CURRENT_NAMESPACE),sast-ai-workflow)
+
 RELEASE_NAME ?= sast-ai-orchestrator
 CHART_PATH ?= ./sast-ai-chart
 HELM_TIMEOUT ?= 300s
-
-# Detect OpenShift vs Kubernetes
-KUBECTL_CMD := $(shell command -v oc 2>/dev/null || echo kubectl)
 
 .DEFAULT_GOAL := help
 
@@ -65,8 +68,20 @@ wait: ## Wait for deployment to be ready
 	@echo ""
 	@echo "SAST AI is now fully ready to use!"
 	@if [ "$(KUBECTL_CMD)" = "oc" ]; then \
-		echo "Access URL:"; \
-		$(KUBECTL_CMD) get route $(RELEASE_NAME) -n $(NAMESPACE) -o jsonpath='{.spec.host}' 2>/dev/null && echo "" || echo "No route found"; \
+		echo ""; \
+		echo "=== ACCESS INFORMATION ==="; \
+		ROUTE_HOST=$$($(KUBECTL_CMD) get route $(RELEASE_NAME) -n $(NAMESPACE) -o jsonpath='{.spec.host}' 2>/dev/null); \
+		if [ -n "$$ROUTE_HOST" ]; then \
+			ROUTE_TLS=$$($(KUBECTL_CMD) get route $(RELEASE_NAME) -n $(NAMESPACE) -o jsonpath='{.spec.tls}' 2>/dev/null); \
+			if [ -n "$$ROUTE_TLS" ]; then \
+				echo "🌐 Application URL: https://$$ROUTE_HOST"; \
+			else \
+				echo "🌐 Application URL: http://$$ROUTE_HOST"; \
+			fi; \
+		else \
+			echo "⚠️  No route found. Check route configuration."; \
+		fi; \
+		echo "=========================="; \
 	fi
 
 .PHONY: dry-run

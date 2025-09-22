@@ -36,9 +36,9 @@ public class PlatformService {
     private static final String GOOGLE_SA_JSON_WORKSPACE = "google-sa-json-ws";
 
     // Secret names
-    private static final String GITLAB_TOKEN_SECRET = "gitlab-token-secret";
+    private static final String GITLAB_TOKEN_SECRET = "sast-ai-gitlab-token";
     private static final String DEFAULT_LLM_SECRET = "sast-ai-default-llm-creds";
-    private static final String GOOGLE_SA_SECRET = "google-service-account-secret";
+    private static final String GOOGLE_SA_SECRET = "sast-ai-google-service-account";
 
     private final TektonClient tektonClient;
     private final ManagedExecutor managedExecutor;

@@ -1,5 +1,5 @@
 NAMESPACE ?= sast-ai-workflow
-RELEASE_NAME ?= sast-ai
+RELEASE_NAME ?= sast-ai-orchestrator
 CHART_PATH ?= ./sast-ai-chart
 HELM_TIMEOUT ?= 300s
 

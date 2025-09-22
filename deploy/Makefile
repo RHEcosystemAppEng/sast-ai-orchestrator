@@ -68,8 +68,20 @@ wait: ## Wait for deployment to be ready
 	@echo ""
 	@echo "SAST AI is now fully ready to use!"
 	@if [ "$(KUBECTL_CMD)" = "oc" ]; then \
-		echo "Access URL:"; \
-		$(KUBECTL_CMD) get route $(RELEASE_NAME) -n $(NAMESPACE) -o jsonpath='{.spec.host}' 2>/dev/null && echo "" || echo "No route found"; \
+		echo ""; \
+		echo "=== ACCESS INFORMATION ==="; \
+		ROUTE_HOST=$$($(KUBECTL_CMD) get route $(RELEASE_NAME) -n $(NAMESPACE) -o jsonpath='{.spec.host}' 2>/dev/null); \
+		if [ -n "$$ROUTE_HOST" ]; then \
+			ROUTE_TLS=$$($(KUBECTL_CMD) get route $(RELEASE_NAME) -n $(NAMESPACE) -o jsonpath='{.spec.tls}' 2>/dev/null); \
+			if [ -n "$$ROUTE_TLS" ]; then \
+				echo "🌐 Application URL: https://$$ROUTE_HOST"; \
+			else \
+				echo "🌐 Application URL: http://$$ROUTE_HOST"; \
+			fi; \
+		else \
+			echo "⚠️  No route found. Check route configuration."; \
+		fi; \
+		echo "=========================="; \
 	fi
 
 .PHONY: dry-run

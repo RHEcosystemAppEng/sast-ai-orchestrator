@@ -6,7 +6,9 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "job_settings")
+@Table(
+        name = "job_settings",
+        indexes = {@Index(name = "idx_job_settings_id", columnList = "id")})
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = "job")

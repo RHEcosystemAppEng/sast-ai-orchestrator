@@ -71,24 +71,43 @@ jobs:
     - name: Image digest
       run: echo ${{ steps.build.outputs.digest }}
 
-    - name: Update Helm chart with release version
+    - name: Update versions with release tag
       run: |
-        # Extract the release tag
+        # Extract the release tag and remove 'v' prefix for Maven/Helm
         RELEASE_TAG="${{ github.event.release.tag_name }}"
-        echo "Release tag: $RELEASE_TAG"
-        
-        # Update the values.yaml file with the release tag
+        POM_VERSION="${RELEASE_TAG#v}"  # Remove 'v' prefix
+        echo "GitHub release tag: $RELEASE_TAG"
+        echo "Maven/Helm version: $POM_VERSION"
+
+        # Update pom.xml version (without 'v' prefix)
+        ./mvnw versions:set -DnewVersion=$POM_VERSION -DgenerateBackupPoms=false
+
+        # Update Helm values.yaml with full release tag (with 'v')
         sed -i "s/tag: \".*\"/tag: \"$RELEASE_TAG\"/" deploy/sast-ai-chart/values.yaml
-        
-        # Also update the chart version to match the release
-        sed -i "s/version: .*/version: $RELEASE_TAG/" deploy/sast-ai-chart/Chart.yaml
-        sed -i "s/appVersion: .*/appVersion: $RELEASE_TAG/" deploy/sast-ai-chart/Chart.yaml
-        
+
+        # Update Helm Chart.yaml versions (without 'v' prefix)
+        sed -i "s/version: .*/version: $POM_VERSION/" deploy/sast-ai-chart/Chart.yaml
+        sed -i "s/appVersion: .*/appVersion: $POM_VERSION/" deploy/sast-ai-chart/Chart.yaml
+
         # Verify the changes
+        echo "Updated pom.xml version:"
+        ./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout
         echo "Updated values.yaml:"
         grep -A 5 -B 5 "tag:" deploy/sast-ai-chart/values.yaml
         echo "Updated Chart.yaml:"
         grep -E "(version|appVersion):" deploy/sast-ai-chart/Chart.yaml
+
+    - name: Commit version updates
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add pom.xml deploy/sast-ai-chart/values.yaml deploy/sast-ai-chart/Chart.yaml
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Update versions to ${{ github.event.release.tag_name }}"
+          git push
+        fi
 
 
     - name: Update release with container info

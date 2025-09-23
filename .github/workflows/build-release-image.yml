@@ -18,6 +18,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
 
     - name: Set up JDK 21
       uses: actions/setup-java@v5
@@ -105,8 +108,14 @@ jobs:
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else
+          # Switch to the default branch first
+          DEFAULT_BRANCH=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
+          git checkout $DEFAULT_BRANCH
+          git pull origin $DEFAULT_BRANCH
+          # Re-add and commit the changes
+          git add pom.xml deploy/sast-ai-chart/values.yaml deploy/sast-ai-chart/Chart.yaml
           git commit -m "Update versions to ${{ github.event.release.tag_name }}"
-          git push
+          git push origin $DEFAULT_BRANCH
         fi
 
 

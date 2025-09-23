@@ -27,7 +27,15 @@ deploy: ## Deploy SAST AI to the cluster
 		--timeout=$(HELM_TIMEOUT) \
 		--set app.env.SAST_AI_WORKFLOW_NAMESPACE=$(NAMESPACE)
 	@echo "Deployment completed!"
-	@$(MAKE) wait
+	@$(MAKE) wait-pods
+	@echo "Checking for ArgoCD availability..."
+	@if $(KUBECTL_CMD) get crd applications.argoproj.io >/dev/null 2>&1; then \
+		echo "ArgoCD detected! Creating ArgoCD Application..."; \
+		$(MAKE) argocd; \
+	else \
+		echo "ArgoCD not available in cluster, skipping ArgoCD Application creation."; \
+	fi
+	@$(MAKE) show-access
 
 .PHONY: upgrade
 upgrade: ## Upgrade existing deployment
@@ -55,9 +63,23 @@ clean: ## Remove the deployment
 	else \
 		echo "Release '$(RELEASE_NAME)' not found in namespace '$(NAMESPACE)'"; \
 	fi
+	@echo "Checking for ArgoCD Application..."
+	@if $(KUBECTL_CMD) get crd applications.argoproj.io >/dev/null 2>&1; then \
+		if $(KUBECTL_CMD) get application $(RELEASE_NAME)-syncer -n $(NAMESPACE) >/dev/null 2>&1; then \
+			echo "Removing ArgoCD Application..."; \
+			echo "Removing finalizers to prevent hanging..."; \
+			$(KUBECTL_CMD) patch application $(RELEASE_NAME)-syncer -n $(NAMESPACE) --type='merge' -p='{"metadata":{"finalizers":[]}}' 2>/dev/null || true; \
+			$(KUBECTL_CMD) delete application $(RELEASE_NAME)-syncer -n $(NAMESPACE) --ignore-not-found=true; \
+			echo "ArgoCD Application removed!"; \
+		else \
+			echo "ArgoCD Application '$(RELEASE_NAME)-syncer' not found in namespace '$(NAMESPACE)'"; \
+		fi; \
+	else \
+		echo "ArgoCD not available in cluster, skipping ArgoCD Application removal."; \
+	fi
 
-.PHONY: wait
-wait: ## Wait for deployment to be ready
+.PHONY: wait-pods
+wait-pods: ## Wait for pods to be ready
 	@echo "Waiting for SAST AI to be ready..."
 	@echo "Checking PostgreSQL database..."
 	@$(KUBECTL_CMD) wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n $(NAMESPACE) --timeout=300s
@@ -65,9 +87,12 @@ wait: ## Wait for deployment to be ready
 	@echo "Checking SAST AI application..."
 	@$(KUBECTL_CMD) wait --for=condition=ready pod -l app.kubernetes.io/name=sast-ai -n $(NAMESPACE) --timeout=300s
 	@echo "Application is ready!"
+
+.PHONY: show-access
+show-access: ## Show access information
 	@echo ""
 	@echo "SAST AI is now fully ready to use!"
-	@if [ "$(KUBECTL_CMD)" = "oc" ]; then \
+	@if [[ "$(KUBECTL_CMD)" == *"oc" ]]; then \
 		echo ""; \
 		echo "=== ACCESS INFORMATION ==="; \
 		ROUTE_HOST=$$($(KUBECTL_CMD) get route $(RELEASE_NAME) -n $(NAMESPACE) -o jsonpath='{.spec.host}' 2>/dev/null); \
@@ -83,6 +108,9 @@ wait: ## Wait for deployment to be ready
 		fi; \
 		echo "=========================="; \
 	fi
+
+.PHONY: wait
+wait: wait-pods show-access ## Wait for deployment to be ready and show access info
 
 .PHONY: dry-run
 dry-run: ## Show what would be deployed (dry run)
@@ -107,6 +135,12 @@ lint: ## Lint the Helm chart
 	@echo "Linting Helm chart"
 	@helm lint $(CHART_PATH)
 
+.PHONY: argocd
+argocd: ## Deploy ArgoCD Application to current namespace
+	@echo "Deploying ArgoCD Application..."
+	@NAMESPACE=$(NAMESPACE) envsubst < ./argocd/application.yaml | $(KUBECTL_CMD) apply -f -
+	@echo "ArgoCD Application deployed to namespace: $(NAMESPACE)"
+
 .PHONY: help
 help: ## Show this help message
 	@echo "SAST AI Deployment Helper"
@@ -114,5 +148,5 @@ help: ## Show this help message
 	@echo "  make deploy              # Deploy and wait until ready (sast-ai-workflow)"
 	@echo "  make upgrade             # Upgrade and wait until ready"
 	@echo "  make clean               # Remove deployment"
+	@echo "  make argocd              # Deploy ArgoCD Application"
 	@echo ""
-

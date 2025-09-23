@@ -1,15 +1,54 @@
 version: 2
 updates:
-  # Enable version updates for Maven
+  # Maven dependencies - security and major updates only
   - package-ecosystem: "maven"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    
-  # Enable version updates for GitHub Actions
+      interval: "monthly"  # Less frequent checks
+    open-pull-requests-limit: 5  # Fewer concurrent PRs
+    # Only create PRs for security updates and major version updates
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+    # Group non-security updates to reduce PR noise
+    groups:
+      production-dependencies:
+        patterns:
+          - "io.quarkus*"
+          - "org.postgresql*"
+          - "org.hibernate*"
+          - "com.fasterxml.jackson*"
+        update-types:
+          - "major"
+      test-dependencies:
+        patterns:
+          - "*junit*"
+          - "*mockito*"
+          - "*testcontainers*"
+        update-types:
+          - "major"
+    # Only allow security updates for patch/minor versions
+    allow:
+      - dependency-type: "all"
+        update-types: ["security"]
+      - dependency-type: "direct"
+        update-types: ["major"]
+
+  # GitHub Actions - security and major updates only
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5 
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    # Group all action updates together
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+          - "minor"
+    # Only major versions and security updates
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]

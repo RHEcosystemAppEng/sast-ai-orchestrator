@@ -10,7 +10,7 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]
-    # Group non-security updates to reduce PR noise
+    # Group production dependencies for major updates
     groups:
       production-dependencies:
         patterns:
@@ -27,12 +27,6 @@ updates:
           - "*testcontainers*"
         update-types:
           - "major"
-    # Only allow security updates for patch/minor versions
-    allow:
-      - dependency-type: "all"
-        update-types: ["security"]
-      - dependency-type: "direct"
-        update-types: ["major"]
 
   # GitHub Actions - security and major updates only
   - package-ecosystem: "github-actions"

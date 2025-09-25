@@ -58,6 +58,48 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+            {{- if .Values.minio.enabled }}
+            - name: STORAGE_TYPE
+              value: "s3"
+            - name: S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sast-ai.fullname" . }}-minio-client-credentials
+                  key: S3_ENDPOINT
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sast-ai.fullname" . }}-minio-client-credentials
+                  key: S3_ACCESS_KEY
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sast-ai.fullname" . }}-minio-client-credentials
+                  key: S3_SECRET_KEY
+            - name: S3_BUCKET_DATASETS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sast-ai.fullname" . }}-minio-client-credentials
+                  key: S3_BUCKET_DATASETS
+            - name: S3_BUCKET_TEMP
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sast-ai.fullname" . }}-minio-client-credentials
+                  key: S3_BUCKET_TEMP
+            - name: S3_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sast-ai.fullname" . }}-minio-client-credentials
+                  key: S3_REGION
+            - name: S3_USE_SSL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sast-ai.fullname" . }}-minio-client-credentials
+                  key: S3_USE_SSL
+            {{- else }}
+            - name: STORAGE_TYPE
+              value: "filesystem"
+            {{- end }}
           {{- if .Values.app.livenessProbe }}
           livenessProbe:
             {{- toYaml .Values.app.livenessProbe | nindent 12 }}

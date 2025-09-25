@@ -27,6 +27,8 @@ public class KubernetesResourceManager {
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
+    private static final String STORAGE_REQUEST_KEY = "storage";
+
     /**
      * AutoCloseable wrapper for PVC resources to ensure cleanup in case of failures
      */
@@ -75,7 +77,7 @@ public class KubernetesResourceManager {
                     .withNewSpec()
                     .withAccessModes("ReadWriteOnce")
                     .withNewResources()
-                    .addToRequests("storage", new Quantity(size))
+                    .addToRequests(STORAGE_REQUEST_KEY, new Quantity(size))
                     .endResources()
                     .endSpec()
                     .build();

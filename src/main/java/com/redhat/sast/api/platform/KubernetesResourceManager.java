@@ -27,6 +27,16 @@ public class KubernetesResourceManager {
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
+    @ConfigProperty(name = "sast.ai.dataset.storage.size", defaultValue = "100Gi")
+    String datasetStorageSize;
+
+    @ConfigProperty(name = "sast.ai.dataset.storage.enabled", defaultValue = "false")
+    boolean datasetStorageEnabled;
+
+    private static final String STORAGE_REQUEST_KEY = "storage";
+    private static final String DATASET_STORAGE_RW_PVC_NAME = "sast-ai-dataset-storage-rw";
+    private static final String DATASET_STORAGE_RO_PVC_NAME = "sast-ai-dataset-storage-ro";
+
     /**
      * AutoCloseable wrapper for PVC resources to ensure cleanup in case of failures
      */
@@ -75,7 +85,7 @@ public class KubernetesResourceManager {
                     .withNewSpec()
                     .withAccessModes("ReadWriteOnce")
                     .withNewResources()
-                    .addToRequests("storage", new Quantity(size))
+                    .addToRequests(STORAGE_REQUEST_KEY, new Quantity(size))
                     .endResources()
                     .endSpec()
                     .build();
@@ -162,6 +172,143 @@ public class KubernetesResourceManager {
             }
         } catch (Exception e) {
             LOGGER.error("Failed to delete PipelineRun: {}", pipelineRunName, e);
+        }
+    }
+
+    /**
+     * Creates dataset storage PVCs with appropriate access modes.
+     * This method creates both read-write and read-only PVCs for dataset management.
+     *
+     * @return true if dataset PVCs were created successfully
+     */
+    public boolean createDatasetStoragePVCs() {
+        if (!datasetStorageEnabled) {
+            LOGGER.info("Dataset storage is disabled, skipping PVC creation");
+            return false;
+        }
+
+        try {
+            KubernetesClient k8sClient = tektonClient.adapt(KubernetesClient.class);
+
+            // Create read-write PVC for dataset administrators
+            String rwPvcName = DATASET_STORAGE_RW_PVC_NAME;
+            PersistentVolumeClaim rwPvc = new PersistentVolumeClaimBuilder()
+                    .withNewMetadata()
+                    .withName(rwPvcName)
+                    .withNamespace(namespace)
+                    .addToLabels("component", "dataset-storage")
+                    .addToLabels("access-mode", "read-write")
+                    .endMetadata()
+                    .withNewSpec()
+                    .withAccessModes("ReadWriteMany")
+                    .withNewResources()
+                    .addToRequests(STORAGE_REQUEST_KEY, new Quantity(datasetStorageSize))
+                    .endResources()
+                    .endSpec()
+                    .build();
+
+            // Create read-only PVC for general dataset access
+            String roPvcName = DATASET_STORAGE_RO_PVC_NAME;
+            PersistentVolumeClaim roPvc = new PersistentVolumeClaimBuilder()
+                    .withNewMetadata()
+                    .withName(roPvcName)
+                    .withNamespace(namespace)
+                    .addToLabels("component", "dataset-storage")
+                    .addToLabels("access-mode", "read-only")
+                    .endMetadata()
+                    .withNewSpec()
+                    .withAccessModes("ReadOnlyMany")
+                    .withNewResources()
+                    .addToRequests(STORAGE_REQUEST_KEY, new Quantity(datasetStorageSize))
+                    .endResources()
+                    .endSpec()
+                    .build();
+
+            k8sClient
+                    .persistentVolumeClaims()
+                    .inNamespace(namespace)
+                    .resource(rwPvc)
+                    .create();
+            k8sClient
+                    .persistentVolumeClaims()
+                    .inNamespace(namespace)
+                    .resource(roPvc)
+                    .create();
+
+            LOGGER.debug(
+                    "Successfully created dataset storage PVCs: {} and {} with size: {}",
+                    rwPvcName,
+                    roPvcName,
+                    datasetStorageSize);
+            return true;
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to create dataset storage PVCs", e);
+            return false;
+        }
+    }
+
+    /**
+     * Checks if dataset storage PVCs exist and are ready.
+     *
+     * @return true if both dataset PVCs exist and are bound
+     */
+    public boolean isDatasetStorageReady() {
+        if (!datasetStorageEnabled) {
+            return false;
+        }
+
+        try {
+            KubernetesClient k8sClient = tektonClient.adapt(KubernetesClient.class);
+
+            PersistentVolumeClaim rwPvc = k8sClient
+                    .persistentVolumeClaims()
+                    .inNamespace(namespace)
+                    .withName(DATASET_STORAGE_RW_PVC_NAME)
+                    .get();
+
+            PersistentVolumeClaim roPvc = k8sClient
+                    .persistentVolumeClaims()
+                    .inNamespace(namespace)
+                    .withName(DATASET_STORAGE_RO_PVC_NAME)
+                    .get();
+
+            boolean rwReady = rwPvc != null && "Bound".equals(rwPvc.getStatus().getPhase());
+            boolean roReady = roPvc != null && "Bound".equals(roPvc.getStatus().getPhase());
+
+            LOGGER.debug("Dataset storage readiness - RW PVC: {}, RO PVC: {}", rwReady, roReady);
+            return rwReady && roReady;
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to check dataset storage readiness", e);
+            return false;
+        }
+    }
+
+    /**
+     * Deletes dataset storage PVCs.
+     * Use with caution as this will remove all dataset storage.
+     */
+    public void deleteDatasetStoragePVCs() {
+        try {
+            KubernetesClient k8sClient = tektonClient.adapt(KubernetesClient.class);
+
+            k8sClient
+                    .persistentVolumeClaims()
+                    .inNamespace(namespace)
+                    .withName(DATASET_STORAGE_RW_PVC_NAME)
+                    .delete();
+
+            k8sClient
+                    .persistentVolumeClaims()
+                    .inNamespace(namespace)
+                    .withName(DATASET_STORAGE_RO_PVC_NAME)
+                    .delete();
+
+            LOGGER.info("Deleted dataset storage PVCs");
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to delete dataset storage PVCs", e);
         }
     }
 

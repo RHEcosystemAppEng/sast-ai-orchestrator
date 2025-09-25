@@ -22,9 +22,14 @@ public class FilesystemStorageProvider implements StorageProvider {
 
     private static final Logger LOG = Logger.getLogger(FilesystemStorageProvider.class);
 
+    private final String baseStoragePath;
+
     @Inject
-    @ConfigProperty(name = "sast.ai.storage.filesystem.base-path", defaultValue = "/tmp/sast-ai-storage")
-    String baseStoragePath;
+    public FilesystemStorageProvider(
+            @ConfigProperty(name = "sast.ai.storage.filesystem.base-path", defaultValue = "/tmp/sast-ai-storage")
+                    String baseStoragePath) {
+        this.baseStoragePath = baseStoragePath;
+    }
 
     @Override
     public CompletionStage<Boolean> isHealthy() {
@@ -52,17 +57,20 @@ public class FilesystemStorageProvider implements StorageProvider {
 
     @Override
     public CompletionStage<Void> createBucketIfNotExists(String bucketName) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                Path bucketPath = Paths.get(baseStoragePath, bucketName);
-                if (!Files.exists(bucketPath)) {
+        return bucketExists(bucketName).thenCompose(exists -> {
+            if (Boolean.TRUE.equals(exists)) {
+                return CompletableFuture.completedFuture(null);
+            }
+            return CompletableFuture.runAsync(() -> {
+                try {
+                    Path bucketPath = Paths.get(baseStoragePath, bucketName);
                     Files.createDirectories(bucketPath);
                     LOG.infof("Created filesystem directory: %s", bucketPath);
+                } catch (IOException e) {
+                    LOG.errorf("Failed to create filesystem directory for bucket: %s", bucketName, e);
+                    throw new RuntimeException("Failed to create filesystem directory: " + bucketName, e);
                 }
-            } catch (IOException e) {
-                LOG.errorf("Failed to create filesystem directory for bucket: %s", bucketName, e);
-                throw new RuntimeException("Failed to create filesystem directory: " + bucketName, e);
-            }
+            });
         });
     }
 

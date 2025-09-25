@@ -1,13 +1,13 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: sast-ai
-  namespace: sast-ai
+  name: sast-ai-orchestrator-syncer
+  namespace: $NAMESPACE
   labels:
-    app.kubernetes.io/name: sast-ai
+    app.kubernetes.io/name: sast-ai-orchestrator-syncer
     app.kubernetes.io/part-of: sast-ai
   finalizers:
-    - resources-finalizer.argocd.argoproj.io
+    - resources-finalizer.argocd.argoproj.io/background
 spec:
   project: default
   source:
@@ -19,7 +19,7 @@ spec:
         - values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: sast-ai
+    namespace: $NAMESPACE
   syncPolicy:
     automated:
       prune: true

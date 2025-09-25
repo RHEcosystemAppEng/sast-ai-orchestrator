@@ -127,7 +127,7 @@ spec:
         {{- end }}
         - name: google-service-account-secret
           secret:
-            secretName: google-service-account-secret
+            secretName: sast-ai-google-service-account
       {{- with .Values.app.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

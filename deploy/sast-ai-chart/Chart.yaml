@@ -2,8 +2,8 @@ apiVersion: v2
 name: sast-ai
 description: A Helm chart for SAST AI - Static Application Security Testing with AI
 type: application
-version: 1.0.0
-appVersion: "1.0.0-SNAPSHOT"
+version: 1.0.1
+appVersion: 1.0.1
 keywords:
   - sast
   - security
@@ -19,7 +19,7 @@ maintainers:
     email: sast-ai@redhat.com
 dependencies:
   - name: postgresql
-    version: "15.5.23"
+    version: 1.0.1
     repository: "https://charts.bitnami.com/bitnami"
     condition: postgresql.enabled
 annotations:

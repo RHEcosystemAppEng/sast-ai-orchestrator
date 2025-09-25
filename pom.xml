@@ -105,6 +105,12 @@
             <artifactId>google-auth-library-oauth2-http</artifactId>
             <version>1.37.1</version>
         </dependency>
+        <!-- MinIO S3 client dependency -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>8.5.17</version>
+        </dependency>
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>

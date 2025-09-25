@@ -9,7 +9,7 @@ app:
     repository: quay.io/ecosystem-appeng/sast-ai-orchestrator
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "main-de9cc6a"
+    tag: "main-6afff6a"
   
   # Number of replicas
   replicas: 1
@@ -197,10 +197,25 @@ configMap:
       
       # SAST AI configuration
       sast.ai.workflow.namespace=${SAST_AI_WORKFLOW_NAMESPACE}
-      
+
+      # Storage configuration
+      sast.ai.storage.type=${STORAGE_TYPE:filesystem}
+
+      # Filesystem storage configuration
+      sast.ai.storage.filesystem.base-path=${FILESYSTEM_BASE_PATH:/tmp/sast-ai-storage}
+
+      # MinIO S3 Storage configuration
+      sast.ai.storage.s3.endpoint=${S3_ENDPOINT}
+      sast.ai.storage.s3.access-key=${S3_ACCESS_KEY}
+      sast.ai.storage.s3.secret-key=${S3_SECRET_KEY}
+      sast.ai.storage.s3.bucket.datasets=${S3_BUCKET_DATASETS}
+      sast.ai.storage.s3.bucket.temp=${S3_BUCKET_TEMP}
+      sast.ai.storage.s3.region=${S3_REGION:us-east-1}
+      sast.ai.storage.s3.use-ssl=${S3_USE_SSL:false}
+
       # Kubernetes client configuration
       quarkus.kubernetes-client.trust-certs=${QUARKUS_KUBERNETES_CLIENT_TRUST_CERTS}
-      
+
       # Logging configuration
       quarkus.log.category."org.jboss.logging".level=${QUARKUS_LOG_LEVEL}
 
@@ -235,4 +250,59 @@ imagePullSecrets: []
 labels: {}
 
 ## Additional annotations for all resources
-annotations: {} 
+annotations: {}
+
+
+## MinIO configuration for S3-compatible dataset storage
+minio:
+  # Enable MinIO tenant deployment
+  enabled: false
+
+  # MinIO server configuration
+  servers: 4
+  volumesPerServer: 1
+
+  # MinIO image configuration
+  image:
+    repository: minio/minio
+    tag: RELEASE.2025-09-07T16-13-09Z
+
+  # MinIO Console configuration
+  console:
+    image:
+      repository: minio/console
+      tag: v2.0.4
+
+  # Storage configuration
+  storage:
+    size: 10Gi
+    storageClass: ""  # Use default storage class
+
+  # Resource limits
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+
+  # MinIO configuration
+  config:
+    additionalEnv: {}
+
+  # Bucket configuration
+  buckets:
+    # Main dataset bucket
+    datasets: "sast-datasets"
+    # Temporary processing bucket
+    temp: "sast-temp"
+
+  # Access credentials (auto-generated if not provided)
+  credentials:
+    # Root user credentials
+    rootUser: ""
+    rootPassword: ""
+    # Console credentials
+    consoleUser: ""
+    consolePassword: "" 

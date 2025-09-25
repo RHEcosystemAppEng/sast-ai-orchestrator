@@ -1,0 +1,94 @@
+{{- if .Values.minio.enabled }}
+# MinIO ObjectStore for SAST Dataset Storage
+apiVersion: aistor.min.io/v1
+kind: ObjectStore
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-minio
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: minio-storage
+    app: minio
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+    prometheus.io/path: "/minio/v2/metrics/cluster"
+    prometheus.io/port: "9000"
+    prometheus.io/scrape: "true"
+  {{- end }}
+spec:
+  # MinIO image configuration
+  image: {{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}
+
+  # Storage configuration
+  storage:
+    size: {{ .Values.minio.storage.size }}
+    {{- if .Values.minio.storage.storageClass }}
+    storageClassName: {{ .Values.minio.storage.storageClass }}
+    {{- end }}
+
+  # Resource configuration
+  {{- if .Values.minio.resources }}
+  resources:
+    {{- toYaml .Values.minio.resources | nindent 4 }}
+  {{- end }}
+
+  # Server configuration
+  servers: {{ .Values.minio.servers }}
+
+  # Security context
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  # Service account
+  serviceAccount: {{ include "sast-ai.fullname" . }}-minio-sa
+
+  # Environment variables from secrets
+  env:
+  - name: MINIO_ROOT_USER
+    valueFrom:
+      secretKeyRef:
+        name: {{ include "sast-ai.fullname" . }}-minio-credentials
+        key: MINIO_ROOT_USER
+  - name: MINIO_ROOT_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: {{ include "sast-ai.fullname" . }}-minio-credentials
+        key: MINIO_ROOT_PASSWORD
+---
+# MinIO Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-minio-sa
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: minio-storage
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+---
+# MinIO Configuration ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-minio-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    component: minio-storage
+data:
+  config.env: |
+    # Basic MinIO configuration for SAST datasets
+    MINIO_BROWSER=on
+    MINIO_DOMAIN={{ include "sast-ai.fullname" . }}-minio.{{ .Release.Namespace }}.svc.cluster.local
+    {{- if .Values.minio.config.additionalEnv }}
+    {{- range $key, $value := .Values.minio.config.additionalEnv }}
+    {{ $key }}={{ $value }}
+    {{- end }}
+    {{- end }}
+{{- end }}

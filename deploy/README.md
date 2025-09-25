@@ -45,7 +45,7 @@ deploy/
 
 2. **Deploy to custom namespace:**
    ```bash
-   ./deploy.sh -n my-sast-ai
+   ./deploy.sh -n sast-ai-workflow
    ```
 
 3. **Upgrade existing deployment:**
@@ -102,10 +102,11 @@ The deployment includes:
 
 - **SAST AI Application**: Quarkus-based Java application
 - **PostgreSQL Database**: Primary data store
+- **Storage Options**: Filesystem or MinIO S3-compatible storage
 - **OpenShift Route**: External access with TLS termination
 - **Service Account**: With necessary RBAC permissions for Tekton integration
 - **ConfigMap**: Application configuration
-- **Secret**: Database credentials
+- **Secret**: Database credentials and storage credentials
 - **HPA**: Auto-scaling based on CPU usage (optional)
 
 ## ⚙️ Configuration
@@ -119,6 +120,8 @@ The deployment includes:
 | `app.replicas` | Number of application pods | `1` |
 | `postgresql.enabled` | Deploy PostgreSQL | `true` |
 | `postgresql.auth.database` | Database name | `sast-ai` |
+| `minio.enabled` | Enable MinIO S3 storage | `false` |
+| `minio.storage.size` | Storage per MinIO server | `10Gi` |
 | `route.enabled` | Enable OpenShift route | `true` |
 | `route.tls.enabled` | Enable TLS on route | `true` |
 
@@ -132,13 +135,22 @@ app:
     repository: quay.io/your-org/sast-ai
     tag: "v1.0.0"
   replicas: 2
-  
+
 route:
   host: "sast-ai.apps.your-cluster.com"
-  
+
 postgresql:
   auth:
     password: "your-secure-password"
+
+minio:
+  enabled: true
+  servers: 4
+  storage:
+    size: 50Gi
+  buckets:
+    datasets: "sast-datasets"
+    temp: "sast-temp"
 ```
 
 ### Database Configuration
@@ -150,6 +162,8 @@ The chart includes PostgreSQL by default. To use external database:
 ## 🔍 Monitoring & Health Checks
 
 - **Health Check Endpoint**: `/health`
+- **Storage Health**: `/api/v1/dataset-storage/health`
+- **Storage Info**: `/api/v1/dataset-storage/info`
 - **Readiness Probe**: Configured to check application readiness
 - **Liveness Probe**: Monitors application health
 - **Route**: Provides external access with automatic hostname
@@ -168,46 +182,57 @@ The chart includes PostgreSQL by default. To use external database:
 
 1. **Pod not starting:**
    ```bash
-   oc describe pod -l app=sast-ai -n sast-ai
-   oc logs -l app=sast-ai -n sast-ai
+   oc describe pod -l app=sast-ai -n sast-ai-workflow
+   oc logs -l app=sast-ai -n sast-ai-workflow
    ```
 
 2. **Database connection issues:**
    ```bash
-   oc exec -it deployment/sast-ai -n sast-ai -- env | grep DATABASE
+   oc exec -it deployment/sast-ai -n sast-ai-workflow -- env | grep DATABASE
    ```
 
 3. **Check route connectivity:**
    ```bash
-   oc get route sast-ai -n sast-ai
-   export ROUTE_HOST=$(oc get route sast-ai -n sast-ai -o jsonpath='{.spec.host}')
+   oc get route sast-ai -n sast-ai-workflow
+   export ROUTE_HOST=$(oc get route sast-ai -n sast-ai-workflow -o jsonpath='{.spec.host}')
    curl https://$ROUTE_HOST/health
+   ```
+
+4. **Check storage configuration:**
+   ```bash
+   # Check storage health and type
+   curl https://$ROUTE_HOST/api/v1/dataset-storage/health
+   curl https://$ROUTE_HOST/api/v1/dataset-storage/info
+
+   # For MinIO deployments
+   oc get tenant -n sast-ai-workflow
+   oc get secrets -l component=minio-storage -n sast-ai-workflow
    ```
 
 ### Logs Access
 
 ```bash
 # Application logs
-oc logs -f deployment/sast-ai -n sast-ai
+oc logs -f deployment/sast-ai -n sast-ai-workflow
 
 # Database logs
-oc logs -f deployment/sast-ai-postgresql -n sast-ai
+oc logs -f deployment/sast-ai-postgresql -n sast-ai-workflow
 ```
 
 ## 📚 OpenShift Commands
 
 ```bash
 # Scale the application
-oc scale deployment sast-ai --replicas=3 -n sast-ai
+oc scale deployment sast-ai --replicas=3 -n sast-ai-workflow
 
 # Restart the application
-oc rollout restart deployment sast-ai -n sast-ai
+oc rollout restart deployment sast-ai -n sast-ai-workflow
 
 # View all resources
-oc get all -l app.kubernetes.io/instance=sast-ai -n sast-ai
+oc get all -l app.kubernetes.io/instance=sast-ai -n sast-ai-workflow
 
 # Access application via route
-oc get route sast-ai -n sast-ai
+oc get route sast-ai -n sast-ai-workflow
 ```
 
 ## 🤝 Contributing

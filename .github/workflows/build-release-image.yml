@@ -88,9 +88,9 @@ jobs:
         # Update Helm values.yaml with full release tag (with 'v')
         sed -i "s/tag: \".*\"/tag: \"$RELEASE_TAG\"/" deploy/sast-ai-chart/values.yaml
 
-        # Update Helm Chart.yaml versions (without 'v' prefix)
-        sed -i "s/version: .*/version: $POM_VERSION/" deploy/sast-ai-chart/Chart.yaml
-        sed -i "s/appVersion: .*/appVersion: $POM_VERSION/" deploy/sast-ai-chart/Chart.yaml
+        # Update Helm Chart.yaml versions (without 'v' prefix) - be specific to avoid updating dependency versions
+        sed -i "s/^version: .*/version: $POM_VERSION/" deploy/sast-ai-chart/Chart.yaml
+        sed -i "s/^appVersion: .*/appVersion: $POM_VERSION/" deploy/sast-ai-chart/Chart.yaml
 
         # Verify the changes
         echo "Updated pom.xml version:"

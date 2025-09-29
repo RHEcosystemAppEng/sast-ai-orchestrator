@@ -12,6 +12,7 @@ spec:
   {{- if not .Values.hpa.enabled }}
   replicas: {{ .Values.app.replicas }}
   {{- end }}
+  revisionHistoryLimit: 1
   selector:
     matchLabels:
       {{- include "sast-ai.selectorLabels" . | nindent 6 }}

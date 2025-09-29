@@ -15,6 +15,7 @@ spec:
     targetRevision: HEAD
     path: deploy/sast-ai-chart
     helm:
+      releaseName: sast-ai-orchestrator
       valueFiles:
         - values.yaml
   destination:

@@ -11,13 +11,16 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/RHEcosystemAppEng/sast-ai-orchestrator.git
+    repoURL: https://github.com/RHEcosystemAppEng/sast-ai-orchestrator
     targetRevision: HEAD
     path: deploy/sast-ai-chart
     helm:
       releaseName: sast-ai-orchestrator
       valueFiles:
         - values.yaml
+      parameters:
+        - name: app.env.SAST_AI_WORKFLOW_NAMESPACE
+          value: $NAMESPACE
   destination:
     server: https://kubernetes.default.svc
     namespace: $NAMESPACE

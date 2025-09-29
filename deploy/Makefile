@@ -57,12 +57,6 @@ install: deploy ## Alias for deploy
 .PHONY: clean
 clean: ## Remove the deployment
 	@echo "Removing SAST AI deployment..."
-	@if helm list -n $(NAMESPACE) | grep -q "^$(RELEASE_NAME)"; then \
-		helm uninstall $(RELEASE_NAME) -n $(NAMESPACE) --timeout=$(HELM_TIMEOUT); \
-		echo "Deployment removed!"; \
-	else \
-		echo "Release '$(RELEASE_NAME)' not found in namespace '$(NAMESPACE)'"; \
-	fi
 	@echo "Checking for ArgoCD Application..."
 	@if $(KUBECTL_CMD) get crd applications.argoproj.io >/dev/null 2>&1; then \
 		if $(KUBECTL_CMD) get application $(RELEASE_NAME)-syncer -n $(NAMESPACE) >/dev/null 2>&1; then \
@@ -77,6 +71,19 @@ clean: ## Remove the deployment
 	else \
 		echo "ArgoCD not available in cluster, skipping ArgoCD Application removal."; \
 	fi
+	@if helm list -n $(NAMESPACE) | grep -q "^$(RELEASE_NAME)"; then \
+		helm uninstall $(RELEASE_NAME) -n $(NAMESPACE) --timeout=$(HELM_TIMEOUT); \
+		echo "Deployment removed!"; \
+	else \
+		echo "Release '$(RELEASE_NAME)' not found in namespace '$(NAMESPACE)'"; \
+	fi
+	@echo "Cleaning up remaining resources by label..."
+	@$(KUBECTL_CMD) delete all,pvc,secrets,configmaps,ingress,routes,networkpolicy,pdb,sa,role,rolebinding,job -n $(NAMESPACE) -l "app.kubernetes.io/instance=$(RELEASE_NAME)" --ignore-not-found=true 2>/dev/null || true
+	@echo "Force cleaning any remaining resources with release name prefix..."
+	@for resource_type in deployment replicaset pod service configmap secret pvc role rolebinding serviceaccount networkpolicy poddisruptionbudget job cronjob ingress route; do \
+		$(KUBECTL_CMD) get $$resource_type -n $(NAMESPACE) -o name 2>/dev/null | grep "$(RELEASE_NAME)" | xargs -r $(KUBECTL_CMD) delete -n $(NAMESPACE) --ignore-not-found=true 2>/dev/null || true; \
+	done
+	@echo "Cleanup completed!"
 
 .PHONY: wait-pods
 wait-pods: ## Wait for pods to be ready

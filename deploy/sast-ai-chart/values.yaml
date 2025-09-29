@@ -89,6 +89,12 @@ postgresql:
     username: "quarkus"
     password: "quarkus"
     database: "sast-ai"
+  # Inherit labels from parent chart for proper cleanup
+  commonLabels:
+    app.kubernetes.io/name: "{{ include \"sast-ai.name\" . }}"
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
+    app.kubernetes.io/version: "{{ .Chart.AppVersion }}"
+    app.kubernetes.io/managed-by: "{{ .Release.Service }}"
   primary:
     persistence:
       enabled: true

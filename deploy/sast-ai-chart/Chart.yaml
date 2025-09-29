@@ -19,7 +19,7 @@ maintainers:
     email: sast-ai@redhat.com
 dependencies:
   - name: postgresql
-    version: 1.0.1
+    version: 15.5.38
     repository: "https://charts.bitnami.com/bitnami"
     condition: postgresql.enabled
 annotations:

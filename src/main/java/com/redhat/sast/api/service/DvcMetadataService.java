@@ -198,8 +198,21 @@ public class DvcMetadataService {
      * Validates DVC data version format (semantic versioning or custom format)
      */
     private String validateDataVersion(String version, boolean isRequired) {
+        // Prevent ReDoS by limiting input length
+        if (version.length() > 100) {
+            String displayVersion = version.substring(0, 50) + "...";
+            String errorMsg = String.format(
+                    "Invalid DVC data version format: '%s' - version string too long (max 100 characters)",
+                    displayVersion);
+            if (isRequired) {
+                throw new IllegalStateException(errorMsg);
+            }
+            return null;
+        }
+
         // Accept semantic versioning (v1.0.0, 1.0.0) or custom formats (dev-123, feature-abc)
-        if (!version.matches("^(v?\\d+\\.\\d+\\.\\d+.*|[a-zA-Z][a-zA-Z0-9_-]*|\\d{4}-\\d{2}-\\d{2})$")) {
+        if (!version.matches(
+                "^(v?\\d+\\.\\d+\\.\\d+(?:-[a-zA-Z0-9]+)?(?:\\+[a-zA-Z0-9]+)?|[a-zA-Z][a-zA-Z0-9_-]{0,49}|\\d{4}-\\d{2}-\\d{2})$")) {
             String errorMsg = String.format(
                     "Invalid DVC data version format: '%s' - expected semantic version (v1.0.0) or valid identifier",
                     version);

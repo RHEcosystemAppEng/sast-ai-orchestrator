@@ -1,7 +1,6 @@
 package com.redhat.sast.api.service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -23,8 +22,19 @@ import lombok.extern.slf4j.Slf4j;
 @ApplicationScoped
 @Slf4j
 public class DataArtifactService {
+    /**
+     * Metadata structure for data artifacts
+     */
+    public record ArtifactMetadata(
+            String gitCommitHash,
+            String pipelineStage,
+            String artifactType,
+            String projectName,
+            String projectVersion,
+            LocalDateTime createdAt) {}
 
     private final DataArtifactRepository dataArtifactRepository;
+
     private final ObjectMapper objectMapper;
 
     public DataArtifactService(DataArtifactRepository dataArtifactRepository, ObjectMapper objectMapper) {
@@ -100,22 +110,6 @@ public class DataArtifactService {
     }
 
     /**
-     * Lists data artifacts for a specific DVC version
-     */
-    public List<DataArtifact> getArtifactsByVersion(String dvcVersion) {
-        LOGGER.debug("Retrieving artifacts for DVC version: {}", dvcVersion);
-        return dataArtifactRepository.findByVersion(dvcVersion);
-    }
-
-    /**
-     * Lists data artifacts by type
-     */
-    public List<DataArtifact> getArtifactsByType(String artifactType) {
-        LOGGER.debug("Retrieving artifacts for type: {}", artifactType);
-        return dataArtifactRepository.findByType(artifactType);
-    }
-
-    /**
      * Generates unique artifact ID
      */
     private String generateArtifactId(String artifactType, String name, String version) {
@@ -142,56 +136,5 @@ public class DataArtifactService {
                 job.getProjectName(),
                 job.getProjectVersion(),
                 LocalDateTime.now());
-    }
-
-    /**
-     * Metadata structure for data artifacts
-     */
-    public static class ArtifactMetadata {
-        private final String gitCommitHash;
-        private final String pipelineStage;
-        private final String artifactType;
-        private final String projectName;
-        private final String projectVersion;
-        private final LocalDateTime createdAt;
-
-        public ArtifactMetadata(
-                String gitCommitHash,
-                String pipelineStage,
-                String artifactType,
-                String projectName,
-                String projectVersion,
-                LocalDateTime createdAt) {
-            this.gitCommitHash = gitCommitHash;
-            this.pipelineStage = pipelineStage;
-            this.artifactType = artifactType;
-            this.projectName = projectName;
-            this.projectVersion = projectVersion;
-            this.createdAt = createdAt;
-        }
-
-        public String getGitCommitHash() {
-            return gitCommitHash;
-        }
-
-        public String getPipelineStage() {
-            return pipelineStage;
-        }
-
-        public String getArtifactType() {
-            return artifactType;
-        }
-
-        public String getProjectName() {
-            return projectName;
-        }
-
-        public String getProjectVersion() {
-            return projectVersion;
-        }
-
-        public LocalDateTime getCreatedAt() {
-            return createdAt;
-        }
     }
 }

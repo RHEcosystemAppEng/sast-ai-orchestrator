@@ -3,7 +3,7 @@ package com.redhat.sast.api.dto;
 /**
  * DTO for DVC artifact metadata
  */
-public class DvcArtifactMetadata {
+public class DvcMetadata {
     private final Long jobId;
     private final String version;
     private final String dvcHash;
@@ -16,7 +16,7 @@ public class DvcArtifactMetadata {
     private final String sastReportPath;
     private final String issuesCount;
 
-    private DvcArtifactMetadata(Builder builder) {
+    private DvcMetadata(Builder builder) {
         this.jobId = builder.jobId;
         this.version = builder.version;
         this.dvcHash = builder.dvcHash;
@@ -146,8 +146,8 @@ public class DvcArtifactMetadata {
             return this;
         }
 
-        public DvcArtifactMetadata build() {
-            return new DvcArtifactMetadata(this);
+        public DvcMetadata build() {
+            return new DvcMetadata(this);
         }
     }
 }

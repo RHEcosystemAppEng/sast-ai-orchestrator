@@ -1,12 +1,17 @@
 package com.redhat.sast.api.service;
 
+import java.util.AbstractMap.SimpleEntry;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
-import com.redhat.sast.api.dto.DvcArtifactMetadata;
+import com.redhat.sast.api.common.constants.DvcTaskResults;
+import com.redhat.sast.api.dto.DvcMetadata;
 import com.redhat.sast.api.model.DataArtifact;
 
+import io.fabric8.tekton.v1.ParamValue;
 import io.fabric8.tekton.v1.PipelineRun;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,206 +23,273 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DvcMetadataService {
 
+    private record CoreDvcMetadata(String dataVersion, String commitHash, String pipelineStage) {}
+
     private final JobService jobService;
 
     private final DataArtifactService dataArtifactService;
+    private static final String DEFAULT_PIPELINE_STAGE = "sast_ai_analysis";
+
+    private static final String DEFAULT_ARTIFACT_NAME = "default_artifact_name";
 
     public DvcMetadataService(JobService jobService, DataArtifactService dataArtifactService) {
         this.jobService = jobService;
         this.dataArtifactService = dataArtifactService;
     }
 
-    /**
+    /***
      * Extracts DVC metadata from completed Tekton PipelineRun and updates the job.
-     * Looks for task results from the execute-ai-analysis task.
+     * @param jobId
+     * @param pipelineRun
      */
-    public void extractAndUpdateDvcMetadata(Long jobId, PipelineRun pipelineRun) {
+    public void updateDvcMetadata(Long jobId, PipelineRun pipelineRun) {
         LOGGER.debug(
                 "Extracting DVC metadata from PipelineRun: {} for job ID: {}",
                 pipelineRun.getMetadata().getName(),
                 jobId);
 
-        String dvcDataVersion = null;
-        String dvcCommitHash = null;
-        String dvcPipelineStage = null;
+        Map<String, String> pipelineResultsMap = extractPipelineResults(pipelineRun);
+        CoreDvcMetadata coreMetadata = extractCoreMetadata(pipelineResultsMap, jobId);
 
-        String dvcHash = null;
-        String dvcPath = null;
-        String dvcArtifactType = null;
-        String dvcAnalysisSummary = null;
-        String dvcRepoUrl = null;
-        String dvcRepoBranch = null;
-        String dvcSplitType = null;
-        String dvcSastReportPath = null;
-        String dvcIssuesCount = null;
+        jobService.updateJobDvcMetadata(
+                jobId, coreMetadata.dataVersion(), coreMetadata.commitHash(), coreMetadata.pipelineStage());
 
-        try {
-            LOGGER.debug("Extracting DVC metadata from PipelineRun task results");
+        persistDataArtifact(jobId, coreMetadata.dataVersion(), pipelineResultsMap);
+        LOGGER.debug(
+                "Successfully processed DVC metadata for job {}: version={}, commit={}, stage={}",
+                jobId,
+                coreMetadata.dataVersion(),
+                coreMetadata.commitHash(),
+                coreMetadata.pipelineStage());
+    }
 
-            // Extract core DVC metadata (required)
-            dvcDataVersion = extractTaskResult(pipelineRun, "dvc-data-version");
-            dvcCommitHash = extractTaskResult(pipelineRun, "dvc-commit-hash");
-            dvcPipelineStage = extractTaskResult(pipelineRun, "dvc-pipeline-stage");
+    private Map<String, String> extractPipelineResults(PipelineRun pipelineRun) {
+        Map<String, String> results = new HashMap<>();
 
-            // Extract additional artifact metadata from Python workflow
-            dvcHash = extractTaskResult(pipelineRun, "dvc-hash");
-            dvcPath = extractTaskResult(pipelineRun, "dvc-path");
-            dvcArtifactType = extractTaskResult(pipelineRun, "dvc-artifact-type");
-            dvcAnalysisSummary = extractTaskResult(pipelineRun, "dvc-source-analysis-summary");
-            dvcRepoUrl = extractTaskResult(pipelineRun, "dvc-repo-url");
-            dvcRepoBranch = extractTaskResult(pipelineRun, "dvc-repo-branch");
+        if (pipelineRun.getStatus() != null && pipelineRun.getStatus().getResults() != null) {
 
-            // Extract additional required metadata fields
-            dvcSplitType = extractTaskResult(pipelineRun, "dvc-split-type");
-            dvcSastReportPath = extractTaskResult(pipelineRun, "dvc-sast-report-path");
-            dvcIssuesCount = extractTaskResult(pipelineRun, "dvc-issues-count");
+            for (var result : pipelineRun.getStatus().getResults()) {
+                String name = result.getName();
+                ParamValue value = result.getValue();
 
-            LOGGER.debug(
-                    "Extracted additional DVC metadata - hash: {}, path: {}, type: {}",
-                    dvcHash,
-                    dvcPath,
-                    dvcArtifactType);
+                if (name != null && value != null) {
+                    String stringVal = value.getStringVal();
 
-            // Validate critical DVC metadata
-            if (dvcDataVersion == null || dvcDataVersion.trim().isEmpty()) {
-                throw new IllegalStateException(String.format(
-                        "DVC data version not provided by workflow for job %d - indicates pipeline failure", jobId));
+                    if (stringVal != null && !stringVal.isBlank()) {
+                        results.put(name, stringVal.trim());
+                    }
+                }
             }
-
-            if (dvcCommitHash == null || dvcCommitHash.trim().isEmpty()) {
-                throw new IllegalStateException(String.format(
-                        "Git commit hash not provided by workflow for job %d - indicates pipeline failure", jobId));
-            }
-
-            if (dvcPipelineStage == null || dvcPipelineStage.trim().isEmpty()) {
-                dvcPipelineStage = "sast_ai_analysis";
-                LOGGER.warn(
-                        "Pipeline stage not provided by workflow for job {}, using default: {}",
-                        jobId,
-                        dvcPipelineStage);
-            }
-
-        } catch (IllegalStateException e) {
-            throw e;
-        } catch (Exception e) {
-            LOGGER.error("Error extracting DVC metadata from PipelineRun task results: {}", e.getMessage(), e);
-            throw new IllegalStateException(
-                    String.format(
-                            "Failed to extract DVC metadata from pipeline results for job %d: %s",
-                            jobId, e.getMessage()),
-                    e);
         }
 
-        LOGGER.debug(
-                "Extracted DVC metadata for job {}: version={}, commit={}, stage={}",
-                jobId,
-                dvcDataVersion,
-                dvcCommitHash,
-                dvcPipelineStage);
+        LOGGER.debug("Extracted {} task results from PipelineRun", results.size());
+        return results;
+    }
 
-        jobService.updateJobDvcMetadata(jobId, dvcDataVersion, dvcCommitHash, dvcPipelineStage);
+    /**
+     * Extracts and validates core DVC metadata required for job processing
+     */
+    private CoreDvcMetadata extractCoreMetadata(Map<String, String> pipelineResults, Long jobId) {
+        String dataVersion = pipelineResults.get(DvcTaskResults.DATA_VERSION);
+        String commitHash = pipelineResults.get(DvcTaskResults.COMMIT_HASH);
+        String pipelineStage = pipelineResults.get(DvcTaskResults.PIPELINE_STAGE);
 
-        if (dvcHash != null && dvcPath != null && dvcArtifactType != null) {
-            DvcArtifactMetadata metadata = DvcArtifactMetadata.builder()
+        // Validate required fields (null defaultValue means required)
+        try {
+            validateField("DVC data version", dataVersion, null);
+            validateField("Git commit hash", commitHash, null);
+        } catch (IllegalStateException e) {
+            LOGGER.error("Core DVC metadata validation failed for job {}: {}", jobId, e.getMessage());
+            throw e;
+        }
+
+        // Apply default for pipeline stage if missing
+        if (pipelineStage == null || pipelineStage.isBlank()) {
+            pipelineStage = DEFAULT_PIPELINE_STAGE;
+            LOGGER.warn("Pipeline stage not provided by workflow for job {}, using default: {}", jobId, pipelineStage);
+        }
+
+        return new CoreDvcMetadata(dataVersion, commitHash, pipelineStage);
+    }
+
+    private void persistDataArtifact(Long jobId, String dataVersion, Map<String, String> pipelineResults) {
+        String dvcHash = pipelineResults.get(DvcTaskResults.HASH);
+        String dvcPath = pipelineResults.get(DvcTaskResults.PATH);
+        String artifactType = pipelineResults.get(DvcTaskResults.ARTIFACT_TYPE);
+
+        if (dvcHash != null && dvcPath != null && artifactType != null) {
+            String repoUrl = validateField("Repository URL", pipelineResults.get(DvcTaskResults.REPO_URL), null);
+            String issuesCount = validateField("Issues count", pipelineResults.get(DvcTaskResults.ISSUES_COUNT), "0");
+
+            DvcMetadata metadata = DvcMetadata.builder()
                     .jobId(jobId)
-                    .version(dvcDataVersion)
+                    .version(dataVersion)
                     .dvcHash(dvcHash)
                     .dvcPath(dvcPath)
-                    .artifactType(dvcArtifactType)
-                    .analysisSummary(dvcAnalysisSummary)
-                    .repoUrl(dvcRepoUrl)
-                    .repoBranch(dvcRepoBranch)
-                    .splitType(dvcSplitType)
-                    .sastReportPath(dvcSastReportPath)
-                    .issuesCount(dvcIssuesCount)
+                    .artifactType(artifactType)
+                    .analysisSummary(pipelineResults.get(DvcTaskResults.ANALYSIS_SUMMARY))
+                    .repoUrl(repoUrl)
+                    .repoBranch(pipelineResults.get(DvcTaskResults.REPO_BRANCH))
+                    .splitType(pipelineResults.get(DvcTaskResults.SPLIT_TYPE))
+                    .sastReportPath(pipelineResults.get(DvcTaskResults.SAST_REPORT_PATH))
+                    .issuesCount(issuesCount)
                     .build();
-            createDataArtifactFromDvcMetadata(metadata);
+            // save data in DataArtifact table
+            try {
+                saveDataArtifact(metadata);
+            } catch (Exception e) {
+                throw new IllegalStateException(
+                        String.format(
+                                "Failed to save data artifact for job %d (version: %s, type: %s): %s",
+                                jobId, dataVersion, artifactType, e.getMessage()),
+                        e);
+            }
         } else {
             LOGGER.warn("Incomplete DVC metadata for job {}, skipping data artifact creation", jobId);
         }
     }
 
     /**
-     * Extracts DVC metadata from PipelineRun for data artifact creation.
-     * This method provides all available metadata without failing if optional fields are missing.
-     *
-     * @param pipelineRun The completed Tekton PipelineRun
-     * @return Map containing all available DVC metadata fields
+     * For required fields (defaultValue = null), throws exception on validation failure.
+     * For optional fields, returns defaultValue on validation failure.
      */
-    public Map<String, String> extractDvcMetadata(PipelineRun pipelineRun) {
-        LOGGER.debug(
-                "Extracting comprehensive DVC metadata from PipelineRun: {}",
-                pipelineRun.getMetadata().getName());
+    private String validateField(String fieldName, String value, String defaultValue) {
+        boolean isRequired = defaultValue == null;
 
-        Map<String, String> metadata = new HashMap<>();
+        if (value == null || value.isBlank()) {
+            if (isRequired) {
+                throw new IllegalStateException(
+                        String.format("%s not provided by workflow - indicates pipeline failure", fieldName));
+            }
+            return defaultValue;
+        }
 
-        // Core DVC metadata
-        addIfNotEmpty(metadata, "dataVersion", extractTaskResult(pipelineRun, "dvc-data-version"));
-        addIfNotEmpty(metadata, "commitHash", extractTaskResult(pipelineRun, "dvc-commit-hash"));
-        addIfNotEmpty(metadata, "pipelineStage", extractTaskResult(pipelineRun, "dvc-pipeline-stage"));
+        String trimmedValue = value.trim();
 
-        // Artifact metadata from Python workflow
-        addIfNotEmpty(metadata, "dvcHash", extractTaskResult(pipelineRun, "dvc-hash"));
-        addIfNotEmpty(metadata, "dvcPath", extractTaskResult(pipelineRun, "dvc-path"));
-        addIfNotEmpty(metadata, "artifactType", extractTaskResult(pipelineRun, "dvc-artifact-type"));
-
-        // Execution context
-        addIfNotEmpty(metadata, "executionTimestamp", extractTaskResult(pipelineRun, "dvc-execution-timestamp"));
-        addIfNotEmpty(metadata, "analysisSummary", extractTaskResult(pipelineRun, "dvc-source-analysis-summary"));
-        addIfNotEmpty(metadata, "repoUrl", extractTaskResult(pipelineRun, "dvc-repo-url"));
-        addIfNotEmpty(metadata, "repoBranch", extractTaskResult(pipelineRun, "dvc-repo-branch"));
-
-        LOGGER.debug("Extracted {} DVC metadata fields", metadata.size());
-        return metadata;
+        // Validate based on field type
+        return switch (fieldName) {
+            case "Git commit hash" -> validateCommitHash(trimmedValue, isRequired);
+            case "DVC data version" -> validateDataVersion(trimmedValue, isRequired);
+            case "Repository URL" -> validateUrl(trimmedValue, defaultValue, isRequired);
+            case "Issues count" -> validateIssuesCount(trimmedValue, defaultValue, isRequired);
+            default ->
+                isRequired
+                        ? trimmedValue
+                        : (trimmedValue.length() > 1000 ? trimmedValue.substring(0, 1000) : trimmedValue);
+        };
     }
 
     /**
-     * Creates a data artifact using DVC metadata from Python workflow combined with business metadata from Java
+     * Validates git commit hash format (7-40 hexadecimal characters)
      */
-    private void createDataArtifactFromDvcMetadata(DvcArtifactMetadata dvcMetadata) {
-        LOGGER.debug("Creating data artifact for job {} with DVC metadata", dvcMetadata.getJobId());
+    private String validateCommitHash(String commitHash, boolean isRequired) {
+        if (!commitHash.matches("^[a-f0-9]{7,40}$")) {
+            String errorMsg = String.format(
+                    "Invalid git commit hash format: '%s' - expected 7-40 hexadecimal characters", commitHash);
+            if (isRequired) {
+                throw new IllegalStateException(errorMsg);
+            }
+            return null;
+        }
+        return commitHash;
+    }
 
+    /**
+     * Validates DVC data version format (semantic versioning or custom format)
+     */
+    private String validateDataVersion(String version, boolean isRequired) {
+        // Accept semantic versioning (v1.0.0, 1.0.0) or custom formats (dev-123, feature-abc)
+        if (!version.matches("^(v?\\d+\\.\\d+\\.\\d+.*|[a-zA-Z][a-zA-Z0-9_-]*|\\d{4}-\\d{2}-\\d{2})$")) {
+            String errorMsg = String.format(
+                    "Invalid DVC data version format: '%s' - expected semantic version (v1.0.0) or valid identifier",
+                    version);
+            if (isRequired) {
+                throw new IllegalStateException(errorMsg);
+            }
+            return null;
+        }
+        return version;
+    }
+
+    private String validateUrl(String url, String defaultValue, boolean isRequired) {
+        if (isValidUrl(url)) {
+            return url;
+        }
+        if (isRequired) {
+            throw new IllegalStateException(
+                    String.format("Invalid Repository URL format: '%s' - expected valid URL format", url));
+        }
+        return defaultValue;
+    }
+
+    private String validateIssuesCount(String issuesCount, String defaultValue, boolean isRequired) {
         try {
-            String artifactName = generateArtifactName();
-            Map<String, Object> metadata = buildMetadataMap(dvcMetadata);
-
-            DataArtifact createdArtifact = dataArtifactService.createDataArtifact(
-                    dvcMetadata.getArtifactType(),
-                    artifactName,
-                    dvcMetadata.getVersion(),
-                    dvcMetadata.getDvcPath(),
-                    dvcMetadata.getDvcHash(),
-                    metadata);
-
-            LOGGER.debug(
-                    "Created data artifact for job {}: {} (ID: {}, type: {}, version: {})",
-                    dvcMetadata.getJobId(),
-                    artifactName,
-                    createdArtifact.getArtifactId(),
-                    dvcMetadata.getArtifactType(),
-                    dvcMetadata.getVersion());
-
-        } catch (Exception e) {
-            LOGGER.error("Failed to create data artifact for job {}: {}", dvcMetadata.getJobId(), e.getMessage(), e);
+            int count = Integer.parseInt(issuesCount);
+            if (count < 0) {
+                if (isRequired) {
+                    throw new IllegalStateException(String.format("Invalid Issues count: negative value %d", count));
+                }
+                return defaultValue;
+            }
+            return issuesCount;
+        } catch (NumberFormatException e) {
+            if (isRequired) {
+                throw new IllegalStateException(
+                        String.format("Invalid Issues count format: '%s' - expected integer", issuesCount));
+            }
+            return defaultValue;
         }
     }
 
+    private boolean isValidUrl(@Nonnull String url) {
+        return url.matches("^(https?://|git@)[\\w.-]+[/:][\\w./_-]*$");
+    }
+
+    private void saveDataArtifact(@Nonnull DvcMetadata dvcMetadata) {
+        LOGGER.debug("Creating data artifact for job {} with DVC metadata", dvcMetadata.getJobId());
+
+        Map<String, Object> metadata = buildMetadataMap(dvcMetadata);
+
+        DataArtifact createdArtifact = dataArtifactService.createDataArtifact(
+                dvcMetadata.getArtifactType(),
+                DEFAULT_ARTIFACT_NAME,
+                dvcMetadata.getVersion(),
+                dvcMetadata.getDvcPath(),
+                dvcMetadata.getDvcHash(),
+                metadata);
+
+        LOGGER.debug(
+                "Created data artifact for job {}: {} (ID: {}, type: {}, version: {})",
+                dvcMetadata.getJobId(),
+                DEFAULT_ARTIFACT_NAME,
+                createdArtifact.getArtifactId(),
+                dvcMetadata.getArtifactType(),
+                dvcMetadata.getVersion());
+    }
+
     /**
-     * Builds metadata map from DVC artifact metadata
+     * Builds metadata map from DVC artifact metadata using stream-based approach
      */
-    private Map<String, Object> buildMetadataMap(DvcArtifactMetadata dvcMetadata) {
-        Map<String, Object> metadata = new HashMap<>();
+    private Map<String, Object> buildMetadataMap(DvcMetadata dvcMetadata) {
+        Map<String, Object> result = Stream.of(
+                        entry("analysis_summary", dvcMetadata.getAnalysisSummary()),
+                        entry("source_code_repo", dvcMetadata.getRepoUrl()),
+                        entry("repo_branch", dvcMetadata.getRepoBranch()),
+                        entry("split_type", dvcMetadata.getSplitType()),
+                        entry("sast_report_path", dvcMetadata.getSastReportPath()))
+                .filter(e -> e.getValue() != null)
+                .collect(HashMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), HashMap::putAll);
 
-        if (dvcMetadata.getAnalysisSummary() != null)
-            metadata.put("analysis_summary", dvcMetadata.getAnalysisSummary());
-        if (dvcMetadata.getRepoUrl() != null) metadata.put("source_code_repo", dvcMetadata.getRepoUrl());
-        if (dvcMetadata.getRepoBranch() != null) metadata.put("repo_branch", dvcMetadata.getRepoBranch());
-        if (dvcMetadata.getSplitType() != null) metadata.put("split_type", dvcMetadata.getSplitType());
-        if (dvcMetadata.getSastReportPath() != null) metadata.put("sast_report_path", dvcMetadata.getSastReportPath());
+        // Always add issues count
+        result.put("issues_count", parseIssuesCount(dvcMetadata.getIssuesCount()));
+        return result;
+    }
 
-        metadata.put("issues_count", parseIssuesCount(dvcMetadata.getIssuesCount()));
-
-        return metadata;
+    /**
+     * Helper method to create map entries
+     */
+    private static SimpleEntry<String, Object> entry(String key, Object value) {
+        return new SimpleEntry<>(key, value);
     }
 
     /**
@@ -232,45 +304,5 @@ public class DvcMetadataService {
             }
         }
         return 0;
-    }
-
-    /**
-     * Generate artifact name
-     */
-    private String generateArtifactName() {
-        return "default_artifact_name";
-    }
-
-    /**
-     * Helper method to add non-empty values to metadata map
-     */
-    private void addIfNotEmpty(Map<String, String> map, String key, String value) {
-        if (value != null && !value.trim().isEmpty()) {
-            map.put(key, value.trim());
-        }
-    }
-
-    /**
-     * Extracts a specific task result value from the PipelineRun
-     */
-    private String extractTaskResult(PipelineRun pipelineRun, String resultName) {
-        try {
-            if (pipelineRun.getStatus() != null && pipelineRun.getStatus().getResults() != null) {
-                var results = pipelineRun.getStatus().getResults();
-                for (var result : results) {
-                    if (resultName.equals(result.getName())) {
-                        var paramValue = result.getValue();
-                        String value = paramValue != null ? paramValue.getStringVal() : null;
-                        LOGGER.debug("Extracted task result {}: {}", resultName, value);
-                        return value;
-                    }
-                }
-            }
-            LOGGER.warn("Task result '{}' not found in PipelineRun", resultName);
-            return null;
-        } catch (Exception e) {
-            LOGGER.error("Error extracting task result '{}': {}", resultName, e.getMessage(), e);
-            return null;
-        }
     }
 }

@@ -9,7 +9,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
 import com.redhat.sast.api.platform.KubernetesResourceManager;
-import com.redhat.sast.api.platform.PipelineParameterMapper;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
 
 import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
@@ -44,7 +43,6 @@ public class PlatformService {
     private final ManagedExecutor managedExecutor;
     private final JobService jobService;
     private final KubernetesResourceManager resourceManager;
-    private final PipelineParameterMapper parameterMapper;
     private final DvcMetadataService dvcMetadataService;
     private final DataArtifactService dataArtifactService;
 
@@ -114,13 +112,7 @@ public class PlatformService {
                 .inNamespace(namespace)
                 .withName(pipelineRunName)
                 .watch(new PipelineRunWatcher(
-                        pipelineRunName,
-                        jobId,
-                        future,
-                        jobService,
-                        resourceManager,
-                        dvcMetadataService,
-                        dataArtifactService))) {
+                        pipelineRunName, jobId, future, jobService, dvcMetadataService, dataArtifactService))) {
             future.join();
             LOGGER.info("Watcher for PipelineRun {} is closing.", pipelineRunName);
         } catch (Exception e) {

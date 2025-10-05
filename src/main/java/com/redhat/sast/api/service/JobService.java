@@ -274,6 +274,8 @@ public class JobService {
         job.setDvcPipelineStage(dvcPipelineStage);
         job.setLastUpdatedAt(LocalDateTime.now());
 
+        jobRepository.persist(job);
+
         LOGGER.debug(
                 "Updated DVC metadata for job ID {}: version={}, commit={}, stage={}",
                 jobId,

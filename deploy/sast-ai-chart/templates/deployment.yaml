@@ -12,6 +12,7 @@ spec:
   {{- if not .Values.hpa.enabled }}
   replicas: {{ .Values.app.replicas }}
   {{- end }}
+  revisionHistoryLimit: 1
   selector:
     matchLabels:
       {{- include "sast-ai.selectorLabels" . | nindent 6 }}
@@ -85,7 +86,7 @@ spec:
         {{- end }}
         - name: google-service-account-secret
           secret:
-            secretName: google-service-account-secret
+            secretName: sast-ai-google-service-account
       {{- with .Values.app.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -9,7 +9,7 @@ app:
     repository: quay.io/ecosystem-appeng/sast-ai-orchestrator
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "main-a2c89c2"
+    tag: "v1.0.1"
   
   # Number of replicas
   replicas: 1
@@ -44,8 +44,8 @@ app:
     httpGet:
       path: /api/v1/health
       port: 8080
-    initialDelaySeconds: 90
-    periodSeconds: 30
+    initialDelaySeconds: 10
+    periodSeconds: 5
     timeoutSeconds: 10
     failureThreshold: 5
     
@@ -53,8 +53,8 @@ app:
     httpGet:
       path: /api/v1/health
       port: 8080
-    initialDelaySeconds: 60
-    periodSeconds: 10
+    initialDelaySeconds: 10
+    periodSeconds: 5
     timeoutSeconds: 10
     failureThreshold: 15
   
@@ -89,6 +89,12 @@ postgresql:
     username: "quarkus"
     password: "quarkus"
     database: "sast-ai"
+  # Inherit labels from parent chart for proper cleanup
+  commonLabels:
+    app.kubernetes.io/name: "{{ include \"sast-ai.name\" . }}"
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
+    app.kubernetes.io/version: "{{ .Chart.AppVersion }}"
+    app.kubernetes.io/managed-by: "{{ .Release.Service }}"
   primary:
     persistence:
       enabled: true

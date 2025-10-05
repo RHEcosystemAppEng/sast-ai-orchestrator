@@ -1,5 +1,7 @@
 package com.redhat.sast.api.startup;
 
+import java.util.Optional;
+
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import io.fabric8.tekton.client.TektonClient;
@@ -19,9 +21,24 @@ public class ClusterConnectivityCheck {
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
+    @ConfigProperty(name = "sast.ai.startup.cluster-check.enabled", defaultValue = "true")
+    boolean clusterCheckEnabled;
+
+    @ConfigProperty(name = "quarkus.profile", defaultValue = "prod")
+    Optional<String> profile;
+
     // Suppress SpotBugs warning: This method intentionally throws RuntimeException for control flow.
     // Suppress SpotBugs warning: System.exit is used for graceful shutdown on fatal error.
     void onStart(@Observes StartupEvent ev) {
+        // Skip cluster connectivity check if disabled or in test profile
+        if (!clusterCheckEnabled || (profile.isPresent() && "test".equals(profile.get()))) {
+            LOGGER.info(
+                    "Cluster connectivity check disabled (profile: {}, enabled: {})",
+                    profile.orElse("unknown"),
+                    clusterCheckEnabled);
+            return;
+        }
+
         LOGGER.info("Checking OpenShift/Kubernetes cluster connectivity...");
 
         try {
@@ -76,7 +93,11 @@ public class ClusterConnectivityCheck {
             LOGGER.error("");
             LOGGER.error("🚫 Application will now exit gracefully...");
 
-            // Exit gracefully
+            // Exit gracefully - but not in test environments
+            if (profile.isPresent() && "test".equals(profile.get())) {
+                LOGGER.warn("Test environment detected - continuing despite cluster connectivity failure");
+                return;
+            }
             System.exit(1);
         }
     }

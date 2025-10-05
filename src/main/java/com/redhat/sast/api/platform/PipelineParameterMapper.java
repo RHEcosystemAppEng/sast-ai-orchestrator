@@ -46,6 +46,9 @@ public class PipelineParameterMapper {
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
+    @ConfigProperty(name = "quarkus.profile", defaultValue = "prod")
+    String profile;
+
     /**
      * Extracts and converts Job data to pipeline parameters.
      *
@@ -143,6 +146,18 @@ public class PipelineParameterMapper {
      * Reads LLM configuration from Kubernetes secret.
      */
     private LlmSecretValues getLlmSecretValues(String secretName) {
+        // Return test values in test mode to avoid Kubernetes calls
+        if ("test".equals(profile)) {
+            LOGGER.info("TEST MODE: Using mock LLM secret values for secret '{}'", secretName);
+            return new LlmSecretValues(
+                    "http://test-llm-url",
+                    "test-model",
+                    "test-api-key",
+                    "http://test-embeddings-url",
+                    "test-embeddings-model",
+                    "test-embeddings-key");
+        }
+
         try {
             if (secretName == null || secretName.trim().isEmpty()) {
                 LOGGER.warn("Secret name is null or empty");

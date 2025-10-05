@@ -52,8 +52,8 @@ public class DataArtifactRepository implements PanacheRepository<DataArtifact> {
         return getEntityManager()
                 .createNativeQuery(
                         """
-                SELECT * FROM data_artifacts WHERE id IN (
-                    SELECT DISTINCT ON (artifact_type) id
+                SELECT * FROM data_artifacts WHERE artifact_id IN (
+                    SELECT DISTINCT ON (artifact_type) artifact_id
                     FROM data_artifacts
                     ORDER BY artifact_type, created_at DESC
                 )

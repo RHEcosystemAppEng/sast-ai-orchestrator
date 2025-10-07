@@ -26,19 +26,13 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
     private final long jobId;
     private final CompletableFuture<Void> future;
     private final JobService jobService;
-    private final KubernetesResourceManager resourceManager;
 
     public PipelineRunWatcher(
-            String pipelineRunName,
-            long jobId,
-            CompletableFuture<Void> future,
-            JobService jobService,
-            KubernetesResourceManager resourceManager) {
+            String pipelineRunName, long jobId, CompletableFuture<Void> future, JobService jobService) {
         this.pipelineRunName = pipelineRunName;
         this.jobId = jobId;
         this.future = future;
         this.jobService = jobService;
-        this.resourceManager = resourceManager;
     }
 
     @Override

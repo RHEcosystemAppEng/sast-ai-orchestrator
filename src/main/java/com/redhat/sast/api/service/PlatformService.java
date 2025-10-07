@@ -9,7 +9,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
 import com.redhat.sast.api.platform.KubernetesResourceManager;
-import com.redhat.sast.api.platform.PipelineParameterMapper;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
 
 import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
@@ -29,8 +28,6 @@ public class PlatformService {
     private static final String PIPELINE_NAME = "sast-ai-workflow-pipeline";
 
     // Workspace names
-    private static final String SHARED_WORKSPACE = "shared-workspace";
-    private static final String CACHE_WORKSPACE = "cache-workspace";
     private static final String GITLAB_TOKEN_WORKSPACE = "gitlab-token-ws";
     private static final String LLM_CREDENTIALS_WORKSPACE = "llm-credentials-ws";
     private static final String GOOGLE_SA_JSON_WORKSPACE = "google-sa-json-ws";
@@ -44,19 +41,9 @@ public class PlatformService {
     private final ManagedExecutor managedExecutor;
     private final JobService jobService;
     private final KubernetesResourceManager resourceManager;
-    private final PipelineParameterMapper parameterMapper;
 
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
-
-    @ConfigProperty(name = "sast.ai.workspace.shared.size", defaultValue = "20Gi")
-    String sharedWorkspaceSize;
-
-    @ConfigProperty(name = "sast.ai.workspace.cache.size", defaultValue = "10Gi")
-    String cacheWorkspaceSize;
-
-    @ConfigProperty(name = "sast.ai.cleanup.completed.pipelineruns", defaultValue = "true")
-    boolean cleanupCompletedPipelineRuns;
 
     @ConfigProperty(name = "quarkus.profile", defaultValue = "prod")
     String profile;
@@ -75,40 +62,27 @@ public class PlatformService {
                 PIPELINE_NAME,
                 namespace);
 
-        // Use try-with-resources to ensure PVC cleanup on any failure
-        try (KubernetesResourceManager.PvcResource sharedPvc =
-                        resourceManager.createManagedPVC(pipelineRunName + "-shared", sharedWorkspaceSize);
-                KubernetesResourceManager.PvcResource cachePvc =
-                        resourceManager.createManagedPVC(pipelineRunName + "-cache", cacheWorkspaceSize)) {
-
-            PipelineRun pipelineRun = buildPipelineRun(
-                    pipelineRunName, pipelineParams, llmSecretName, sharedPvc.getName(), cachePvc.getName());
-
-            PipelineRun createdPipelineRun = tektonClient
+        PipelineRun createdPipelineRun;
+        try {
+            PipelineRun pipelineRun = buildPipelineRun(pipelineRunName, pipelineParams, llmSecretName);
+            createdPipelineRun = tektonClient
                     .v1()
                     .pipelineRuns()
                     .inNamespace(namespace)
                     .resource(pipelineRun)
                     .create();
             LOGGER.info("Successfully created PipelineRun: {}", pipelineRunName);
-
-            // Set the Tekton URL on the job using cluster information from TektonClient
-            String tektonUrl = buildTektonUrlFromClient(createdPipelineRun);
-            updateJobTektonUrl(jobId, tektonUrl);
-
-            // Start monitoring the pipeline in a background thread
-            // At this point, we've successfully set up everything
-            managedExecutor.execute(() -> watchPipelineRun(jobId, pipelineRunName));
-
-            // Mark PVCs as managed by the watcher now - disable auto-cleanup
-            sharedPvc.disableAutoCleanup();
-            cachePvc.disableAutoCleanup();
-
         } catch (Exception e) {
             LOGGER.error("Failed to create PipelineRun {} in namespace {}", pipelineRunName, namespace, e);
-            // PVCs will be automatically cleaned up by try-with-resources
             throw new IllegalStateException("Failed to start Tekton pipeline", e);
         }
+
+        String tektonUrl = buildTektonUrlFromClient(createdPipelineRun);
+        updateJobTektonUrl(jobId, tektonUrl);
+
+        // Start monitoring the pipeline in a background thread
+        // At this point, we've successfully set up everything
+        managedExecutor.execute(() -> watchPipelineRun(jobId, pipelineRunName));
     }
 
     private void watchPipelineRun(@Nonnull Long jobId, @Nonnull String pipelineRunName) {
@@ -119,7 +93,7 @@ public class PlatformService {
                 .pipelineRuns()
                 .inNamespace(namespace)
                 .withName(pipelineRunName)
-                .watch(new PipelineRunWatcher(pipelineRunName, jobId, future, jobService, resourceManager))) {
+                .watch(new PipelineRunWatcher(pipelineRunName, jobId, future, jobService))) {
             future.join();
             LOGGER.info("Watcher for PipelineRun {} is closing.", pipelineRunName);
         } catch (Exception e) {
@@ -170,11 +144,7 @@ public class PlatformService {
      * Builds a Tekton PipelineRun with the specified configuration.
      */
     private PipelineRun buildPipelineRun(
-            @Nonnull String pipelineRunName,
-            @Nonnull List<Param> params,
-            String llmSecretName,
-            @Nonnull String sharedPvcName,
-            @Nonnull String cachePvcName) {
+            @Nonnull String pipelineRunName, @Nonnull List<Param> params, String llmSecretName) {
 
         return new PipelineRunBuilder()
                 .withNewMetadata()
@@ -185,7 +155,7 @@ public class PlatformService {
                 .withNewPipelineRef()
                 .withName(PIPELINE_NAME)
                 .endPipelineRef()
-                .withWorkspaces(buildWorkspaceBindings(llmSecretName, sharedPvcName, cachePvcName))
+                .withWorkspaces(buildWorkspaceBindings(llmSecretName))
                 .withParams(params)
                 .endSpec()
                 .build();
@@ -195,30 +165,14 @@ public class PlatformService {
      * Creates all workspace bindings for the pipeline.
      * Uses helper methods for better readability and maintainability.
      */
-    private WorkspaceBinding[] buildWorkspaceBindings(String llmSecretName, String sharedPvcName, String cachePvcName) {
+    private WorkspaceBinding[] buildWorkspaceBindings(String llmSecretName) {
 
         return new WorkspaceBinding[] {
-            createPvcWorkspace(SHARED_WORKSPACE, sharedPvcName),
-            createPvcWorkspace(CACHE_WORKSPACE, cachePvcName),
             createSecretWorkspace(GITLAB_TOKEN_WORKSPACE, GITLAB_TOKEN_SECRET),
             createSecretWorkspace(
                     LLM_CREDENTIALS_WORKSPACE, Objects.requireNonNullElse(llmSecretName, DEFAULT_LLM_SECRET)),
             createSecretWorkspace(GOOGLE_SA_JSON_WORKSPACE, GOOGLE_SA_SECRET)
         };
-    }
-
-    /**
-     * Creates a workspace binding for PersistentVolumeClaim.
-     *
-     * @param workspaceName the name of the workspace
-     * @param pvcName the name of the PVC
-     * @return configured WorkspaceBinding
-     */
-    private WorkspaceBinding createPvcWorkspace(String workspaceName, String pvcName) {
-        return new WorkspaceBindingBuilder()
-                .withName(workspaceName)
-                .withNewPersistentVolumeClaim(pvcName, false)
-                .build();
     }
 
     /**

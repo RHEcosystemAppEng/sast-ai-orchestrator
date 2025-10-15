@@ -124,12 +124,6 @@ public class HealthResource {
                     LOGGER.warn("Tekton health check: PipelineRuns list is null in namespace={}", namespace);
                     return HealthResponseDto.down("tekton", "PipelineRuns list is null");
                 }
-
-                LOGGER.info(
-                        "Tekton health check: successful in namespace={} with {} pipelines and {} pipeline runs",
-                        namespace,
-                        pipelineList.getItems().size(),
-                        pipelineRunList.getItems().size());
                 return HealthResponseDto.up("tekton");
 
             } catch (KubernetesClientException e) {

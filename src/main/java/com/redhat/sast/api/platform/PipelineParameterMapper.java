@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.model.Job;
 
 import io.fabric8.kubernetes.api.model.Secret;
@@ -30,6 +31,8 @@ public class PipelineParameterMapper {
     private static final String PARAM_REPO_REMOTE_URL = "REPO_REMOTE_URL";
     private static final String PARAM_FALSE_POSITIVES_URL = "FALSE_POSITIVES_URL";
     private static final String PARAM_INPUT_REPORT_FILE_PATH = "INPUT_REPORT_FILE_PATH";
+    private static final String PARAM_INPUT_REPORT_CONTENT = "INPUT_REPORT_CONTENT";
+    private static final String PARAM_INPUT_SOURCE_TYPE = "INPUT_SOURCE_TYPE";
     private static final String PARAM_PROJECT_NAME = "PROJECT_NAME";
     private static final String PARAM_PROJECT_VERSION = "PROJECT_VERSION";
     private static final String PARAM_LLM_URL = "LLM_URL";
@@ -75,11 +78,65 @@ public class PipelineParameterMapper {
                 Boolean.TRUE.equals(useKnownFalsePositiveFile) ? job.getKnownFalsePositivesUrl() : "";
         params.add(createParam(PARAM_FALSE_POSITIVES_URL, falsePositivesUrl));
 
-        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+        addInputSourceParameters(params, job);
+
         params.add(createParam(PARAM_PROJECT_NAME, job.getProjectName()));
         params.add(createParam(PARAM_PROJECT_VERSION, job.getProjectVersion()));
 
         params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
+    }
+
+    /**
+     * Adds input source parameters based on the job's input source type.
+     * For OSH scans: passes JSON content directly
+     * For Google Sheets: passes Google Sheet URL
+     */
+    private void addInputSourceParameters(List<Param> params, Job job) {
+        InputSourceType inputSourceType = job.getInputSourceType();
+
+        if (inputSourceType == null) {
+            LOGGER.warn("Job {} has null input source type, defaulting to GOOGLE_SHEET", job.getId());
+            inputSourceType = InputSourceType.GOOGLE_SHEET;
+        }
+
+        params.add(createParam(PARAM_INPUT_SOURCE_TYPE, inputSourceType.toString()));
+
+        switch (inputSourceType) {
+            case OSH_SCAN -> {
+                String jsonContent = getOshJsonContentFromJob(job);
+                params.add(createParam(PARAM_INPUT_REPORT_CONTENT, jsonContent));
+                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, ""));
+                LOGGER.debug(
+                        "Job {} using OSH_SCAN input with {} bytes of JSON content", job.getId(), jsonContent.length());
+            }
+            case GOOGLE_SHEET, SARIF -> {
+                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+                params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
+                LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
+            }
+            default -> {
+                LOGGER.warn(
+                        "Unknown input source type {} for job {}, using GOOGLE_SHEET fallback",
+                        inputSourceType,
+                        job.getId());
+                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+                params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
+            }
+        }
+    }
+
+    /**
+     * Retrieves JSON content from OSH scan job.
+     * Uses transient field that holds JSON content temporarily during job processing.
+     * This content is not persisted to database - only held in memory during pipeline execution.
+     */
+    private String getOshJsonContentFromJob(Job job) {
+        String jsonContent = job.getTemporaryJsonContent();
+        if (jsonContent == null || jsonContent.trim().isEmpty()) {
+            LOGGER.warn("No JSON content available for OSH job {}", job.getId());
+            return "";
+        }
+        return jsonContent;
     }
 
     /**

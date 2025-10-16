@@ -83,6 +83,9 @@ public class Job {
     @Column(name = "submitted_by")
     private String submittedBy;
 
+    @Transient
+    private String temporaryJsonContent;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_batch_id")
     private JobBatch jobBatch;

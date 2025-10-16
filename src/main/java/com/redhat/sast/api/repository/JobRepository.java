@@ -1,6 +1,7 @@
 package com.redhat.sast.api.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
@@ -36,6 +37,20 @@ public class JobRepository implements PanacheRepository<Job> {
         } else {
             return findAll().page(page).list();
         }
+    }
+
+    /**
+     * Finds a job by OSH scan ID for idempotency checking.
+     * Used to prevent duplicate job creation from the same OSH scan.
+     *
+     * @param oshScanId the OSH scan ID to search for
+     * @return Optional containing the Job if found, empty otherwise
+     */
+    public Optional<Job> findByOshScanId(String oshScanId) {
+        if (oshScanId == null || oshScanId.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        return find("oshScanId", oshScanId).firstResultOptional();
     }
 
     public List<String> findDistinctPackageNames() {

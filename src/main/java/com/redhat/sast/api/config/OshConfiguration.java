@@ -93,7 +93,9 @@ public class OshConfiguration {
             throw new IllegalStateException("OSH integration enabled but 'osh.api.base-url' is not configured");
         }
 
-        if (packages == null || packages.isEmpty() || packages.get().isEmpty()) {
+        if (packages == null
+                || packages.isEmpty()
+                || packages.map(List::isEmpty).orElse(true)) {
             LOGGER.warn("No packages configured for OSH monitoring - will process all scans");
         }
 
@@ -132,7 +134,9 @@ public class OshConfiguration {
         }
 
         // If no packages configured, monitor all
-        if (packages == null || packages.isEmpty() || packages.get().isEmpty()) {
+        if (packages == null
+                || packages.isEmpty()
+                || packages.map(List::isEmpty).orElse(true)) {
             return true;
         }
 

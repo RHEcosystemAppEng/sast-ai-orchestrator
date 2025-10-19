@@ -146,7 +146,7 @@ public class OshRetryConfiguration {
             return backoffMinutes;
         }
 
-        long calculatedBackoff = backoffMinutes * (long) Math.pow(2, attemptNumber - 1);
+        long calculatedBackoff = backoffMinutes * (long) Math.pow(2.0, attemptNumber - 1.0);
 
         return Math.min(calculatedBackoff, MAX_BACKOFF_MINUTES);
     }

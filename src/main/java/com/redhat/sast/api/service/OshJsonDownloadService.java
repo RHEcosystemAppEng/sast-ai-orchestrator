@@ -122,7 +122,11 @@ public class OshJsonDownloadService {
                 return Optional.empty();
             }
 
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.error("JSON download interrupted for {}: {}", jsonUrl, e.getMessage());
+            return Optional.empty();
+        } catch (IOException e) {
             LOGGER.error("Network error downloading JSON from {}: {}", jsonUrl, e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
@@ -166,6 +170,10 @@ public class OshJsonDownloadService {
             HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
             return response.statusCode() == 200;
 
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.debug("Availability check interrupted for {} on scan {}: {}", jsonFileName, scanId, e.getMessage());
+            return false;
         } catch (Exception e) {
             LOGGER.debug("Could not check availability of {} for scan {}: {}", jsonFileName, scanId, e.getMessage());
             return false;

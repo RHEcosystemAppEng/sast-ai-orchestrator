@@ -322,15 +322,34 @@ public class OshSchedulerService {
      * @param retryResults results from retry processing
      */
     private void logCombinedResults(ProcessingResults incrementalResults, ProcessingResults retryResults) {
-        LOGGER.info(
-                "OSH polling cycle completed: " + "Incremental: {} processed, {} skipped, {} failed | "
-                        + "Retry: {} processed, {} skipped, {} failed",
-                incrementalResults.processedCount(),
-                incrementalResults.skippedCount(),
-                incrementalResults.failedCount(),
-                retryResults.processedCount(),
-                retryResults.skippedCount(),
-                retryResults.failedCount());
+        int totalProcessed = incrementalResults.processedCount() + retryResults.processedCount();
+        int totalSkipped = incrementalResults.skippedCount() + retryResults.skippedCount();
+        int totalFailed = incrementalResults.failedCount() + retryResults.failedCount();
+
+        if (totalProcessed > 0 || totalFailed > 0) {
+            LOGGER.info(
+                    "OSH polling cycle completed: {} total processed, {} skipped, {} failed | "
+                            + "Breakdown - Incremental: {}/{}/{}, Retry: {}/{}/{}",
+                    totalProcessed,
+                    totalSkipped,
+                    totalFailed,
+                    incrementalResults.processedCount(),
+                    incrementalResults.skippedCount(),
+                    incrementalResults.failedCount(),
+                    retryResults.processedCount(),
+                    retryResults.skippedCount(),
+                    retryResults.failedCount());
+        } else {
+            LOGGER.debug(
+                    "OSH polling cycle completed: no scans processed | " + "Incremental: {} skipped, Retry: {} skipped",
+                    incrementalResults.skippedCount(),
+                    retryResults.skippedCount());
+        }
+
+        if (retryConfiguration.isRetryEnabled()) {
+            String queueStatus = oshRetryService.getRetryQueueStatus();
+            LOGGER.debug("OSH retry queue status: {}", queueStatus);
+        }
     }
 
     /**

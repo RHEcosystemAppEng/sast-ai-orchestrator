@@ -86,12 +86,13 @@ public class OshJobCreationService {
 
             if (retryConfiguration.isRetryEnabled()) {
                 oshRetryService.markRetrySuccessful(scan.getScanId());
+                LOGGER.debug("Removed OSH scan {} from retry queue after successful job creation", scan.getScanId());
             }
 
             LOGGER.info(
-                    "Successfully created job {} from OSH scan {} for package {}",
-                    job.getId(),
+                    "OSH job creation successful: scan {} -> job {} (package: {})",
                     scan.getScanId(),
+                    job.getId(),
                     packageNvr);
 
             return Optional.of(job);

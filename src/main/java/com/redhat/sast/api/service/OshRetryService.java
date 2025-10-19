@@ -223,18 +223,33 @@ public class OshRetryService {
             return;
         }
 
+        LocalDateTime startTime = LocalDateTime.now();
         try {
             LocalDateTime cutoffTime = retryConfiguration.getRetentionCutoffTime();
+            long totalBefore = uncollectedScanRepository.count();
             long deletedCount = uncollectedScanRepository.deleteOlderThan(cutoffTime);
 
             if (deletedCount > 0) {
-                LOGGER.debug("Cleaned up {} expired retry records (older than {})", deletedCount, cutoffTime);
+                LOGGER.info(
+                        "OSH retry cleanup completed: {} expired records removed (retention cutoff: {}, "
+                                + "total before: {}, total after: {})",
+                        deletedCount,
+                        cutoffTime,
+                        totalBefore,
+                        totalBefore - deletedCount);
             } else {
-                LOGGER.debug("No expired retry records found for cleanup");
+                LOGGER.debug(
+                        "OSH retry cleanup completed: no expired records found (retention cutoff: {}, total: {})",
+                        cutoffTime,
+                        totalBefore);
             }
 
         } catch (Exception e) {
-            LOGGER.error("Failed to cleanup expired retry records: {}", e.getMessage(), e);
+            LOGGER.error(
+                    "OSH retry cleanup failed after {} minutes: {}",
+                    java.time.Duration.between(startTime, LocalDateTime.now()).toMinutes(),
+                    e.getMessage(),
+                    e);
         }
     }
 
@@ -250,16 +265,28 @@ public class OshRetryService {
 
         try {
             int maxAttempts = retryConfiguration.getMaxAttempts();
+            long totalBefore = uncollectedScanRepository.count();
             long deletedCount = uncollectedScanRepository.deleteExceededRetries(maxAttempts);
 
             if (deletedCount > 0) {
-                LOGGER.debug("Cleaned up {} scans that exceeded max retry attempts ({})", deletedCount, maxAttempts);
+                LOGGER.info(
+                        "OSH retry exceeded cleanup completed: {} scans removed (max attempts: {}, "
+                                + "total before: {}, total after: {})",
+                        deletedCount,
+                        maxAttempts,
+                        totalBefore,
+                        totalBefore - deletedCount);
+            } else {
+                LOGGER.debug(
+                        "OSH retry exceeded cleanup: no scans exceeded max attempts ({}, total: {})",
+                        maxAttempts,
+                        totalBefore);
             }
 
             return (int) deletedCount;
 
         } catch (Exception e) {
-            LOGGER.error("Failed to cleanup exceeded retry attempts: {}", e.getMessage(), e);
+            LOGGER.error("OSH retry exceeded cleanup failed: {}", e.getMessage(), e);
             return 0;
         }
     }
@@ -309,6 +336,67 @@ public class OshRetryService {
     }
 
     /**
+     * Gets detailed retry queue statistics for admin monitoring.
+     *
+     * @return detailed statistics object
+     */
+    public RetryQueueStatistics getDetailedRetryStatistics() {
+        if (!retryConfiguration.isRetryEnabled()) {
+            return new RetryQueueStatistics(false);
+        }
+
+        try {
+            long totalInQueue = uncollectedScanRepository.count();
+            LocalDateTime cutoffTime = retryConfiguration.getStandardRetryCutoffTime();
+            int maxAttempts = retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : 0;
+            long eligibleNow = uncollectedScanRepository.countEligibleForRetry(cutoffTime, maxAttempts);
+
+            long awaitingBackoff = totalInQueue - eligibleNow;
+            long exceededMax = maxAttempts > 0 ? uncollectedScanRepository.countExceededRetries(maxAttempts) : 0;
+
+            return new RetryQueueStatistics(
+                    true, totalInQueue, eligibleNow, awaitingBackoff, exceededMax, getConfigurationSummary());
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to get detailed retry statistics: {}", e.getMessage(), e);
+            return new RetryQueueStatistics(true, 0, 0, 0, 0, "Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Gets a limited view of the retry queue for admin inspection.
+     *
+     * @param limit maximum number of records to return
+     * @param sortBy sort field (currently limited to "created")
+     * @return list of retry records
+     */
+    public List<OshUncollectedScan> getRetryQueueSnapshot(int limit, String sortBy) {
+        if (!retryConfiguration.isRetryEnabled()) {
+            return List.of();
+        }
+
+        try {
+            return uncollectedScanRepository.findRecentScans(limit);
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to get retry queue snapshot: {}", e.getMessage(), e);
+            return List.of();
+        }
+    }
+
+    /**
+     * Gets configuration summary for admin display.
+     */
+    private String getConfigurationSummary() {
+        return String.format(
+                "Max attempts: %s, Backoff: %dm, Exponential: %s, Retention: %dd",
+                retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : "unlimited",
+                retryConfiguration.getBackoffMinutes(),
+                retryConfiguration.isExponentialBackoff() ? "yes" : "no",
+                retryConfiguration.getRetentionDays());
+    }
+
+    /**
      * Serializes OSH scan response to JSON for storage.
      */
     private String serializeScanData(OshScanResponse scan) {
@@ -333,5 +421,36 @@ public class OshRetryService {
         }
 
         return errorMessage;
+    }
+
+    /**
+     * Statistics container for detailed retry queue information.
+     */
+    public static class RetryQueueStatistics {
+        public final boolean enabled;
+        public final long totalInQueue;
+        public final long eligibleForRetry;
+        public final long awaitingBackoff;
+        public final long exceededMaxAttempts;
+        public final String configurationSummary;
+
+        public RetryQueueStatistics(boolean enabled) {
+            this(enabled, 0, 0, 0, 0, "Retry disabled");
+        }
+
+        public RetryQueueStatistics(
+                boolean enabled,
+                long totalInQueue,
+                long eligibleForRetry,
+                long awaitingBackoff,
+                long exceededMaxAttempts,
+                String configurationSummary) {
+            this.enabled = enabled;
+            this.totalInQueue = totalInQueue;
+            this.eligibleForRetry = eligibleForRetry;
+            this.awaitingBackoff = awaitingBackoff;
+            this.exceededMaxAttempts = exceededMaxAttempts;
+            this.configurationSummary = configurationSummary;
+        }
     }
 }

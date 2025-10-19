@@ -258,4 +258,27 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
         }
         return count("oshScanId", oshScanId) > 0;
     }
+
+    /**
+     * Counts scans that have exceeded maximum retry attempts.
+     *
+     * @param maxAttempts maximum allowed retry attempts
+     * @return number of scans that exceeded limit
+     */
+    public long countExceededRetries(int maxAttempts) {
+        if (maxAttempts <= 0) {
+            return 0; // Unlimited retries
+        }
+        return count("attemptCount >= ?1", maxAttempts);
+    }
+
+    /**
+     * Finds recent scans for admin inspection.
+     *
+     * @param limit maximum number of records to return
+     * @return list of recent retry records
+     */
+    public List<OshUncollectedScan> findRecentScans(int limit) {
+        return find("ORDER BY createdAt DESC").page(Page.ofSize(limit)).list();
+    }
 }

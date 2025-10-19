@@ -23,10 +23,8 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should create response with default constructor")
     void testDefaultConstructor() {
-        // When
         OshScanResponse response = new OshScanResponse();
 
-        // Then
         assertNull(response.getScanId());
         assertNull(response.getComponent());
         assertNull(response.getVersion());
@@ -44,10 +42,8 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should create response with parameterized constructor")
     void testParameterizedConstructor() {
-        // When
         OshScanResponse response = new OshScanResponse(12345, "CLOSED");
 
-        // Then
         assertEquals(12345, response.getScanId());
         assertEquals("CLOSED", response.getState());
         assertNull(response.getComponent()); // Other fields remain null
@@ -84,34 +80,28 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should return package name correctly")
     void testGetPackageName() {
-        // Given
         OshScanResponse response = new OshScanResponse();
         response.setComponent("systemd");
 
-        // When/Then
         assertEquals("systemd", response.getPackageName());
     }
 
     @Test
     @DisplayName("Should return null package name when component is null")
     void testGetPackageName_NullComponent() {
-        // Given
         OshScanResponse response = new OshScanResponse();
         response.setComponent(null);
 
-        // When/Then
         assertNull(response.getPackageName());
     }
 
     @Test
     @DisplayName("Should handle all field assignments correctly")
     void testFieldAssignments() {
-        // Given
         OshScanResponse response = new OshScanResponse();
         Map<String, Object> rawData = new HashMap<>();
         rawData.put("test_key", "test_value");
 
-        // When
         response.setScanId(54321);
         response.setComponent("kernel");
         response.setVersion("5.14.0-284.el9");
@@ -125,7 +115,6 @@ class OshScanResponseTest {
         response.setChannel("main");
         response.setRawData(rawData);
 
-        // Then
         assertEquals(54321, response.getScanId());
         assertEquals("kernel", response.getComponent());
         assertEquals("5.14.0-284.el9", response.getVersion());
@@ -144,16 +133,13 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should handle empty strings appropriately")
     void testEmptyStringHandling() {
-        // Given
         OshScanResponse response = new OshScanResponse();
 
-        // When
         response.setComponent("");
         response.setVersion("");
         response.setState("");
         response.setOwner("");
 
-        // Then
         assertEquals("", response.getComponent());
         assertEquals("", response.getVersion());
         assertEquals("", response.getState());
@@ -165,14 +151,11 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should handle whitespace strings")
     void testWhitespaceHandling() {
-        // Given
         OshScanResponse response = new OshScanResponse();
 
-        // When
         response.setComponent("  systemd  ");
         response.setState("  CLOSED  ");
 
-        // Then
         assertEquals("  systemd  ", response.getComponent());
         assertEquals("  systemd  ", response.getPackageName());
         assertEquals("  CLOSED  ", response.getState());
@@ -182,50 +165,41 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should support null scan ID")
     void testNullScanId() {
-        // Given
         OshScanResponse response = new OshScanResponse();
         response.setScanId(null);
 
-        // When/Then
         assertNull(response.getScanId());
     }
 
     @Test
     @DisplayName("Should support negative scan ID")
     void testNegativeScanId() {
-        // Given
         OshScanResponse response = new OshScanResponse();
         response.setScanId(-1);
 
-        // When/Then
         assertEquals(-1, response.getScanId());
     }
 
     @Test
     @DisplayName("Should support zero scan ID")
     void testZeroScanId() {
-        // Given
         OshScanResponse response = new OshScanResponse();
         response.setScanId(0);
 
-        // When/Then
         assertEquals(0, response.getScanId());
     }
 
     @Test
     @DisplayName("Should handle raw data manipulation")
     void testRawDataManipulation() {
-        // Given
         OshScanResponse response = new OshScanResponse();
         Map<String, Object> rawData = new HashMap<>();
 
-        // When
         response.setRawData(rawData);
         rawData.put("state", "CLOSED");
         rawData.put("scan_id", 12345);
         rawData.put("nested_data", Map.of("key", "value"));
 
-        // Then
         assertEquals(rawData, response.getRawData());
         assertEquals("CLOSED", response.getRawData().get("state"));
         assertEquals(12345, response.getRawData().get("scan_id"));
@@ -235,24 +209,20 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should handle null raw data")
     void testNullRawData() {
-        // Given
         OshScanResponse response = new OshScanResponse();
         response.setRawData(null);
 
-        // When/Then
         assertNull(response.getRawData());
     }
 
     @Test
     @DisplayName("Should create response using builder pattern simulation")
     void testBuilderPatternSimulation() {
-        // Given/When - Simulating a builder pattern with method chaining
         OshScanResponse response = new OshScanResponse();
         response.setScanId(99999);
         response.setComponent("test-component");
         response.setState("CLOSED");
 
-        // Then
         assertEquals(99999, response.getScanId());
         assertEquals("test-component", response.getComponent());
         assertEquals("CLOSED", response.getState());

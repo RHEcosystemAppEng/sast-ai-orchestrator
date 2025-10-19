@@ -21,7 +21,6 @@ class OshClientServiceSimpleTest {
     @Test
     @DisplayName("Should identify completed scans correctly")
     void testCompletedScanIdentification() {
-        // Test various scan states
         assertTrue(createScanResponse("CLOSED").isCompleted());
         assertFalse(createScanResponse("OPEN").isCompleted());
         assertFalse(createScanResponse("FAILED").isCompleted());
@@ -33,7 +32,6 @@ class OshClientServiceSimpleTest {
     @Test
     @DisplayName("Should parse component names correctly")
     void testComponentNameParsing() {
-        // Test various component name scenarios
         assertEquals("systemd", createScanWithComponent("systemd").getPackageName());
         assertEquals("kernel-headers", createScanWithComponent("kernel-headers").getPackageName());
         assertNull(createScanWithComponent(null).getPackageName());
@@ -43,7 +41,6 @@ class OshClientServiceSimpleTest {
     @Test
     @DisplayName("Should validate scan response construction")
     void testScanResponseConstruction() {
-        // Test parameterized constructor
         OshScanResponse response = new OshScanResponse(12345, "CLOSED");
         assertEquals(12345, response.getScanId());
         assertEquals("CLOSED", response.getState());
@@ -53,7 +50,6 @@ class OshClientServiceSimpleTest {
     @Test
     @DisplayName("Should handle edge cases gracefully")
     void testEdgeCases() {
-        // Test with extreme values
         OshScanResponse extremeResponse = new OshScanResponse();
         extremeResponse.setScanId(Integer.MAX_VALUE);
         extremeResponse.setComponent("very-long-component-name-that-might-cause-issues");
@@ -63,7 +59,6 @@ class OshClientServiceSimpleTest {
         assertTrue(extremeResponse.isCompleted());
         assertNotNull(extremeResponse.getPackageName());
 
-        // Test with minimum values
         OshScanResponse minResponse = new OshScanResponse();
         minResponse.setScanId(0);
         minResponse.setComponent("a");
@@ -77,7 +72,6 @@ class OshClientServiceSimpleTest {
     @Test
     @DisplayName("Should handle complex package names correctly")
     void testComplexPackageNames() {
-        // Test complex package names that would break naive dash-splitting
         assertEquals("zlib-ng", createScanWithComponent("zlib-ng").getPackageName());
         assertEquals("python3-pip", createScanWithComponent("python3-pip").getPackageName());
         assertEquals(
@@ -86,7 +80,6 @@ class OshClientServiceSimpleTest {
         assertEquals("single", createScanWithComponent("single").getPackageName());
     }
 
-    // Helper methods
     private OshScanResponse createScanResponse(String state) {
         return new OshScanResponse(1000, state);
     }

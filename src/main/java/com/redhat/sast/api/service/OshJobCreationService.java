@@ -2,6 +2,7 @@ package com.redhat.sast.api.service;
 
 import java.util.Optional;
 
+import com.redhat.sast.api.config.OshRetryConfiguration;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.v1.dto.osh.OshScanResponse;
@@ -20,11 +21,13 @@ import lombok.extern.slf4j.Slf4j;
  * 2. Extracts package NVR from OSH scan metadata
  * 3. Creates jobs via existing JobService infrastructure
  * 4. Ensures idempotency (no duplicate processing)
+ * 5. Cleans up successful scans from retry queue (if retry enabled)
  *
  * Transaction Boundaries:
  * - Each scan is processed in a separate REQUIRES_NEW transaction
  * - Failed individual scans don't affect other scans in the batch
  * - Idempotency checks prevent duplicate job creation
+ * - Retry cleanup happens within the same transaction as job creation
  */
 @ApplicationScoped
 @Slf4j
@@ -38,6 +41,12 @@ public class OshJobCreationService {
 
     @Inject
     JobRepository jobRepository;
+
+    @Inject
+    OshRetryService oshRetryService;
+
+    @Inject
+    OshRetryConfiguration retryConfiguration;
 
     /**
      * Creates a SAST-AI workflow job from an OSH scan result.
@@ -74,6 +83,10 @@ public class OshJobCreationService {
             dto.setSubmittedBy("OSH_SCHEDULER");
 
             Job job = jobService.createJobEntity(dto);
+
+            if (retryConfiguration.isRetryEnabled()) {
+                oshRetryService.markRetrySuccessful(scan.getScanId());
+            }
 
             LOGGER.info(
                     "Successfully created job {} from OSH scan {} for package {}",
@@ -185,6 +198,17 @@ public class OshJobCreationService {
         cleaned = cleaned.replaceAll("\\.rpm$", "");
 
         return cleaned.trim();
+    }
+
+    /**
+     * Public method to extract package NVR from OSH scan metadata.
+     * Reuses the comprehensive NVR building logic for consistency.
+     *
+     * @param scan OSH scan response
+     * @return package NVR string
+     */
+    public String extractPackageNvr(OshScanResponse scan) {
+        return buildNvrFromScan(scan);
     }
 
     /**

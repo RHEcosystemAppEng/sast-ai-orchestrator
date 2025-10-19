@@ -8,23 +8,25 @@ import com.redhat.sast.api.enums.OshFailureReason;
 import com.redhat.sast.api.model.OshUncollectedScan;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
-import io.quarkus.panache.common.Page;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.LockModeType;
 import jakarta.transaction.Transactional;
 
 /**
- * Repository for managing OSH uncollected scans (retry queue).
+ * Repository for core OSH retry queue operations.
  *
- * This repository provides atomic operations for managing the retry queue of failed OSH scans.
- * It uses database-level locking (FOR UPDATE SKIP LOCKED) to ensure safe concurrent access
- * when multiple scheduler instances or manual operations interact with the retry queue.
+ * This repository handles the essential retry lifecycle: finding eligible scans,
+ * updating retry attempts, and cleanup operations. It uses database-level locking
+ * (FOR UPDATE SKIP LOCKED) to ensure safe concurrent access when multiple scheduler
+ * instances interact with the retry queue.
+ *
+ * For statistical queries and monitoring, use OshRetryStatisticsRepository.
  *
  * Key operations:
  * - Atomic retry scan selection with database locking
- * - FIFO retry order
- * - Efficient cleanup of expired retry records
- * - Status queries for monitoring and debugging
+ * - FIFO retry order with backoff enforcement
+ * - Retry attempt tracking and updates
+ * - Cleanup of expired and exceeded retry records
  */
 @ApplicationScoped
 public class OshUncollectedScanRepository implements PanacheRepository<OshUncollectedScan> {
@@ -120,100 +122,6 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
     }
 
     /**
-     * Counts uncollected scans by failure reason.
-     *
-     * @return list of failure reason counts
-     */
-    public List<Object[]> countByFailureReason() {
-        return getEntityManager()
-                .createQuery(
-                        "SELECT u.failureReason, COUNT(u) FROM OshUncollectedScan u "
-                                + "GROUP BY u.failureReason ORDER BY COUNT(u) DESC",
-                        Object[].class)
-                .getResultList();
-    }
-
-    /**
-     * Counts uncollected scans by attempt count.
-     *
-     * @return list of attempt count distributions
-     */
-    public List<Object[]> countByAttemptCount() {
-        return getEntityManager()
-                .createQuery(
-                        "SELECT u.attemptCount, COUNT(u) FROM OshUncollectedScan u "
-                                + "GROUP BY u.attemptCount ORDER BY u.attemptCount ASC",
-                        Object[].class)
-                .getResultList();
-    }
-
-    /**
-     * Counts scans eligible for retry right now.
-     *
-     * @param cutoffTime minimum time since last attempt
-     * @param maxAttempts maximum retry attempts allowed
-     * @return number of immediately eligible scans
-     */
-    public long countEligibleForRetry(LocalDateTime cutoffTime, int maxAttempts) {
-        String query =
-                """
-            SELECT COUNT(u) FROM OshUncollectedScan u
-            WHERE u.lastAttemptAt < :cutoffTime
-            AND (:maxAttempts = 0 OR u.attemptCount < :maxAttempts)
-            """;
-
-        return getEntityManager()
-                .createQuery(query, Long.class)
-                .setParameter("cutoffTime", cutoffTime)
-                .setParameter("maxAttempts", maxAttempts)
-                .getSingleResult();
-    }
-
-    /**
-     * Finds the oldest uncollected scan (debugging purposes).
-     *
-     * @return oldest scan record if any exist
-     */
-    public Optional<OshUncollectedScan> findOldest() {
-        return find("ORDER BY createdAt ASC").page(Page.ofSize(1)).firstResultOptional();
-    }
-
-    /**
-     * Finds the most recently created uncollected scan.
-     *
-     * @return newest scan record if any exist
-     */
-    public Optional<OshUncollectedScan> findNewest() {
-        return find("ORDER BY createdAt DESC").page(Page.ofSize(1)).firstResultOptional();
-    }
-
-    /**
-     * Finds uncollected scans for a specific package.
-     *
-     * @param packageName package name to filter by
-     * @return list of uncollected scans for the package
-     */
-    public List<OshUncollectedScan> findByPackageName(String packageName) {
-        if (packageName == null || packageName.trim().isEmpty()) {
-            return List.of();
-        }
-        return find("packageName", packageName.trim()).list();
-    }
-
-    /**
-     * Finds uncollected scans with a specific failure reason.
-     *
-     * @param failureReason specific failure reason to filter by
-     * @return list of scans with that failure reason
-     */
-    public List<OshUncollectedScan> findByFailureReason(OshFailureReason failureReason) {
-        if (failureReason == null) {
-            return List.of();
-        }
-        return find("failureReason", failureReason).list();
-    }
-
-    /**
      * Updates the attempt count and last attempt time for a scan.
      *
      * @param scanId database ID of the uncollected scan record
@@ -257,28 +165,5 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
             return false;
         }
         return count("oshScanId", oshScanId) > 0;
-    }
-
-    /**
-     * Counts scans that have exceeded maximum retry attempts.
-     *
-     * @param maxAttempts maximum allowed retry attempts
-     * @return number of scans that exceeded limit
-     */
-    public long countExceededRetries(int maxAttempts) {
-        if (maxAttempts <= 0) {
-            return 0; // Unlimited retries
-        }
-        return count("attemptCount >= ?1", maxAttempts);
-    }
-
-    /**
-     * Finds recent scans for admin inspection.
-     *
-     * @param limit maximum number of records to return
-     * @return list of recent retry records
-     */
-    public List<OshUncollectedScan> findRecentScans(int limit) {
-        return find("ORDER BY createdAt DESC").page(Page.ofSize(limit)).list();
     }
 }

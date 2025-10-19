@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.sast.api.config.OshRetryConfiguration;
 import com.redhat.sast.api.enums.OshFailureReason;
 import com.redhat.sast.api.model.OshUncollectedScan;
+import com.redhat.sast.api.repository.OshRetryStatisticsRepository;
 import com.redhat.sast.api.repository.OshUncollectedScanRepository;
 import com.redhat.sast.api.v1.dto.osh.OshScanResponse;
 
@@ -33,8 +34,14 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OshRetryService {
 
+    private static final int MAX_ERROR_MESSAGE_LENGTH = 2000;
+    private static final String TRUNCATION_SUFFIX = "... (truncated)";
+
     @Inject
     OshUncollectedScanRepository uncollectedScanRepository;
+
+    @Inject
+    OshRetryStatisticsRepository retryStatisticsRepository;
 
     @Inject
     OshRetryConfiguration retryConfiguration;
@@ -94,8 +101,15 @@ public class OshRetryService {
                     failureReason,
                     scan.getPackageName());
 
+        } catch (jakarta.persistence.PersistenceException e) {
+            LOGGER.error(
+                    "Database error recording uncollected scan {} for retry: {}", scan.getScanId(), e.getMessage(), e);
         } catch (Exception e) {
-            LOGGER.error("Failed to record uncollected scan {} for retry: {}", scan.getScanId(), e.getMessage(), e);
+            LOGGER.error(
+                    "Unexpected error recording uncollected scan {} for retry: {}",
+                    scan.getScanId(),
+                    e.getMessage(),
+                    e);
         }
     }
 
@@ -131,8 +145,11 @@ public class OshRetryService {
 
             return eligibleScans;
 
+        } catch (jakarta.persistence.PersistenceException e) {
+            LOGGER.error("Database error fetching retry-eligible scans: {}", e.getMessage(), e);
+            return List.of();
         } catch (Exception e) {
-            LOGGER.error("Failed to fetch retry-eligible scans: {}", e.getMessage(), e);
+            LOGGER.error("Unexpected error fetching retry-eligible scans: {}", e.getMessage(), e);
             return List.of();
         }
     }
@@ -156,8 +173,10 @@ public class OshRetryService {
             } else {
                 LOGGER.debug("Scan {} not found in retry queue for removal", scanId);
             }
+        } catch (jakarta.persistence.PersistenceException e) {
+            LOGGER.error("Database error removing successful retry scan {}: {}", scanId, e.getMessage(), e);
         } catch (Exception e) {
-            LOGGER.error("Failed to remove successful retry scan {}: {}", scanId, e.getMessage(), e);
+            LOGGER.error("Unexpected error removing successful retry scan {}: {}", scanId, e.getMessage(), e);
         }
     }
 
@@ -189,9 +208,18 @@ public class OshRetryService {
 
         } catch (OptimisticLockException e) {
             LOGGER.warn("Concurrent modification detected for uncollected scan {}, skipping update", uncollectedScanId);
+        } catch (jakarta.persistence.PersistenceException e) {
+            LOGGER.error(
+                    "Database error recording retry attempt for uncollected scan {}: {}",
+                    uncollectedScanId,
+                    e.getMessage(),
+                    e);
         } catch (Exception e) {
             LOGGER.error(
-                    "Failed to record retry attempt for uncollected scan {}: {}", uncollectedScanId, e.getMessage(), e);
+                    "Unexpected error recording retry attempt for uncollected scan {}: {}",
+                    uncollectedScanId,
+                    e.getMessage(),
+                    e);
         }
     }
 
@@ -305,7 +333,7 @@ public class OshRetryService {
             long totalInQueue = uncollectedScanRepository.count();
             LocalDateTime cutoffTime = retryConfiguration.getStandardRetryCutoffTime();
             int maxAttempts = retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : 0;
-            long eligibleNow = uncollectedScanRepository.countEligibleForRetry(cutoffTime, maxAttempts);
+            long eligibleNow = retryStatisticsRepository.countEligibleForRetry(cutoffTime, maxAttempts);
 
             return String.format(
                     "Retry queue: %d total, %d eligible now (cutoff: %s, max attempts: %s)",
@@ -349,10 +377,10 @@ public class OshRetryService {
             long totalInQueue = uncollectedScanRepository.count();
             LocalDateTime cutoffTime = retryConfiguration.getStandardRetryCutoffTime();
             int maxAttempts = retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : 0;
-            long eligibleNow = uncollectedScanRepository.countEligibleForRetry(cutoffTime, maxAttempts);
+            long eligibleNow = retryStatisticsRepository.countEligibleForRetry(cutoffTime, maxAttempts);
 
             long awaitingBackoff = totalInQueue - eligibleNow;
-            long exceededMax = maxAttempts > 0 ? uncollectedScanRepository.countExceededRetries(maxAttempts) : 0;
+            long exceededMax = maxAttempts > 0 ? retryStatisticsRepository.countExceededRetries(maxAttempts) : 0;
 
             return new RetryQueueStatistics(
                     true, totalInQueue, eligibleNow, awaitingBackoff, exceededMax, getConfigurationSummary());
@@ -376,7 +404,7 @@ public class OshRetryService {
         }
 
         try {
-            return uncollectedScanRepository.findRecentScans(limit);
+            return retryStatisticsRepository.findRecentScans(limit);
 
         } catch (Exception e) {
             LOGGER.error("Failed to get retry queue snapshot: {}", e.getMessage(), e);
@@ -416,8 +444,8 @@ public class OshRetryService {
             return null;
         }
 
-        if (errorMessage.length() > 2000) {
-            return errorMessage.substring(0, 2000) + "... (truncated)";
+        if (errorMessage.length() > MAX_ERROR_MESSAGE_LENGTH) {
+            return errorMessage.substring(0, MAX_ERROR_MESSAGE_LENGTH) + TRUNCATION_SUFFIX;
         }
 
         return errorMessage;

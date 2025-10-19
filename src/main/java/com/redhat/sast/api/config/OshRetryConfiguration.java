@@ -27,6 +27,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OshRetryConfiguration {
 
+    private static final int MAX_RETRY_BATCH_SIZE = 50;
+    private static final long MAX_BACKOFF_MINUTES = 1440; // 24 hours
+
     /**
      * Master toggle for OSH retry mechanism.
      * When false, failed scans are permanently skipped.
@@ -145,8 +148,7 @@ public class OshRetryConfiguration {
 
         long calculatedBackoff = backoffMinutes * (long) Math.pow(2, attemptNumber - 1);
 
-        // Cap at 24 hours to prevent unreasonable delays
-        return Math.min(calculatedBackoff, 1440);
+        return Math.min(calculatedBackoff, MAX_BACKOFF_MINUTES);
     }
 
     /**
@@ -197,7 +199,6 @@ public class OshRetryConfiguration {
      * @return safe retry batch size to use
      */
     public int getEffectiveRetryBatchSize() {
-        // Cap at 50 to prevent overwhelming the system
-        return Math.min(retryBatchSize, 50);
+        return Math.min(retryBatchSize, MAX_RETRY_BATCH_SIZE);
     }
 }

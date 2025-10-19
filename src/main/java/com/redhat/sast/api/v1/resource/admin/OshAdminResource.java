@@ -39,6 +39,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OshAdminResource {
 
+    private static final String DEFAULT_QUEUE_LIMIT = "50";
+    private static final int MIN_QUEUE_LIMIT = 1;
+    private static final int MAX_QUEUE_LIMIT = 200;
+    private static final String DEFAULT_SORT_BY = "created";
+
     @Inject
     OshRetryService oshRetryService;
 
@@ -65,10 +70,15 @@ public class OshAdminResource {
             LOGGER.debug("OSH status requested via admin endpoint");
             return Response.ok(status).build();
 
-        } catch (Exception e) {
-            LOGGER.error("Failed to retrieve OSH status: {}", e.getMessage(), e);
+        } catch (jakarta.persistence.PersistenceException e) {
+            LOGGER.error("Database error retrieving OSH status: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Error retrieving OSH status: " + e.getMessage())
+                    .entity("Database error occurred")
+                    .build();
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error retrieving OSH status: {}", e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Internal server error")
                     .build();
         }
     }
@@ -87,10 +97,15 @@ public class OshAdminResource {
             LOGGER.debug("OSH retry statistics requested via admin endpoint");
             return Response.ok(stats).build();
 
-        } catch (Exception e) {
-            LOGGER.error("Failed to retrieve retry statistics: {}", e.getMessage(), e);
+        } catch (jakarta.persistence.PersistenceException e) {
+            LOGGER.error("Database error retrieving retry statistics: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Error retrieving retry statistics: " + e.getMessage())
+                    .entity("Database error occurred")
+                    .build();
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error retrieving retry statistics: {}", e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Internal server error")
                     .build();
         }
     }
@@ -105,10 +120,10 @@ public class OshAdminResource {
     @GET
     @Path("/retry/queue")
     public Response getRetryQueue(
-            @QueryParam("limit") @DefaultValue("50") int limit,
-            @QueryParam("sortBy") @DefaultValue("created") String sortBy) {
+            @QueryParam("limit") @DefaultValue(DEFAULT_QUEUE_LIMIT) int limit,
+            @QueryParam("sortBy") @DefaultValue(DEFAULT_SORT_BY) String sortBy) {
         try {
-            int effectiveLimit = Math.min(Math.max(limit, 1), 200);
+            int effectiveLimit = Math.min(Math.max(limit, MIN_QUEUE_LIMIT), MAX_QUEUE_LIMIT);
 
             OshRetryQueueResponseDto queueResponse = buildRetryQueueResponse(effectiveLimit, sortBy);
 

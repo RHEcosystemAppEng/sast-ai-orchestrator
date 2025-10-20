@@ -143,7 +143,7 @@ public class OshSchedulerService {
 
         } catch (Exception e) {
             LOGGER.error("Incremental scan processing failed: {}", e.getMessage(), e);
-            return new ProcessingResults(0, 0, 0, "incremental");
+            return new ProcessingResults(0, 0, 0, PHASE_INCREMENTAL);
         }
     }
 
@@ -156,7 +156,7 @@ public class OshSchedulerService {
     private ProcessingResults processRetryScans() {
         if (!retryConfiguration.isRetryEnabled()) {
             LOGGER.trace("Retry disabled, skipping retry phase");
-            return new ProcessingResults(0, 0, 0, "retry");
+            return new ProcessingResults(0, 0, 0, PHASE_RETRY);
         }
 
         try {
@@ -184,7 +184,7 @@ public class OshSchedulerService {
 
         } catch (Exception e) {
             LOGGER.error("Retry scan processing failed: {}", e.getMessage(), e);
-            return new ProcessingResults(0, 0, 0, "retry");
+            return new ProcessingResults(0, 0, 0, PHASE_RETRY);
         }
     }
 

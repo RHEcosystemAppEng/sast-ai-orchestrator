@@ -36,6 +36,7 @@ public class OshRetryService {
 
     private static final int MAX_ERROR_MESSAGE_LENGTH = 2000;
     private static final String TRUNCATION_SUFFIX = "... (truncated)";
+    private static final String UNLIMITED_ATTEMPTS = "unlimited";
 
     @Inject
     OshUncollectedScanRepository uncollectedScanRepository;
@@ -86,12 +87,7 @@ public class OshRetryService {
                     scanDataJson,
                     limitErrorMessage(errorMessage));
 
-            try {
-                String packageNvr = oshJobCreationService.extractPackageNvr(scan);
-                uncollectedScan.setPackageNvr(packageNvr);
-            } catch (Exception e) {
-                LOGGER.debug("Could not extract package NVR for scan {}: {}", scan.getScanId(), e.getMessage());
-            }
+            setPackageNvrSafely(uncollectedScan, scan);
 
             uncollectedScanRepository.persist(uncollectedScan);
 
@@ -140,7 +136,7 @@ public class OshRetryService {
                         "Found {} scans eligible for retry (cutoff: {}, max attempts: {})",
                         eligibleScans.size(),
                         cutoffTime,
-                        maxAttempts == 0 ? "unlimited" : maxAttempts);
+                        maxAttempts == 0 ? UNLIMITED_ATTEMPTS : maxAttempts);
             }
 
             return eligibleScans;
@@ -337,7 +333,7 @@ public class OshRetryService {
 
             return String.format(
                     "Retry queue: %d total, %d eligible now (cutoff: %s, max attempts: %s)",
-                    totalInQueue, eligibleNow, cutoffTime, maxAttempts == 0 ? "unlimited" : maxAttempts);
+                    totalInQueue, eligibleNow, cutoffTime, maxAttempts == 0 ? UNLIMITED_ATTEMPTS : maxAttempts);
 
         } catch (Exception e) {
             return "Error reading retry queue status: " + e.getMessage();
@@ -418,7 +414,7 @@ public class OshRetryService {
     private String getConfigurationSummary() {
         return String.format(
                 "Max attempts: %s, Backoff: %dm, Exponential: %s, Retention: %dd",
-                retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : "unlimited",
+                retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : UNLIMITED_ATTEMPTS,
                 retryConfiguration.getBackoffMinutes(),
                 retryConfiguration.isExponentialBackoff() ? "yes" : "no",
                 retryConfiguration.getRetentionDays());
@@ -449,6 +445,22 @@ public class OshRetryService {
         }
 
         return errorMessage;
+    }
+
+    /**
+     * Safely sets the package NVR for an uncollected scan.
+     * Extracts package NVR from scan data if possible, logs debug message on failure.
+     *
+     * @param uncollectedScan the uncollected scan to update
+     * @param scan the original scan data
+     */
+    private void setPackageNvrSafely(OshUncollectedScan uncollectedScan, OshScanResponse scan) {
+        try {
+            String packageNvr = oshJobCreationService.extractPackageNvr(scan);
+            uncollectedScan.setPackageNvr(packageNvr);
+        } catch (Exception e) {
+            LOGGER.debug("Could not extract package NVR for scan {}: {}", scan.getScanId(), e.getMessage());
+        }
     }
 
     /**

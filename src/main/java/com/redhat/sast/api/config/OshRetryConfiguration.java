@@ -159,8 +159,8 @@ public class OshRetryConfiguration {
      * @return cutoff timestamp - only retry scans attempted before this time
      */
     public LocalDateTime getRetryCutoffTime(int attemptNumber) {
-        long backoffMinutes = calculateBackoffMinutes(attemptNumber);
-        return LocalDateTime.now().minusMinutes(backoffMinutes);
+        long calculatedBackoffMinutes = calculateBackoffMinutes(attemptNumber);
+        return LocalDateTime.now().minusMinutes(calculatedBackoffMinutes);
     }
 
     /**

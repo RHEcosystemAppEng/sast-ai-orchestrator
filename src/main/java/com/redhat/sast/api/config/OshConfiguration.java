@@ -37,7 +37,7 @@ public class OshConfiguration {
      * Example: https://cov01.lab.eng.brq2.redhat.com
      */
     @ConfigProperty(name = "osh.api.base-url")
-    Optional<String> baseUrl;
+    Optional<String> baseUrl = Optional.empty();
 
     /**
      * Comma-separated list of package names to monitor.
@@ -45,7 +45,7 @@ public class OshConfiguration {
      * Example: systemd,kernel,glibc
      */
     @ConfigProperty(name = "osh.packages")
-    Optional<List<String>> packages;
+    Optional<List<String>> packages = Optional.empty();
 
     /**
      * Number of sequential scan IDs to check in each polling batch.
@@ -89,13 +89,11 @@ public class OshConfiguration {
         LOGGER.info("OSH integration is enabled - validating configuration");
 
         // Validate required properties
-        if (baseUrl == null || baseUrl.isEmpty()) {
+        if (baseUrl.isEmpty()) {
             throw new IllegalStateException("OSH integration enabled but 'osh.api.base-url' is not configured");
         }
 
-        if (packages == null
-                || packages.isEmpty()
-                || packages.map(List::isEmpty).orElse(true)) {
+        if (packages.isEmpty() || packages.map(List::isEmpty).orElse(true)) {
             LOGGER.warn("No packages configured for OSH monitoring - will process all scans");
         }
 
@@ -115,7 +113,7 @@ public class OshConfiguration {
 
         LOGGER.debug("OSH configuration validated successfully:");
         LOGGER.debug("  Base URL: {}", baseUrl.get());
-        LOGGER.debug("  Packages: {}", packages != null ? packages.orElse(List.of("all")) : List.of("all"));
+        LOGGER.debug("  Packages: {}", packages.orElse(List.of("all")));
         LOGGER.debug("  Batch size: {}", batchSize);
         LOGGER.debug("  Poll interval: {}", pollInterval);
         LOGGER.debug("  Start scan ID: {}", startScanId);
@@ -134,9 +132,7 @@ public class OshConfiguration {
         }
 
         // If no packages configured, monitor all
-        if (packages == null
-                || packages.isEmpty()
-                || packages.map(List::isEmpty).orElse(true)) {
+        if (packages.isEmpty() || packages.map(List::isEmpty).orElse(true)) {
             return true;
         }
 

@@ -31,6 +31,8 @@ import jakarta.transaction.Transactional;
 @ApplicationScoped
 public class OshUncollectedScanRepository implements PanacheRepository<OshUncollectedScan> {
 
+    private static final String OSH_SCAN_ID_FIELD = "oshScanId";
+
     /**
      * Finds scans eligible for retry using database-level locking for concurrency safety.
      *
@@ -79,7 +81,7 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
         if (oshScanId == null) {
             return Optional.empty();
         }
-        return find("oshScanId", oshScanId).firstResultOptional();
+        return find(OSH_SCAN_ID_FIELD, oshScanId).firstResultOptional();
     }
 
     /**
@@ -92,7 +94,7 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
         if (oshScanId == null) {
             return 0;
         }
-        return delete("oshScanId", oshScanId);
+        return delete(OSH_SCAN_ID_FIELD, oshScanId);
     }
 
     /**
@@ -164,6 +166,6 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
         if (oshScanId == null) {
             return false;
         }
-        return count("oshScanId", oshScanId) > 0;
+        return count(OSH_SCAN_ID_FIELD, oshScanId) > 0;
     }
 }

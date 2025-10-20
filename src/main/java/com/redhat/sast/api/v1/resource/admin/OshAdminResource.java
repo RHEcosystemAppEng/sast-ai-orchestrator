@@ -123,7 +123,7 @@ public class OshAdminResource {
             @QueryParam("limit") @DefaultValue(DEFAULT_QUEUE_LIMIT) int limit,
             @QueryParam("sortBy") @DefaultValue(DEFAULT_SORT_BY) String sortBy) {
         try {
-            int effectiveLimit = Math.min(Math.max(limit, MIN_QUEUE_LIMIT), MAX_QUEUE_LIMIT);
+            int effectiveLimit = Math.clamp(limit, MIN_QUEUE_LIMIT, MAX_QUEUE_LIMIT);
 
             OshRetryQueueResponseDto queueResponse = buildRetryQueueResponse(effectiveLimit, sortBy);
 

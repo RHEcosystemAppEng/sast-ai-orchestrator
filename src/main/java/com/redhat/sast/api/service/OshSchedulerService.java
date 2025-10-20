@@ -44,6 +44,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OshSchedulerService {
 
+    private static final String PHASE_INCREMENTAL = "incremental";
+    private static final String PHASE_RETRY = "retry";
+
     @Inject
     OshClientService oshClientService;
 
@@ -118,7 +121,7 @@ public class OshSchedulerService {
 
             if (finishedScans.isEmpty()) {
                 handleEmptyBatch(config);
-                return new ProcessingResults(0, 0, 0, "incremental");
+                return new ProcessingResults(0, 0, 0, PHASE_INCREMENTAL);
             }
 
             LOGGER.debug(
@@ -127,7 +130,7 @@ public class OshSchedulerService {
                     config.startScanId(),
                     config.startScanId() + config.batchSize() - 1);
 
-            ProcessingResults results = processScans(finishedScans, "incremental");
+            ProcessingResults results = processScans(finishedScans, PHASE_INCREMENTAL);
             updateCursorInNewTransaction(config.startScanId() + config.batchSize());
 
             LOGGER.debug(
@@ -164,7 +167,7 @@ public class OshSchedulerService {
 
             if (retryScans.isEmpty()) {
                 LOGGER.debug("No retry-eligible scans found");
-                return new ProcessingResults(0, 0, 0, "retry");
+                return new ProcessingResults(0, 0, 0, PHASE_RETRY);
             }
 
             LOGGER.debug("Processing {} retry-eligible scans", retryScans.size());
@@ -217,7 +220,7 @@ public class OshSchedulerService {
             }
         }
 
-        return new ProcessingResults(processedCount, skippedCount, failedCount, "retry");
+        return new ProcessingResults(processedCount, skippedCount, failedCount, PHASE_RETRY);
     }
 
     /**
@@ -405,7 +408,7 @@ public class OshSchedulerService {
                 LOGGER.error(
                         "Failed to process OSH scan {} ({}), continuing with next scan", scan.getScanId(), phase, e);
 
-                if ("incremental".equals(phase) && retryConfiguration.isRetryEnabled()) {
+                if (PHASE_INCREMENTAL.equals(phase) && retryConfiguration.isRetryEnabled()) {
                     OshFailureReason failureReason = classifyFailure(e);
                     oshRetryService.recordFailedScan(scan, failureReason, e.getMessage());
                 }

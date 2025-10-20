@@ -119,17 +119,15 @@ class OshSchedulerCursorRepositoryTest {
     @Test
     @DisplayName("Should update updatedAt timestamp on subsequent updates")
     @Transactional
-    void shouldUpdateUpdatedAtTimestampOnSubsequentUpdates() throws InterruptedException {
-        // First update
-        repository.updateCursor("token1", LocalDateTime.now());
+    void shouldUpdateUpdatedAtTimestampOnSubsequentUpdates() {
+        LocalDateTime firstTimestamp = LocalDateTime.now();
+        LocalDateTime secondTimestamp = firstTimestamp.plusSeconds(1);
+
+        repository.updateCursor("token1", firstTimestamp);
         Optional<OshSchedulerCursor> firstCursor = repository.getCurrentCursor();
         LocalDateTime firstUpdatedAt = firstCursor.get().getUpdatedAt();
 
-        // Small delay to ensure timestamp difference
-        Thread.sleep(10);
-
-        // Second update
-        repository.updateCursor("token2", LocalDateTime.now());
+        repository.updateCursor("token2", secondTimestamp);
         Optional<OshSchedulerCursor> secondCursor = repository.getCurrentCursor();
         LocalDateTime secondUpdatedAt = secondCursor.get().getUpdatedAt();
 
@@ -140,10 +138,8 @@ class OshSchedulerCursorRepositoryTest {
     @DisplayName("Should persist cursor across separate method calls")
     @Transactional
     void shouldPersistCursorAcrossSeparateMethodCalls() {
-        // Create cursor
         repository.updateCursor("persistent_token", LocalDateTime.now());
 
-        // Retrieve cursor in same test (simulating service persistence)
         Optional<OshSchedulerCursor> cursor = repository.getCurrentCursor();
 
         assertTrue(cursor.isPresent());

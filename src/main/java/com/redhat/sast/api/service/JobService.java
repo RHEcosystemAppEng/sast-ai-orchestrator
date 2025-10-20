@@ -288,4 +288,31 @@ public class JobService {
     public void persistJob(@Nonnull Job job) {
         jobRepository.persist(job);
     }
+
+    /**
+     * Updates DVC metadata fields for a job
+     */
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    public void updateJobDvcMetadata(
+            @Nonnull Long jobId, String dvcDataVersion, String dvcCommitHash, String dvcPipelineStage) {
+        final Job job = jobRepository.findById(jobId);
+        if (job == null) {
+            LOGGER.warn("Job with ID {} not found when trying to update DVC metadata", jobId);
+            throw new IllegalArgumentException("Job not found with ID: " + jobId);
+        }
+
+        job.setDvcDataVersion(dvcDataVersion);
+        job.setDvcCommitHash(dvcCommitHash);
+        job.setDvcPipelineStage(dvcPipelineStage);
+        job.setLastUpdatedAt(LocalDateTime.now());
+
+        jobRepository.persist(job);
+
+        LOGGER.debug(
+                "Updated DVC metadata for job ID {}: version={}, commit={}, stage={}",
+                jobId,
+                dvcDataVersion,
+                dvcCommitHash,
+                dvcPipelineStage);
+    }
 }

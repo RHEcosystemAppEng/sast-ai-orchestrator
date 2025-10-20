@@ -8,20 +8,14 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(
-        name = "data_artifacts",
-        indexes = {@Index(name = "idx_data_artifacts_id", columnList = "id")})
+@Table(name = "data_artifacts")
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode
 public class DataArtifact {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Long id;
-
-    @Column(name = "artifact_id", unique = true, nullable = false)
+    @Column(name = "artifact_id", nullable = false)
     private String artifactId;
 
     @Column(name = "artifact_type", length = 100, nullable = false)

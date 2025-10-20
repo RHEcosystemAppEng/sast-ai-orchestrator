@@ -89,6 +89,15 @@ public class Job {
     @Transient
     private String temporaryJsonContent;
 
+    @Column(name = "dvc_data_version")
+    private String dvcDataVersion;
+
+    @Column(name = "dvc_pipeline_stage")
+    private String dvcPipelineStage;
+
+    @Column(name = "dvc_commit_hash")
+    private String dvcCommitHash;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_batch_id")
     private JobBatch jobBatch;

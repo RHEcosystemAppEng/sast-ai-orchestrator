@@ -3,6 +3,8 @@ package com.redhat.sast.api.platform;
 import java.util.concurrent.CompletableFuture;
 
 import com.redhat.sast.api.enums.JobStatus;
+import com.redhat.sast.api.service.DataArtifactService;
+import com.redhat.sast.api.service.DvcMetadataService;
 import com.redhat.sast.api.service.JobService;
 
 import io.fabric8.knative.pkg.apis.Condition;
@@ -26,50 +28,41 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
     private final long jobId;
     private final CompletableFuture<Void> future;
     private final JobService jobService;
+    private final DvcMetadataService dvcMetadataService;
+    private final DataArtifactService dataArtifactService;
 
     public PipelineRunWatcher(
-            String pipelineRunName, long jobId, CompletableFuture<Void> future, JobService jobService) {
+            String pipelineRunName,
+            long jobId,
+            CompletableFuture<Void> future,
+            JobService jobService,
+            DvcMetadataService dvcMetadataService,
+            DataArtifactService dataArtifactService) {
         this.pipelineRunName = pipelineRunName;
         this.jobId = jobId;
         this.future = future;
         this.jobService = jobService;
+        this.dvcMetadataService = dvcMetadataService;
+        this.dataArtifactService = dataArtifactService;
     }
 
     @Override
-    public void eventReceived(Action action, PipelineRun resource) {
+    public void eventReceived(Action action, PipelineRun pipelineRun) {
         LOGGER.info(
                 "Watcher event: {} for PipelineRun: {}",
                 action,
-                resource.getMetadata().getName());
+                pipelineRun.getMetadata().getName());
 
-        if (resource.getStatus() != null && resource.getStatus().getConditions() != null) {
-            for (Condition condition : resource.getStatus().getConditions()) {
-                if (SUCCEEDED_CONDITION.equals(condition.getType())) {
-                    if (STATUS_TRUE.equalsIgnoreCase(condition.getStatus())) {
-                        LOGGER.info("PipelineRun {} succeeded.", pipelineRunName);
-                        jobService.updateJobStatus(jobId, JobStatus.COMPLETED);
-                        future.complete(null);
-                        return;
-                    } else if (STATUS_FALSE.equalsIgnoreCase(condition.getStatus())) {
-                        LOGGER.error(
-                                "PipelineRun {} failed. Reason: {}, Message: {}",
-                                pipelineRunName,
-                                condition.getReason(),
-                                condition.getMessage());
-                        if (!condition.getReason().equalsIgnoreCase("Cancelled")) {
-                            jobService.updateJobStatus(jobId, JobStatus.FAILED);
-                        }
-                        future.complete(null);
-                        return;
-                    } else if ("Unknown".equalsIgnoreCase(condition.getStatus())
-                            && condition.getReason() != null
-                            && condition.getReason().contains("Running")) {
-                        LOGGER.info("PipelineRun {} is running.", pipelineRunName);
-                        jobService.updateJobStatus(jobId, JobStatus.RUNNING);
-                        return;
-                    }
-                }
-            }
+        var pipelineSuccessCondition = findSuccessCondition(pipelineRun);
+        if (pipelineSuccessCondition.isEmpty()) {
+            return;
+        }
+
+        var condition = pipelineSuccessCondition.get();
+        switch (condition.getStatus()) {
+            case STATUS_TRUE -> handleSuccessfulPipeline(pipelineRun);
+            case STATUS_FALSE -> handleFailedPipeline(condition);
+            default -> handleRunningPipeline(condition);
         }
     }
 
@@ -81,6 +74,85 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
         } else {
             LOGGER.warn("Watcher for {} closed cleanly without a final status.", pipelineRunName);
             future.complete(null);
+        }
+    }
+
+    /**
+     * Finds the 'Succeeded' condition from pipeline status
+     */
+    private java.util.Optional<Condition> findSuccessCondition(PipelineRun pipelineRun) {
+        var status = pipelineRun.getStatus();
+        if (status == null || status.getConditions() == null) {
+            return java.util.Optional.empty();
+        }
+
+        return status.getConditions().stream()
+                .filter(condition -> SUCCEEDED_CONDITION.equals(condition.getType()))
+                .findFirst();
+    }
+
+    /**
+     * Handles successful pipeline completion
+     */
+    private void handleSuccessfulPipeline(PipelineRun pipelineRun) {
+        LOGGER.info("PipelineRun {} succeeded.", pipelineRunName);
+
+        executeWithErrorHandling(
+                () -> dvcMetadataService.updateDvcMetadata(jobId, pipelineRun),
+                "DVC metadata successfully extracted for job {}",
+                "Failed to extract DVC metadata for job {}, but job will still be marked as completed");
+
+        executeWithErrorHandling(
+                () -> {
+                    var job = jobService.getJobEntityById(jobId);
+                    if (job != null) {
+                        dataArtifactService.createJobExecutionArtifacts(job, pipelineRun);
+                    }
+                },
+                "Data artifacts successfully created for job {}",
+                "Failed to create data artifacts for job {}, but job will still be marked as completed");
+
+        jobService.updateJobStatus(jobId, JobStatus.COMPLETED);
+        future.complete(null);
+    }
+
+    /**
+     * Handles failed pipeline execution
+     */
+    private void handleFailedPipeline(Condition condition) {
+        LOGGER.error(
+                "PipelineRun {} failed. Reason: {}, Message: {}",
+                pipelineRunName,
+                condition.getReason(),
+                condition.getMessage());
+
+        if (condition.getReason() == null || !condition.getReason().equalsIgnoreCase("Cancelled")) {
+            jobService.updateJobStatus(jobId, JobStatus.FAILED);
+        }
+        future.complete(null);
+    }
+
+    /**
+     * Handles pipeline in running state
+     */
+    private void handleRunningPipeline(Condition condition) {
+        if ("Unknown".equalsIgnoreCase(condition.getStatus())
+                && condition.getReason() != null
+                && condition.getReason().contains("Running")) {
+            LOGGER.info("PipelineRun {} is running.", pipelineRunName);
+            jobService.updateJobStatus(jobId, JobStatus.RUNNING);
+        }
+    }
+
+    /**
+     * Executes operation with standardized error handling
+     */
+    private void executeWithErrorHandling(Runnable operation, String successMessage, String errorMessage) {
+        try {
+            operation.run();
+            LOGGER.debug(successMessage, jobId);
+        } catch (Exception e) {
+            LOGGER.error(errorMessage, jobId, e);
         }
     }
 }

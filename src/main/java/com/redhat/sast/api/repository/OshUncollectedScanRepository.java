@@ -17,7 +17,7 @@ import jakarta.transaction.Transactional;
  *
  * This repository handles the essential retry lifecycle: finding eligible scans,
  * updating retry attempts, and cleanup operations. It uses database-level locking
- * (FOR UPDATE SKIP LOCKED) to ensure safe concurrent access when multiple scheduler
+ * (FOR UPDATE SKIP LOCKED) to ensure safe concurrent access if multiple scheduler
  * instances interact with the retry queue.
  *
  * All failure reasons (OshFailureReason) are eligible for retry. Retry eligibility

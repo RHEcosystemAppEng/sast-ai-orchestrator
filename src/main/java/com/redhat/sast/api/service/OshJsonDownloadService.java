@@ -57,14 +57,12 @@ public class OshJsonDownloadService {
             return Optional.empty();
         }
 
-        // Try primary file first
         Optional<String> jsonContent = downloadJsonFile(scanId, primaryJsonFile);
         if (jsonContent.isPresent()) {
             LOGGER.debug("Successfully downloaded {} for OSH scan {}", primaryJsonFile, scanId);
             return jsonContent;
         }
 
-        // Fallback to other available JSON files
         for (String jsonFile : JSON_FILE_PRIORITIES) {
             if (!jsonFile.equals(primaryJsonFile)) {
                 jsonContent = downloadJsonFile(scanId, jsonFile);
@@ -188,7 +186,6 @@ public class OshJsonDownloadService {
      * @return complete URL to the JSON file
      */
     private String buildJsonFileUrl(Integer scanId, String jsonFileName) {
-        // Remove trailing slash from base URL if present
         String baseUrl = oshBaseUrl.endsWith("/") ? oshBaseUrl.substring(0, oshBaseUrl.length() - 1) : oshBaseUrl;
         return String.format("%s/osh/task/%d/logs/%s", baseUrl, scanId, jsonFileName);
     }

@@ -119,7 +119,7 @@ public class OshJobCreationService {
             return existingJob.isPresent();
         } catch (Exception e) {
             LOGGER.warn("Error checking if OSH scan {} already processed: {}", scanId, e.getMessage());
-            // Fail safe - assume not processed to avoid missing scans
+            // assume not processed to avoid missing scans
             return false;
         }
     }
@@ -203,7 +203,7 @@ public class OshJobCreationService {
 
     /**
      * Public method to extract package NVR from OSH scan metadata.
-     * Reuses the comprehensive NVR building logic for consistency.
+     * Reuses the NVR building logic for consistency.
      *
      * @param scan OSH scan response
      * @return package NVR string

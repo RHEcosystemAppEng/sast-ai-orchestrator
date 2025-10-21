@@ -14,7 +14,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 /**
  * Repository for statistical and aggregation queries on the OSH retry queue.
  *
- * This repository is focused on read-only analytical operations for monitoring
+ * This repository is meant for read-only analytical operations for monitoring
  * and admin interfaces. For core retry operations, use OshUncollectedScanRepository.
  *
  * Key operations:
@@ -142,7 +142,6 @@ public class OshRetryStatisticsRepository implements PanacheRepository<OshUncoll
      * @throws IllegalArgumentException if limit is invalid
      */
     public List<OshUncollectedScan> findRecentScans(int limit) {
-        // Validate limit at repository layer for defense-in-depth
         if (limit <= 0 || limit > 1000) {
             throw new IllegalArgumentException("Invalid limit: " + limit + " (must be 1-1000)");
         }

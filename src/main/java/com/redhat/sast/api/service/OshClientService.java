@@ -144,7 +144,6 @@ public class OshClientService {
         OshScanResponse response = new OshScanResponse();
         response.setScanId(scanId);
 
-        // Map standard OSH fields
         response.setState(getJsonStringValue(json, "state"));
         response.setOwner(getJsonStringValue(json, "owner"));
         response.setScanType(getJsonStringValue(json, "scan_type"));
@@ -154,11 +153,9 @@ public class OshClientService {
         response.setArch(getJsonStringValue(json, "arch"));
         response.setChannel(getJsonStringValue(json, "channel"));
 
-        // Extract component and version from label field
         String label = getJsonStringValue(json, "label");
         parseComponentFromLabel(label, response);
 
-        // Preserve raw data for debugging
         Map<String, Object> rawData = new HashMap<>();
         json.fieldNames().forEachRemaining(fieldName -> {
             rawData.put(fieldName, getJsonStringValue(json, fieldName));

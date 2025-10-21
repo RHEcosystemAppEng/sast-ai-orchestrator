@@ -29,6 +29,8 @@ app:
     SAST_AI_WORKFLOW_NAMESPACE: sast-ai
     # Google Service Account configuration
     GOOGLE_SERVICE_ACCOUNT_SECRET_PATH: /etc/secrets/google-service-account-secret/service_account.json
+    # OSH Package filtering configuration
+    OSH_PACKAGES: "systemd,glibc"
     
   # Resource limits and requests
   resources:
@@ -209,6 +211,10 @@ configMap:
       
       # Logging configuration
       quarkus.log.category."org.jboss.logging".level=${QUARKUS_LOG_LEVEL}
+
+      # Package filtering - comma-separated list of packages to monitor
+      # Example: systemd,glibc
+      osh.packages=${OSH_PACKAGES:}
 
 ## Horizontal Pod Autoscaler
 hpa:

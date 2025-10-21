@@ -34,7 +34,6 @@ public class OshConfiguration {
     /**
      * OSH API base URL.
      * Required when OSH integration is enabled.
-     * Example: https://cov01.lab.eng.brq2.redhat.com
      */
     @ConfigProperty(name = "osh.api.base-url")
     Optional<String> baseUrl = Optional.empty();
@@ -88,7 +87,6 @@ public class OshConfiguration {
 
         LOGGER.info("OSH integration is enabled - validating configuration");
 
-        // Validate required properties
         if (baseUrl.isEmpty()) {
             throw new IllegalStateException("OSH integration enabled but 'osh.api.base-url' is not configured");
         }
@@ -97,7 +95,6 @@ public class OshConfiguration {
             LOGGER.warn("No packages configured for OSH monitoring - will process all scans");
         }
 
-        // Validate numeric properties
         if (batchSize <= 0) {
             throw new IllegalStateException("Invalid osh.batch.size: " + batchSize + " (must be positive)");
         }
@@ -140,7 +137,6 @@ public class OshConfiguration {
             return false;
         }
 
-        // Check if package is in the configured list
         return packages.get().contains(packageName);
     }
 

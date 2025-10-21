@@ -29,6 +29,8 @@ import lombok.extern.slf4j.Slf4j;
  * 3. Managing retry attempt tracking and success cleanup
  * 4. Automated retention policy cleanup
  *
+ * All failure reasons (OshFailureReason) are eligible for retry. Retry eligibility
+ * is determined by backoff timing and maximum attempt limits, not by failure type.
  */
 @ApplicationScoped
 @Slf4j
@@ -112,6 +114,9 @@ public class OshRetryService {
     /**
      * Retrieves retry-eligible scans using database locking for concurrency safety.
      * Uses configured backoff timing and retry limits.
+     *
+     * Note: All failure reasons (OshFailureReason) are eligible for retry.
+     * Eligibility is determined by backoff timing and attempt count limits only.
      *
      * @param batchSize maximum number of scans to return
      * @return list of scans eligible for retry, locked for update

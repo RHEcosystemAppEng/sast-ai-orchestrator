@@ -20,6 +20,9 @@ import jakarta.transaction.Transactional;
  * (FOR UPDATE SKIP LOCKED) to ensure safe concurrent access when multiple scheduler
  * instances interact with the retry queue.
  *
+ * All failure reasons (OshFailureReason) are eligible for retry. Retry eligibility
+ * is determined by backoff timing and maximum attempt limits, not by failure type.
+ *
  * For statistical queries and monitoring, use OshRetryStatisticsRepository.
  *
  * Key operations:
@@ -41,6 +44,9 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
      * 2. Filters by retry limit (attempt_count < maxAttempts)
      * 3. Orders by created_at (FIFO) for fairness
      * 4. Uses FOR UPDATE SKIP LOCKED for concurrent scheduler safety
+     *
+     * Note: All failure reasons (OshFailureReason) are eligible for retry.
+     * Eligibility is determined solely by backoff timing and attempt limits.
      *
      * The FOR UPDATE SKIP LOCKED ensures that if multiple scheduler instances run
      * concurrently, they won't select the same scans for retry, and locked rows

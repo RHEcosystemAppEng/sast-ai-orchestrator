@@ -15,6 +15,9 @@ import lombok.NoArgsConstructor;
  * during processing (network errors, temporary service unavailability, etc.). Each record
  * tracks the failure reason, retry attempt count, and timing information to support
  * configurable retry policies with backoff strategies.
+ *
+ * All failure reasons (OshFailureReason) are eligible for retry. Retry eligibility
+ * depends only on backoff timing (lastAttemptAt) and attempt count limits.
  */
 @Entity
 @Table(
@@ -23,12 +26,10 @@ import lombok.NoArgsConstructor;
             // Unique constraint on OSH scan ID to prevent duplicates
             @Index(name = "idx_osh_uncollected_scan_id", columnList = "osh_scan_id", unique = true),
 
-            // Optimized for retry eligibility query
-            @Index(
-                    name = "idx_osh_uncollected_retry_eligible",
-                    columnList = "last_attempt_at, attempt_count, failure_reason"),
+            // Optimized for retry eligibility query (filters by backoff time and attempt count)
+            @Index(name = "idx_osh_uncollected_retry_eligible", columnList = "last_attempt_at, attempt_count"),
 
-            // Optimized for retention cleanup
+            // Optimized for retention cleanup and FIFO ordering
             @Index(name = "idx_osh_uncollected_cleanup", columnList = "created_at")
         })
 @Data
@@ -51,7 +52,7 @@ public class OshUncollectedScan {
     private Integer oshScanId;
 
     /**
-     * Package name from the OSH scan (for monitoring and debugging).
+     * Package name from the OSH scan.
      * Extracted from scan metadata.
      */
     @Column(name = "package_name", length = 255)
@@ -66,7 +67,6 @@ public class OshUncollectedScan {
 
     /**
      * Classification of the failure that caused this scan to be uncollected.
-     * Determines retry eligibility.
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "failure_reason", nullable = false, length = 50)

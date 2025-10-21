@@ -47,7 +47,7 @@ public class OshRetryConfiguration {
 
     /**
      * Number of scans to retry per polling cycle.
-     * Lower values reduce impact on incremental scan processing.
+     * Lower values reduce impact on the incremental scan processing.
      */
     @ConfigProperty(name = "osh.retry.batch-size", defaultValue = "5")
     int retryBatchSize;
@@ -91,7 +91,7 @@ public class OshRetryConfiguration {
     @PostConstruct
     public void validateConfiguration() {
         if (!retryEnabled) {
-            LOGGER.info("OSH retry mechanism is disabled (legacy skip-on-failure mode)");
+            LOGGER.info("OSH retry mechanism is disabled (skip-on-failure mode is enabled)");
             return;
         }
 

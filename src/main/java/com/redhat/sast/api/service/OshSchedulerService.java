@@ -72,9 +72,11 @@ public class OshSchedulerService {
      * PHASE 1 - Incremental processing:
      * 1. Check if OSH integration is enabled
      * 2. Determine starting scan ID from cursor
-     * 3. Fetch new finished scans from OSH
+     * 3. Fetch new finished scans from OSH (filters by CLOSED state)
      * 4. Process each scan individually in separate transactions
-     * 5. Update cursor position after successful batch processing
+     * 5. Update cursor to (highest processed scan ID + 1)
+     *    - Cursor only advances when scans are actually processed
+     *    - Cursor remains unchanged if no finished scans found (may be in progress)
      *
      * PHASE 2 - Retry processing (if retry enabled):
      * 1. Fetch failed scans from retry queue
@@ -110,6 +112,11 @@ public class OshSchedulerService {
      * PHASE 1: Process incremental scans.
      * Handles new scans from OSH with cursor advancement.
      *
+     * Cursor advancement strategy:
+     * - Only advances when scans are successfully processed
+     * - Advances to (highest processed scan ID + 1)
+     * - Does NOT advance if no finished scans found (they might be in progress)
+     *
      * @return processing results for incremental scans
      */
     private ProcessingResults processIncrementalScans() {
@@ -120,7 +127,10 @@ public class OshSchedulerService {
             List<OshScanResponse> finishedScans = fetchFinishedScans(config);
 
             if (finishedScans.isEmpty()) {
-                handleEmptyBatch(config);
+                LOGGER.debug(
+                        "No finished scans found in range {}-{}, cursor unchanged (scans may be in progress)",
+                        config.startScanId(),
+                        config.startScanId() + config.batchSize() - 1);
                 return new ProcessingResults(0, 0, 0, PHASE_INCREMENTAL);
             }
 
@@ -131,13 +141,22 @@ public class OshSchedulerService {
                     config.startScanId() + config.batchSize() - 1);
 
             ProcessingResults results = processScans(finishedScans, PHASE_INCREMENTAL);
-            updateCursorInNewTransaction(config.startScanId() + config.batchSize());
+
+            int highestProcessedId = finishedScans.stream()
+                    .mapToInt(OshScanResponse::getScanId)
+                    .max()
+                    .orElse(config.startScanId() - 1);
+
+            int nextScanId = highestProcessedId + 1;
+            updateCursorInNewTransaction(nextScanId);
 
             LOGGER.debug(
-                    "Incremental scan processing completed: {} processed, {} skipped, {} failed",
+                    "Incremental scan processing completed: {} processed, {} skipped, {} failed. "
+                            + "Cursor advanced to {}",
                     results.processedCount(),
                     results.skippedCount(),
-                    results.failedCount());
+                    results.failedCount(),
+                    nextScanId);
 
             return results;
 
@@ -372,14 +391,6 @@ public class OshSchedulerService {
      */
     private List<OshScanResponse> fetchFinishedScans(PollConfiguration config) {
         return oshClientService.getFinishedScans(config.startScanId(), config.batchSize());
-    }
-
-    /**
-     * Handles the case when no finished scans are found in the current batch.
-     */
-    private void handleEmptyBatch(PollConfiguration config) {
-        LOGGER.debug("No new finished scans found starting from ID {}", config.startScanId());
-        updateCursorInNewTransaction(config.startScanId() + config.batchSize());
     }
 
     /**

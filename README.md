@@ -270,16 +270,67 @@ Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosy
    
 ## Deployment
 
+### Environment Strategy
+
+The project supports two deployment environments:
+
+- **Development** (`sast-ai-dev` namespace): 
+  - Uses `latest` container images
+  - Updated automatically on every main branch push
+  - Debug logging and relaxed resource limits
+  
+- **Production** (`sast-ai-prod` namespace):
+  - Uses release-tagged container images (e.g., `v1.0.1`)
+  - Updated only on GitHub releases
+  - Production-grade resource allocation and logging
+
+### Quick Deployment
+
+```bash
+# Development environment
+cd deploy
+make deploy-dev
+
+# Production environment  
+cd deploy
+make deploy-prod
+
+# Check deployment status
+make status
+```
+
+### Container Images
+
+- **Development**: `quay.io/ecosystem-appeng/sast-ai-orchestrator:latest`
+- **Production**: `quay.io/ecosystem-appeng/sast-ai-orchestrator:v1.0.x`
+
 ### Docker Deployment
 ```bash
-# JVM Mode (Fast startup)
-docker build -f src/main/docker/Dockerfile.jvm -t sast-ai-orchestrator:jvm .
+# Development (latest)
+docker run -p 8080:8080 quay.io/ecosystem-appeng/sast-ai-orchestrator:latest
+
+# Production (specific version)  
+docker run -p 8080:8080 quay.io/ecosystem-appeng/sast-ai-orchestrator:v1.0.1
 ```
 
 ### Kubernetes Deployment
 - **Helm Chart**: See `deploy/sast-ai-chart/` for Helm deployment
-- **ArgoCD**: See `deploy/argocd/` for GitOps deployment
-- **Documentation**: Refer to `deploy/README.md` for detailed instructions
+- **ArgoCD**: See `deploy/argocd/` for GitOps deployment  
+- **Documentation**: Use `make help` in the `deploy/` directory for available commands
+
+### Environment-Specific Access
+
+After deployment, access the applications:
+
+```bash
+# Development
+kubectl port-forward svc/sast-ai-orchestrator-dev 8080:80 -n sast-ai-dev
+curl http://localhost:8080/api/v1/health
+
+# Production  
+kubectl port-forward svc/sast-ai-orchestrator-prod 8080:80 -n sast-ai-prod
+curl http://localhost:8080/api/v1/health
+```
 
 ## Configuration
 

@@ -1,12 +1,17 @@
 package com.redhat.sast.api.v1.resource.admin;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.OshUncollectedScan;
+import com.redhat.sast.api.repository.JobRepository;
+import com.redhat.sast.api.service.JobService;
 import com.redhat.sast.api.service.OshRetryService;
 import com.redhat.sast.api.service.OshSchedulerService;
+import com.redhat.sast.api.v1.dto.response.OshScanWithJobDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshRetryQueueResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshRetryStatisticsResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshStatusResponseDto;
@@ -49,6 +54,12 @@ public class OshAdminResource {
 
     @Inject
     OshSchedulerService oshSchedulerService;
+
+    @Inject
+    JobRepository jobRepository;
+
+    @Inject
+    JobService jobService;
 
     /**
      * Get overall OSH integration status including retry queue and cursor information.
@@ -253,6 +264,97 @@ public class OshAdminResource {
             LOGGER.error("Failed to trigger manual poll: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("Error triggering manual poll: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    /**
+     * Get unified view of all OSH scans (both collected and uncollected).
+     * Used by the dashboard to display comprehensive OSH scan status.
+     *
+     * @param page page number (0-indexed)
+     * @param size number of records per page
+     * @param statusFilter filter by status: "COLLECTED", "UNCOLLECTED", or null for all
+     * @return list of OSH scans with associated job information
+     */
+    @GET
+    @Path("/scans/all")
+    public Response getAllOshScans(
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("50") int size,
+            @QueryParam("status") String statusFilter) {
+
+        try {
+            LOGGER.debug("Fetching all OSH scans: page={}, size={}, status={}", page, size, statusFilter);
+
+            List<OshScanWithJobDto> allScans = new ArrayList<>();
+
+            if (statusFilter == null || "COLLECTED".equalsIgnoreCase(statusFilter)) {
+                List<Job> collectedJobs = jobRepository.findByOshScanIdNotNull();
+                for (Job job : collectedJobs) {
+                    allScans.add(OshScanWithJobDto.builder()
+                            .oshScanId(job.getOshScanId())
+                            .packageName(job.getPackageName())
+                            .packageNvr(job.getPackageNvr())
+                            .status("COLLECTED")
+                            .associatedJob(jobService.convertToResponseDto(job))
+                            .retryInfo(null)
+                            .processedAt(
+                                    job.getCreatedAt() != null
+                                            ? job.getCreatedAt().toString()
+                                            : null)
+                            .build());
+                }
+            }
+
+            if (statusFilter == null || "UNCOLLECTED".equalsIgnoreCase(statusFilter)) {
+                List<OshUncollectedScan> uncollected = oshRetryService.getRetryQueue(size);
+                for (OshUncollectedScan scan : uncollected) {
+                    allScans.add(OshScanWithJobDto.builder()
+                            .oshScanId(String.valueOf(scan.getOshScanId()))
+                            .packageName(scan.getPackageName())
+                            .packageNvr(scan.getPackageNvr())
+                            .status("UNCOLLECTED")
+                            .associatedJob(null)
+                            .retryInfo(OshScanWithJobDto.RetryInfo.builder()
+                                    .retryAttempts(scan.getRetryAttempts())
+                                    .maxRetries(scan.getMaxRetries())
+                                    .failureReason(scan.getFailureReason())
+                                    .lastAttemptAt(
+                                            scan.getLastRetryAttempt() != null
+                                                    ? scan.getLastRetryAttempt().toString()
+                                                    : null)
+                                    .build())
+                            .processedAt(
+                                    scan.getCreatedAt() != null
+                                            ? scan.getCreatedAt().toString()
+                                            : null)
+                            .build());
+                }
+            }
+
+            int start = page * size;
+            int end = Math.min(start + size, allScans.size());
+
+            if (start >= allScans.size()) {
+                return Response.ok(new ArrayList<OshScanWithJobDto>()).build();
+            }
+
+            List<OshScanWithJobDto> paginatedScans = allScans.subList(start, end);
+
+            LOGGER.debug(
+                    "Returning {} OSH scans (total: {}, page: {}, size: {})",
+                    paginatedScans.size(),
+                    allScans.size(),
+                    page,
+                    size);
+
+            return Response.ok(paginatedScans).build();
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to fetch OSH scans: {}", e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Error fetching OSH scans: " + e.getMessage())
                     .build();
         }
     }

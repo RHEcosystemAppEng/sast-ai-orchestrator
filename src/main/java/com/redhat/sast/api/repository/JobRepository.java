@@ -58,4 +58,15 @@ public class JobRepository implements PanacheRepository<Job> {
                 .createQuery("SELECT DISTINCT j.packageName FROM Job j WHERE j.packageName IS NOT NULL", String.class)
                 .getResultList();
     }
+
+    /**
+     * Finds all jobs that have an associated OSH scan ID (collected scans).
+     * Used by the dashboard to display jobs created from OSH scans.
+     *
+     * @return List of jobs with non-null oshScanId, ordered by creation date descending
+     */
+    public List<Job> findByOshScanIdNotNull() {
+        return find("SELECT j FROM Job j WHERE j.oshScanId IS NOT NULL ORDER BY j.createdAt DESC")
+                .list();
+    }
 }

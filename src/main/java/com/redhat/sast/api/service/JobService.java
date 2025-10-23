@@ -17,6 +17,7 @@ import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.repository.JobSettingsRepository;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
+import com.redhat.sast.api.websocket.DashboardBroadcaster;
 
 import io.fabric8.tekton.v1.Param;
 import io.quarkus.panache.common.Page;
@@ -38,6 +39,7 @@ public class JobService {
     private final NvrResolutionService nvrResolutionService;
     private final PipelineParameterMapper parameterMapper;
     private final UrlValidationService urlValidationService;
+    private final DashboardBroadcaster dashboardBroadcaster;
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
         final Job job = createJobEntity(jobCreationDto);
@@ -119,6 +121,14 @@ public class JobService {
 
         jobRepository.persist(job);
         LOGGER.debug("Updated job ID {} status from {} to {}", jobId, currentStatus, newStatus);
+
+        // Broadcast WebSocket update for real-time dashboard
+        try {
+            JobResponseDto jobDto = convertToResponseDto(job);
+            dashboardBroadcaster.broadcastJobStatusChange(jobDto);
+        } catch (Exception e) {
+            LOGGER.warn("Failed to broadcast job status change for job ID {}: {}", jobId, e.getMessage());
+        }
     }
 
     @Transactional

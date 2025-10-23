@@ -7,6 +7,8 @@ import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.v1.dto.osh.OshScanResponse;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
+import com.redhat.sast.api.v1.dto.response.JobResponseDto;
+import com.redhat.sast.api.websocket.DashboardBroadcaster;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -47,6 +49,9 @@ public class OshJobCreationService {
 
     @Inject
     OshRetryConfiguration retryConfiguration;
+
+    @Inject
+    DashboardBroadcaster dashboardBroadcaster;
 
     /**
      * Creates a SAST-AI workflow job from an OSH scan result.
@@ -94,6 +99,17 @@ public class OshJobCreationService {
                     scan.getScanId(),
                     job.getId(),
                     packageNvr);
+
+            // Broadcast WebSocket update for OSH scan collection
+            try {
+                JobResponseDto jobDto = jobService.getJobDtoByJobId(job.getId());
+                dashboardBroadcaster.broadcastOshScanCollected(scan.getScanId(), jobDto);
+            } catch (Exception broadcastException) {
+                LOGGER.warn(
+                        "Failed to broadcast OSH scan collection for scan {}: {}",
+                        scan.getScanId(),
+                        broadcastException.getMessage());
+            }
 
             return Optional.of(job);
 

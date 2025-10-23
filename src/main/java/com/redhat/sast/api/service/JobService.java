@@ -166,15 +166,47 @@ public class JobService {
         job.setKnownFalsePositivesUrl(
                 nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
 
-        // Set input source - always Google Sheet for now
-        job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
-        job.setGSheetUrl(jobCreationDto.getInputSourceUrl());
+        // Handle different input source types based on DTO content
+        configureInputSource(job, jobCreationDto);
 
         // Set submittedBy with default value "unknown" if not provided
         job.setSubmittedBy(jobCreationDto.getSubmittedBy() != null ? jobCreationDto.getSubmittedBy() : "unknown");
 
         job.setStatus(JobStatus.PENDING);
         return job;
+    }
+
+    /**
+     * Configures the job's input source type and related fields based on the JobCreationDto content.
+     * Handles both OSH scan jobs (with JSON content) and Google Sheet jobs.
+     */
+    private void configureInputSource(Job job, JobCreationDto jobCreationDto) {
+        String jsonContent = jobCreationDto.getJsonContent();
+        String oshScanId = jobCreationDto.getOshScanId();
+
+        if (jsonContent != null && !jsonContent.trim().isEmpty()) {
+            job.setInputSourceType(InputSourceType.OSH_SCAN);
+            job.setOshScanId(oshScanId);
+            job.setTemporaryJsonContent(jsonContent);
+            job.setGSheetUrl("");
+
+            LOGGER.debug(
+                    "Configured job as OSH_SCAN with scan ID: {} and {} bytes of JSON content",
+                    oshScanId,
+                    jsonContent.length());
+
+        } else if (jobCreationDto.getInputSourceUrl() != null
+                && !jobCreationDto.getInputSourceUrl().trim().isEmpty()) {
+            job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
+            job.setGSheetUrl(jobCreationDto.getInputSourceUrl());
+
+            LOGGER.debug("Configured job as GOOGLE_SHEET with URL: {}", jobCreationDto.getInputSourceUrl());
+
+        } else {
+            throw new IllegalArgumentException(
+                    "Job creation requires either JSON content (for OSH scans) or input source URL (for Google Sheets). "
+                            + "Package NVR: " + jobCreationDto.getPackageNvr());
+        }
     }
 
     public List<JobResponseDto> getAllJobs(String packageName, JobStatus status, int page, int size) {

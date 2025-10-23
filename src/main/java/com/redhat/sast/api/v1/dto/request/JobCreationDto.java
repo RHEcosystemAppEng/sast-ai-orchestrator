@@ -17,7 +17,6 @@ public class JobCreationDto {
     private String packageNvr;
 
     @JsonProperty("inputSourceUrl")
-    @NotBlank(message = "Input source URL cannot be null or empty.")
     private String inputSourceUrl;
 
     @JsonProperty("useKnownFalsePositiveFile")
@@ -26,8 +25,29 @@ public class JobCreationDto {
     @JsonProperty("submittedBy")
     private String submittedBy;
 
+    @JsonProperty("jsonContent")
+    private String jsonContent;
+
+    @JsonProperty("oshScanId")
+    private String oshScanId;
+
     public JobCreationDto(String packageNvr, String inputSourceUrl) {
         this.packageNvr = packageNvr;
         this.inputSourceUrl = inputSourceUrl;
+    }
+
+    /**
+     * Constructor for OSH scan jobs with JSON content.
+     * Sets inputSourceUrl to empty string since OSH jobs don't use URL-based input.
+     *
+     * @param packageNvr NVR extracted from OSH scan metadata
+     * @param jsonContent JSON content downloaded from OSH logs
+     * @param oshScanId OSH scan ID for traceability
+     */
+    public JobCreationDto(String packageNvr, String jsonContent, String oshScanId) {
+        this.packageNvr = packageNvr;
+        this.inputSourceUrl = "";
+        this.jsonContent = jsonContent;
+        this.oshScanId = oshScanId;
     }
 }

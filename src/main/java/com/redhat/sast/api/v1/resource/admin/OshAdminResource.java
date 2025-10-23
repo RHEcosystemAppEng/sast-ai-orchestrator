@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.redhat.sast.api.config.OshRetryConfiguration;
+import com.redhat.sast.api.enums.OshFailureReason;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.JobRepository;
@@ -293,63 +294,15 @@ public class OshAdminResource {
 
             List<OshScanWithJobDto> allScans = new ArrayList<>();
 
-            if (statusFilter == null || "COLLECTED".equalsIgnoreCase(statusFilter)) {
-                List<Job> collectedJobs = jobRepository.findByOshScanIdNotNull();
-                for (Job job : collectedJobs) {
-                    allScans.add(OshScanWithJobDto.builder()
-                            .oshScanId(job.getOshScanId())
-                            .packageName(job.getPackageName())
-                            .packageNvr(job.getPackageNvr())
-                            .status("COLLECTED")
-                            .associatedJob(jobService.getJobDtoByJobId(job.getId()))
-                            .retryInfo(null)
-                            .processedAt(
-                                    job.getCreatedAt() != null
-                                            ? job.getCreatedAt().toString()
-                                            : null)
-                            .build());
-                }
+            if (shouldIncludeCollectedScans(statusFilter)) {
+                allScans.addAll(getCollectedScans());
             }
 
-            if (statusFilter == null || "UNCOLLECTED".equalsIgnoreCase(statusFilter)) {
-                List<OshUncollectedScan> uncollected = oshRetryService.getRetryQueueSnapshot(size, "created");
-                int maxRetries = retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : 0;
-
-                for (OshUncollectedScan scan : uncollected) {
-                    allScans.add(OshScanWithJobDto.builder()
-                            .oshScanId(String.valueOf(scan.getOshScanId()))
-                            .packageName(scan.getPackageName())
-                            .packageNvr(scan.getPackageNvr())
-                            .status("UNCOLLECTED")
-                            .associatedJob(null)
-                            .retryInfo(OshScanWithJobDto.RetryInfo.builder()
-                                    .retryAttempts(scan.getAttemptCount())
-                                    .maxRetries(maxRetries)
-                                    .failureReason(
-                                            scan.getFailureReason() != null
-                                                    ? scan.getFailureReason().name()
-                                                    : null)
-                                    .lastAttemptAt(
-                                            scan.getLastAttemptAt() != null
-                                                    ? scan.getLastAttemptAt().toString()
-                                                    : null)
-                                    .build())
-                            .processedAt(
-                                    scan.getCreatedAt() != null
-                                            ? scan.getCreatedAt().toString()
-                                            : null)
-                            .build());
-                }
+            if (shouldIncludeUncollectedScans(statusFilter)) {
+                allScans.addAll(getUncollectedScans(size));
             }
 
-            int start = page * size;
-            int end = Math.min(start + size, allScans.size());
-
-            if (start >= allScans.size()) {
-                return Response.ok(new ArrayList<OshScanWithJobDto>()).build();
-            }
-
-            List<OshScanWithJobDto> paginatedScans = allScans.subList(start, end);
+            List<OshScanWithJobDto> paginatedScans = paginateResults(allScans, page, size);
 
             LOGGER.debug(
                     "Returning {} OSH scans (total: {}, page: {}, size: {})",
@@ -366,6 +319,93 @@ public class OshAdminResource {
                     .entity("Error fetching OSH scans: " + e.getMessage())
                     .build();
         }
+    }
+
+    private boolean shouldIncludeCollectedScans(String statusFilter) {
+        return statusFilter == null || "COLLECTED".equalsIgnoreCase(statusFilter);
+    }
+
+    private boolean shouldIncludeUncollectedScans(String statusFilter) {
+        return statusFilter == null || "UNCOLLECTED".equalsIgnoreCase(statusFilter);
+    }
+
+    private List<OshScanWithJobDto> getCollectedScans() {
+        List<Job> collectedJobs = jobRepository.findByOshScanIdNotNull();
+        List<OshScanWithJobDto> scans = new ArrayList<>();
+
+        for (Job job : collectedJobs) {
+            scans.add(buildCollectedScanDto(job));
+        }
+
+        return scans;
+    }
+
+    private List<OshScanWithJobDto> getUncollectedScans(int size) {
+        List<OshUncollectedScan> uncollected = oshRetryService.getRetryQueueSnapshot(size, DEFAULT_SORT_BY);
+        List<OshScanWithJobDto> scans = new ArrayList<>();
+        int maxRetries = getMaxRetries();
+
+        for (OshUncollectedScan scan : uncollected) {
+            scans.add(buildUncollectedScanDto(scan, maxRetries));
+        }
+
+        return scans;
+    }
+
+    private OshScanWithJobDto buildCollectedScanDto(Job job) {
+        return OshScanWithJobDto.builder()
+                .oshScanId(job.getOshScanId())
+                .packageName(job.getPackageName())
+                .packageNvr(job.getPackageNvr())
+                .status("COLLECTED")
+                .associatedJob(jobService.getJobDtoByJobId(job.getId()))
+                .retryInfo(null)
+                .processedAt(formatTimestamp(job.getCreatedAt()))
+                .build();
+    }
+
+    private OshScanWithJobDto buildUncollectedScanDto(OshUncollectedScan scan, int maxRetries) {
+        return OshScanWithJobDto.builder()
+                .oshScanId(String.valueOf(scan.getOshScanId()))
+                .packageName(scan.getPackageName())
+                .packageNvr(scan.getPackageNvr())
+                .status("UNCOLLECTED")
+                .associatedJob(null)
+                .retryInfo(buildRetryInfo(scan, maxRetries))
+                .processedAt(formatTimestamp(scan.getCreatedAt()))
+                .build();
+    }
+
+    private OshScanWithJobDto.RetryInfo buildRetryInfo(OshUncollectedScan scan, int maxRetries) {
+        return OshScanWithJobDto.RetryInfo.builder()
+                .retryAttempts(scan.getAttemptCount())
+                .maxRetries(maxRetries)
+                .failureReason(formatFailureReason(scan.getFailureReason()))
+                .lastAttemptAt(formatTimestamp(scan.getLastAttemptAt()))
+                .build();
+    }
+
+    private int getMaxRetries() {
+        return retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : 0;
+    }
+
+    private String formatTimestamp(LocalDateTime timestamp) {
+        return timestamp != null ? timestamp.toString() : null;
+    }
+
+    private String formatFailureReason(OshFailureReason reason) {
+        return reason != null ? reason.name() : null;
+    }
+
+    private List<OshScanWithJobDto> paginateResults(List<OshScanWithJobDto> allScans, int page, int size) {
+        int start = page * size;
+
+        if (start >= allScans.size()) {
+            return new ArrayList<>();
+        }
+
+        int end = Math.min(start + size, allScans.size());
+        return allScans.subList(start, end);
     }
 
     /**

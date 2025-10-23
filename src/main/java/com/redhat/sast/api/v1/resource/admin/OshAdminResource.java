@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.redhat.sast.api.config.OshRetryConfiguration;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.JobRepository;
@@ -60,6 +61,9 @@ public class OshAdminResource {
 
     @Inject
     JobService jobService;
+
+    @Inject
+    OshRetryConfiguration retryConfiguration;
 
     /**
      * Get overall OSH integration status including retry queue and cursor information.
@@ -297,7 +301,7 @@ public class OshAdminResource {
                             .packageName(job.getPackageName())
                             .packageNvr(job.getPackageNvr())
                             .status("COLLECTED")
-                            .associatedJob(jobService.convertToResponseDto(job))
+                            .associatedJob(jobService.getJobDtoByJobId(job.getId()))
                             .retryInfo(null)
                             .processedAt(
                                     job.getCreatedAt() != null
@@ -308,7 +312,9 @@ public class OshAdminResource {
             }
 
             if (statusFilter == null || "UNCOLLECTED".equalsIgnoreCase(statusFilter)) {
-                List<OshUncollectedScan> uncollected = oshRetryService.getRetryQueue(size);
+                List<OshUncollectedScan> uncollected = oshRetryService.getRetryQueueSnapshot(size, "created");
+                int maxRetries = retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : 0;
+
                 for (OshUncollectedScan scan : uncollected) {
                     allScans.add(OshScanWithJobDto.builder()
                             .oshScanId(String.valueOf(scan.getOshScanId()))
@@ -317,12 +323,15 @@ public class OshAdminResource {
                             .status("UNCOLLECTED")
                             .associatedJob(null)
                             .retryInfo(OshScanWithJobDto.RetryInfo.builder()
-                                    .retryAttempts(scan.getRetryAttempts())
-                                    .maxRetries(scan.getMaxRetries())
-                                    .failureReason(scan.getFailureReason())
+                                    .retryAttempts(scan.getAttemptCount())
+                                    .maxRetries(maxRetries)
+                                    .failureReason(
+                                            scan.getFailureReason() != null
+                                                    ? scan.getFailureReason().name()
+                                                    : null)
                                     .lastAttemptAt(
-                                            scan.getLastRetryAttempt() != null
-                                                    ? scan.getLastRetryAttempt().toString()
+                                            scan.getLastAttemptAt() != null
+                                                    ? scan.getLastAttemptAt().toString()
                                                     : null)
                                     .build())
                             .processedAt(

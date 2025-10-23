@@ -19,6 +19,7 @@ import com.redhat.sast.api.util.input.CsvJobParser;
 import com.redhat.sast.api.v1.dto.request.JobBatchSubmissionDto;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobBatchResponseDto;
+import com.redhat.sast.api.websocket.DashboardBroadcaster;
 
 import io.fabric8.tekton.v1.Param;
 import io.quarkus.panache.common.Page;
@@ -41,6 +42,7 @@ public class JobBatchService {
     private final GoogleSheetsService googleSheetsService;
     private final CsvConverter csvConverter;
     private final PipelineParameterMapper parameterMapper;
+    private final DashboardBroadcaster dashboardBroadcaster;
 
     @ConfigProperty(name = "sast.ai.batch.job.polling.interval", defaultValue = "5000")
     long jobPollingIntervalMs;
@@ -341,6 +343,17 @@ public class JobBatchService {
                 batch.setFailedJobs(failedJobs);
                 jobBatchRepository.persist(batch);
                 LOGGER.info("Updated batch {} progress: completed={}, failed={}", batchId, completedJobs, failedJobs);
+
+                // Broadcast WebSocket update for real-time dashboard
+                try {
+                    JobBatchResponseDto batchDto = convertToResponseDto(batch);
+                    dashboardBroadcaster.broadcastBatchProgress(batchDto);
+                } catch (Exception broadcastException) {
+                    LOGGER.warn(
+                            "Failed to broadcast batch progress for batch {}: {}",
+                            batchId,
+                            broadcastException.getMessage());
+                }
             }
         } catch (Exception e) {
             LOGGER.error("Failed to update batch progress for batch {}", batchId, e);

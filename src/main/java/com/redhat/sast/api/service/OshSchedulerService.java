@@ -517,17 +517,14 @@ public class OshSchedulerService {
      * 2. Package is in the monitored package list (if configured)
      */
     private boolean shouldProcessScan(OshScanResponse scan) {
-        if (!oshJobCreationService.canProcessScan(scan)) {
-            return false;
-        }
-
-        String packageName = scan.getPackageName();
-        if (!oshConfiguration.shouldMonitorPackage(packageName)) {
+        if (oshJobCreationService.canProcessScan(scan)) {
+            String packageName = scan.getPackageName();
+            if (oshConfiguration.shouldMonitorPackage(packageName)) {
+                return true;
+            }
             LOGGER.debug("Package '{}' not in monitoring list for scan {}", packageName, scan.getScanId());
-            return false;
         }
-
-        return true;
+        return false;
     }
 
     /**

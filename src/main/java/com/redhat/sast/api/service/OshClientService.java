@@ -144,22 +144,26 @@ public class OshClientService {
         OshScanResponse response = new OshScanResponse();
         response.setScanId(scanId);
 
-        response.setState(getJsonStringValue(json, "state"));
-        response.setOwner(getJsonStringValue(json, "owner"));
-        response.setScanType(getJsonStringValue(json, "scan_type"));
-        response.setCreated(getJsonStringValue(json, "created"));
-        response.setStarted(getJsonStringValue(json, "started"));
-        response.setFinished(getJsonStringValue(json, "finished"));
-        response.setArch(getJsonStringValue(json, "arch"));
-        response.setChannel(getJsonStringValue(json, "channel"));
-
-        String label = getJsonStringValue(json, "label");
-        parseComponentFromLabel(label, response);
-
         Map<String, Object> rawData = new HashMap<>();
+
         json.fieldNames().forEachRemaining(fieldName -> {
-            rawData.put(fieldName, getJsonStringValue(json, fieldName));
+            String value = getJsonStringValue(json, fieldName);
+            rawData.put(fieldName, value);
+
+            // Set specific fields during the same iteration
+            switch (fieldName) {
+                case "state" -> response.setState(value);
+                case "owner" -> response.setOwner(value);
+                case "scan_type" -> response.setScanType(value);
+                case "created" -> response.setCreated(value);
+                case "started" -> response.setStarted(value);
+                case "finished" -> response.setFinished(value);
+                case "arch" -> response.setArch(value);
+                case "channel" -> response.setChannel(value);
+                case "label" -> parseComponentFromLabel(value, response);
+            }
         });
+
         response.setRawData(rawData);
 
         LOGGER.debug(
@@ -262,7 +266,7 @@ public class OshClientService {
             response.setVersion(version); // May be null if parsing fails
         } else {
             // Fallback: if NVR parsing fails, use the label as-is for component
-            LOGGER.debug("NVR parsing failed for label '{}', using as component name", trimmedLabel);
+            LOGGER.debug("NVR parsing failed for label '{}', using '{}' as component name", label, trimmedLabel);
             response.setComponent(trimmedLabel);
         }
     }

@@ -17,7 +17,7 @@ import jakarta.ws.rs.core.Response;
  * - Single endpoint: GET /osh/task/{scanId}
  * - No pagination - uses sequential scan IDs (1001, 1002, 1003...)
  * - Returns JSON or HTML responses (both formats possible)
- * - 404 responses are normal for missing scan IDs
+ * - Returns 404 response for missing/invalid scan IDs
  *
  * This client returns raw Response objects to handle:
  * - Mixed JSON/HTML content types
@@ -28,7 +28,7 @@ import jakarta.ws.rs.core.Response;
  */
 @Path("/osh")
 @RegisterRestClient(configKey = "osh-api")
-public interface OshClient {
+public interface OshRestClient {
 
     /**
      * Fetches OSH scan details by scan ID.
@@ -42,5 +42,5 @@ public interface OshClient {
     @GET
     @Path("/task/{scanId}")
     @Produces(MediaType.WILDCARD) // Accept both JSON and HTML responses
-    Response getScanDetailRaw(@PathParam("scanId") int scanId);
+    Response fetchScanDetailsRaw(@PathParam("scanId") int scanId);
 }

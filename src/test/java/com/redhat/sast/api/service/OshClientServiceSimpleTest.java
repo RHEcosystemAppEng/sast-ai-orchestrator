@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.redhat.sast.api.v1.dto.osh.OshScanResponse;
+import com.redhat.sast.api.v1.dto.osh.OshScan;
 
 /**
  * Simple unit tests for OshClientService business logic.
@@ -41,7 +41,7 @@ class OshClientServiceSimpleTest {
     @Test
     @DisplayName("Should validate scan response construction")
     void testScanResponseConstruction() {
-        OshScanResponse response = new OshScanResponse(12345, "CLOSED");
+        OshScan response = new OshScan(12345, "CLOSED");
         assertEquals(12345, response.getScanId());
         assertEquals("CLOSED", response.getState());
         assertTrue(response.isCompleted());
@@ -50,7 +50,7 @@ class OshClientServiceSimpleTest {
     @Test
     @DisplayName("Should handle edge cases gracefully")
     void testEdgeCases() {
-        OshScanResponse extremeResponse = new OshScanResponse();
+        OshScan extremeResponse = new OshScan();
         extremeResponse.setScanId(Integer.MAX_VALUE);
         extremeResponse.setComponent("very-long-component-name-that-might-cause-issues");
         extremeResponse.setState("CLOSED");
@@ -59,7 +59,7 @@ class OshClientServiceSimpleTest {
         assertTrue(extremeResponse.isCompleted());
         assertNotNull(extremeResponse.getPackageName());
 
-        OshScanResponse minResponse = new OshScanResponse();
+        OshScan minResponse = new OshScan();
         minResponse.setScanId(0);
         minResponse.setComponent("a");
         minResponse.setState("CLOSED");
@@ -80,12 +80,12 @@ class OshClientServiceSimpleTest {
         assertEquals("single", createScanWithComponent("single").getPackageName());
     }
 
-    private OshScanResponse createScanResponse(String state) {
-        return new OshScanResponse(1000, state);
+    private OshScan createScanResponse(String state) {
+        return new OshScan(1000, state);
     }
 
-    private OshScanResponse createScanWithComponent(String component) {
-        OshScanResponse response = new OshScanResponse();
+    private OshScan createScanWithComponent(String component) {
+        OshScan response = new OshScan();
         response.setComponent(component);
         return response;
     }

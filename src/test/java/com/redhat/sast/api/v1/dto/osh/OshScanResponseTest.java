@@ -23,7 +23,7 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should create response with default constructor")
     void testDefaultConstructor() {
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
 
         assertNull(response.getScanId());
         assertNull(response.getComponent());
@@ -42,7 +42,7 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should create response with parameterized constructor")
     void testParameterizedConstructor() {
-        OshScanResponse response = new OshScanResponse(12345, "CLOSED");
+        OshScan response = new OshScan(12345, "CLOSED");
 
         assertEquals(12345, response.getScanId());
         assertEquals("CLOSED", response.getState());
@@ -53,34 +53,34 @@ class OshScanResponseTest {
     @DisplayName("Should identify completed scans correctly")
     void testIsCompleted() {
         // Test CLOSED state (completed)
-        OshScanResponse closedScan = new OshScanResponse(1001, "CLOSED");
+        OshScan closedScan = new OshScan(1001, "CLOSED");
         assertTrue(closedScan.isCompleted());
 
         // Test OPEN state (not completed)
-        OshScanResponse openScan = new OshScanResponse(1002, "OPEN");
+        OshScan openScan = new OshScan(1002, "OPEN");
         assertFalse(openScan.isCompleted());
 
         // Test FAILED state (not completed)
-        OshScanResponse failedScan = new OshScanResponse(1003, "FAILED");
+        OshScan failedScan = new OshScan(1003, "FAILED");
         assertFalse(failedScan.isCompleted());
 
         // Test null state (not completed)
-        OshScanResponse nullStateScan = new OshScanResponse();
+        OshScan nullStateScan = new OshScan();
         assertFalse(nullStateScan.isCompleted());
 
         // Test empty state (not completed)
-        OshScanResponse emptyScan = new OshScanResponse(1004, "");
+        OshScan emptyScan = new OshScan(1004, "");
         assertFalse(emptyScan.isCompleted());
 
         // Test case sensitivity
-        OshScanResponse lowercaseScan = new OshScanResponse(1005, "closed");
+        OshScan lowercaseScan = new OshScan(1005, "closed");
         assertFalse(lowercaseScan.isCompleted()); // Should be case-sensitive
     }
 
     @Test
     @DisplayName("Should return package name correctly")
     void testGetPackageName() {
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
         response.setComponent("systemd");
 
         assertEquals("systemd", response.getPackageName());
@@ -89,7 +89,7 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should return null package name when component is null")
     void testGetPackageName_NullComponent() {
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
         response.setComponent(null);
 
         assertNull(response.getPackageName());
@@ -98,7 +98,7 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should handle all field assignments correctly")
     void testFieldAssignments() {
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
         Map<String, Object> rawData = new HashMap<>();
         rawData.put("test_key", "test_value");
 
@@ -133,7 +133,7 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should handle empty strings appropriately")
     void testEmptyStringHandling() {
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
 
         response.setComponent("");
         response.setVersion("");
@@ -151,7 +151,7 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should handle whitespace strings")
     void testWhitespaceHandling() {
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
 
         response.setComponent("  systemd  ");
         response.setState("  CLOSED  ");
@@ -165,7 +165,7 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should support null scan ID")
     void testNullScanId() {
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
         response.setScanId(null);
 
         assertNull(response.getScanId());
@@ -174,7 +174,7 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should support negative scan ID")
     void testNegativeScanId() {
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
         response.setScanId(-1);
 
         assertEquals(-1, response.getScanId());
@@ -183,7 +183,7 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should support zero scan ID")
     void testZeroScanId() {
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
         response.setScanId(0);
 
         assertEquals(0, response.getScanId());
@@ -192,7 +192,7 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should handle raw data manipulation")
     void testRawDataManipulation() {
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
         Map<String, Object> rawData = new HashMap<>();
 
         response.setRawData(rawData);
@@ -209,7 +209,7 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should handle null raw data")
     void testNullRawData() {
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
         response.setRawData(null);
 
         assertNull(response.getRawData());
@@ -218,7 +218,7 @@ class OshScanResponseTest {
     @Test
     @DisplayName("Should create response using builder pattern simulation")
     void testBuilderPatternSimulation() {
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
         response.setScanId(99999);
         response.setComponent("test-component");
         response.setState("CLOSED");

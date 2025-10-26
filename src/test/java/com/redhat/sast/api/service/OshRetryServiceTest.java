@@ -16,7 +16,7 @@ import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.OshUncollectedScanRepository;
 import com.redhat.sast.api.service.osh.OshRetryService;
 import com.redhat.sast.api.service.osh.OshRetryService.RetryQueueStatistics;
-import com.redhat.sast.api.v1.dto.osh.OshScanResponse;
+import com.redhat.sast.api.v1.dto.osh.OshScan;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -50,7 +50,7 @@ class OshRetryServiceTest {
     @Test
     @DisplayName("Should record failed scan when enabled")
     void testRecordFailedScan() {
-        OshScanResponse scan = createTestScan(1001, "test-package");
+        OshScan scan = createTestScan(1001, "test-package");
 
         oshRetryService.recordFailedScan(scan, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Test error");
 
@@ -69,7 +69,7 @@ class OshRetryServiceTest {
     @Test
     @DisplayName("Should handle scan with null ID gracefully")
     void testRecordFailedScanNullId() {
-        OshScanResponse scan = createTestScan(null, "test-package");
+        OshScan scan = createTestScan(null, "test-package");
 
         assertDoesNotThrow(() -> {
             oshRetryService.recordFailedScan(scan, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Error");
@@ -122,7 +122,7 @@ class OshRetryServiceTest {
     void testReconstructScanFromJson() throws Exception {
         String validJson = "{\"scanId\":12345,\"state\":\"CLOSED\",\"component\":\"systemd\",\"version\":\"252\"}";
 
-        OshScanResponse result = oshRetryService.reconstructScanFromJson(validJson);
+        OshScan result = oshRetryService.reconstructScanFromJson(validJson);
 
         assertNotNull(result);
         assertEquals(12345, result.getScanId());
@@ -210,8 +210,8 @@ class OshRetryServiceTest {
     }
 
     // Helper methods
-    private OshScanResponse createTestScan(Integer scanId, String packageName) {
-        OshScanResponse scan = new OshScanResponse();
+    private OshScan createTestScan(Integer scanId, String packageName) {
+        OshScan scan = new OshScan();
         scan.setScanId(scanId);
         scan.setState("CLOSED");
         scan.setComponent(packageName);

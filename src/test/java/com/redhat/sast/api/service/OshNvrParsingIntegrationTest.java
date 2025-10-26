@@ -6,7 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.redhat.sast.api.util.url.NvrParser;
-import com.redhat.sast.api.v1.dto.osh.OshScanResponse;
+import com.redhat.sast.api.v1.dto.osh.OshScan;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -80,7 +80,7 @@ class OshNvrParsingIntegrationTest {
     void testOshClientServiceParsingSimulation() {
         String oshLabel = "zlib-ng-2.1.6-2.el10";
 
-        OshScanResponse response = new OshScanResponse();
+        OshScan response = new OshScan();
 
         String component = nvrParser.extractPackageName(oshLabel);
         String version = nvrParser.extractVersion(oshLabel);

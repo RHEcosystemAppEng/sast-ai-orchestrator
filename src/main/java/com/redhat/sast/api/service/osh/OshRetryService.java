@@ -11,7 +11,7 @@ import com.redhat.sast.api.enums.OshFailureReason;
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.OshRetryStatisticsRepository;
 import com.redhat.sast.api.repository.OshUncollectedScanRepository;
-import com.redhat.sast.api.v1.dto.osh.OshScanResponse;
+import com.redhat.sast.api.v1.dto.osh.OshScan;
 
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -63,7 +63,7 @@ public class OshRetryService {
      * @param errorMessage detailed error message from the failure
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
-    public void recordFailedScan(OshScanResponse scan, OshFailureReason failureReason, String errorMessage) {
+    public void recordFailedScan(OshScan scan, OshFailureReason failureReason, String errorMessage) {
         if (!retryConfiguration.isRetryEnabled()) {
             LOGGER.debug("Retry disabled, skipping failed scan recording for {}", scan.getScanId());
             return;
@@ -232,12 +232,12 @@ public class OshRetryService {
      * @return reconstructed OSH scan response
      * @throws JsonProcessingException if JSON parsing fails
      */
-    public OshScanResponse reconstructScanFromJson(String scanDataJson) throws JsonProcessingException {
+    public OshScan reconstructScanFromJson(String scanDataJson) throws JsonProcessingException {
         if (scanDataJson == null || scanDataJson.trim().isEmpty()) {
             throw new IllegalArgumentException("Scan data JSON is null or empty");
         }
 
-        return objectMapper.readValue(scanDataJson, OshScanResponse.class);
+        return objectMapper.readValue(scanDataJson, OshScan.class);
     }
 
     /**
@@ -428,7 +428,7 @@ public class OshRetryService {
     /**
      * Serializes OSH scan response to JSON for storage.
      */
-    private String serializeScanData(OshScanResponse scan) {
+    private String serializeScanData(OshScan scan) {
         try {
             return objectMapper.writeValueAsString(scan);
         } catch (JsonProcessingException e) {
@@ -459,7 +459,7 @@ public class OshRetryService {
      * @param uncollectedScan the uncollected scan to update
      * @param scan the original scan data
      */
-    private void setPackageNvrSafely(OshUncollectedScan uncollectedScan, OshScanResponse scan) {
+    private void setPackageNvrSafely(OshUncollectedScan uncollectedScan, OshScan scan) {
         try {
             String packageNvr = oshJobCreationService.extractPackageNvr(scan);
             uncollectedScan.setPackageNvr(packageNvr);

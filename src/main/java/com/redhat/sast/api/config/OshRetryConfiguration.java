@@ -95,8 +95,6 @@ public class OshRetryConfiguration {
             return;
         }
 
-        LOGGER.info("OSH retry mechanism is enabled - validating configuration");
-
         if (maxAttempts < 0) {
             throw new IllegalStateException(
                     "Invalid osh.retry.max-attempts: " + maxAttempts + " (must be non-negative, 0 = unlimited)");
@@ -124,14 +122,14 @@ public class OshRetryConfiguration {
                     + " (must be valid duration like '1h', '30m', '24h')");
         }
 
-        LOGGER.debug("OSH retry configuration validated successfully:");
-        LOGGER.debug("  Retry enabled: {}", retryEnabled);
-        LOGGER.debug("  Max attempts: {}", maxAttempts == 0 ? "unlimited" : maxAttempts);
-        LOGGER.debug("  Retry batch size: {}", retryBatchSize);
-        LOGGER.debug("  Backoff minutes: {}", backoffMinutes);
-        LOGGER.debug("  Exponential backoff: {}", exponentialBackoff);
-        LOGGER.debug("  Retention days: {}", retentionDays);
-        LOGGER.debug("  Cleanup interval: {}", cleanupInterval);
+        LOGGER.info("OSH retry configuration validated successfully:");
+        LOGGER.info("  Retry enabled: {}", retryEnabled);
+        LOGGER.info("  Max attempts: {}", maxAttempts == 0 ? "unlimited" : maxAttempts);
+        LOGGER.info("  Retry batch size: {}", retryBatchSize);
+        LOGGER.info("  Backoff minutes: {}", backoffMinutes);
+        LOGGER.info("  Exponential backoff: {}", exponentialBackoff);
+        LOGGER.info("  Retention days: {}", retentionDays);
+        LOGGER.info("  Cleanup interval: {}", cleanupInterval);
     }
 
     /**

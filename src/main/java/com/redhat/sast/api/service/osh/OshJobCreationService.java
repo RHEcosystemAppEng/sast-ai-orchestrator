@@ -6,7 +6,7 @@ import com.redhat.sast.api.config.OshRetryConfiguration;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.service.JobService;
-import com.redhat.sast.api.v1.dto.osh.OshScanResponse;
+import com.redhat.sast.api.v1.dto.osh.OshScan;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -62,7 +62,7 @@ public class OshJobCreationService {
      * @return Created Job if successful, empty if skipped or failed
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
-    public Optional<Job> createJobFromOshScan(OshScanResponse scan) {
+    public Optional<Job> createJobFromOshScan(OshScan scan) {
         LOGGER.debug("Processing OSH scan ID: {} for package: {}", scan.getScanId(), scan.getPackageName());
 
         try {
@@ -135,7 +135,7 @@ public class OshJobCreationService {
      * @param scan OSH scan response
      * @return NVR string extracted from OSH data
      */
-    private String buildNvrFromScan(OshScanResponse scan) {
+    private String buildNvrFromScan(OshScan scan) {
         String component = scan.getComponent();
         String version = scan.getVersion();
 
@@ -174,7 +174,7 @@ public class OshJobCreationService {
     /**
      * Extracts the original label field from OSH rawData if available.
      */
-    private String extractOriginalLabel(OshScanResponse scan) {
+    private String extractOriginalLabel(OshScan scan) {
         if (scan.getRawData() == null) {
             return null;
         }
@@ -209,7 +209,7 @@ public class OshJobCreationService {
      * @param scan OSH scan response
      * @return package NVR string
      */
-    public String extractPackageNvr(OshScanResponse scan) {
+    public String extractPackageNvr(OshScan scan) {
         return buildNvrFromScan(scan);
     }
 
@@ -224,7 +224,7 @@ public class OshJobCreationService {
      * @param scan OSH scan response
      * @return true if scan can be processed, false otherwise
      */
-    public boolean canProcessScan(OshScanResponse scan) {
+    public boolean canProcessScan(OshScan scan) {
         if (scan == null) {
             LOGGER.debug("Null scan cannot be processed");
             return false;

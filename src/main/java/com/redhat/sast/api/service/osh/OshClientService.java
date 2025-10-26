@@ -15,9 +15,9 @@ import org.jsoup.select.Elements;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.redhat.sast.api.platform.osh.OshClient;
+import com.redhat.sast.api.platform.osh.OshRestClient;
 import com.redhat.sast.api.util.url.NvrParser;
-import com.redhat.sast.api.v1.dto.osh.OshScanResponse;
+import com.redhat.sast.api.v1.dto.osh.OshScan;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -40,7 +40,7 @@ public class OshClientService {
 
     @Inject
     @RestClient
-    OshClient oshClient;
+    OshRestClient oshClient;
 
     @Inject
     NvrParser nvrParser;
@@ -58,9 +58,9 @@ public class OshClientService {
      * @param scanId sequential OSH scan ID
      * @return scan details if found and parseable, empty otherwise
      */
-    public Optional<OshScanResponse> getScanDetail(int scanId) {
+    public Optional<OshScan> getScanDetail(int scanId) {
         try {
-            Response response = oshClient.getScanDetailRaw(scanId);
+            Response response = oshClient.fetchScanDetailsRaw(scanId);
 
             if (response.getStatus() == 200) {
                 String content = response.readEntity(String.class);
@@ -90,8 +90,8 @@ public class OshClientService {
      * @param batchSize number of sequential IDs to check
      * @return list of completed scans found in the ID range
      */
-    public List<OshScanResponse> getFinishedScans(int startId, int batchSize) {
-        List<OshScanResponse> finishedScans = new ArrayList<>();
+    public List<OshScan> fetchOshScansForProcessing(int startId, int batchSize) {
+        List<OshScan> finishedScans = new ArrayList<>();
 
         LOGGER.debug("Discovering OSH scans from ID {} to {}", startId, startId + batchSize - 1);
 
@@ -120,7 +120,7 @@ public class OshClientService {
      * @param scanId scan ID for context in error messages
      * @return parsed scan response or empty if parsing fails
      */
-    private Optional<OshScanResponse> parseOshResponse(String content, int scanId) {
+    private Optional<OshScan> parseOshResponse(String content, int scanId) {
         try {
             JsonNode json = objectMapper.readTree(content);
             return Optional.of(parseJsonResponse(json, scanId));
@@ -140,8 +140,8 @@ public class OshClientService {
      * @param scanId scan ID for context
      * @return parsed scan response
      */
-    private OshScanResponse parseJsonResponse(JsonNode json, int scanId) {
-        OshScanResponse response = new OshScanResponse();
+    private OshScan parseJsonResponse(JsonNode json, int scanId) {
+        OshScan response = new OshScan();
         response.setScanId(scanId);
 
         Map<String, Object> rawData = new HashMap<>();
@@ -184,7 +184,7 @@ public class OshClientService {
      * @param scanId scan ID for context
      * @return parsed scan response or empty if parsing fails
      */
-    private Optional<OshScanResponse> parseHtmlResponse(String html, int scanId) {
+    private Optional<OshScan> parseHtmlResponse(String html, int scanId) {
         try {
             Document doc = Jsoup.parse(html);
 
@@ -196,7 +196,7 @@ public class OshClientService {
                 return Optional.empty();
             }
 
-            OshScanResponse response = new OshScanResponse();
+            OshScan response = new OshScan();
             response.setScanId(scanId);
 
             Map<String, Object> rawData = new HashMap<>();
@@ -251,7 +251,7 @@ public class OshClientService {
      * @param label OSH label string (NVR format)
      * @param response response object to populate
      */
-    private void parseComponentFromLabel(String label, OshScanResponse response) {
+    private void parseComponentFromLabel(String label, OshScan response) {
         if (label == null || label.trim().isEmpty()) {
             return;
         }

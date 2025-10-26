@@ -12,7 +12,7 @@ import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.OshSchedulerCursor;
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.OshSchedulerCursorRepository;
-import com.redhat.sast.api.v1.dto.osh.OshScanResponse;
+import com.redhat.sast.api.v1.dto.osh.OshScan;
 
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -124,9 +124,9 @@ public class OshSchedulerService {
             LOGGER.debug("Starting incremental scan processing");
 
             PollConfiguration config = preparePollConfiguration();
-            List<OshScanResponse> finishedScans = fetchFinishedScans(config);
+            List<OshScan> scansToProcess = fetchFinishedScans(config);
 
-            if (finishedScans.isEmpty()) {
+            if (scansToProcess.isEmpty()) {
                 LOGGER.debug(
                         "No finished scans found in range {}-{}, cursor unchanged (scans may be in progress)",
                         config.startScanId(),
@@ -136,16 +136,14 @@ public class OshSchedulerService {
 
             LOGGER.debug(
                     "Found {} finished scans in range {}-{}",
-                    finishedScans.size(),
+                    scansToProcess.size(),
                     config.startScanId(),
                     config.startScanId() + config.batchSize() - 1);
 
-            ProcessingResults results = processScans(finishedScans, PHASE_INCREMENTAL);
+            ProcessingResults results = processScans(scansToProcess, PHASE_INCREMENTAL);
 
-            int highestProcessedId = finishedScans.stream()
-                    .mapToInt(OshScanResponse::getScanId)
-                    .max()
-                    .orElse(config.startScanId() - 1);
+            int highestProcessedId =
+                    scansToProcess.stream().mapToInt(OshScan::getScanId).max().orElse(config.startScanId() - 1);
 
             int nextScanId = highestProcessedId + 1;
             updateCursorInNewTransaction(nextScanId);
@@ -220,7 +218,7 @@ public class OshSchedulerService {
 
         for (OshUncollectedScan uncollectedScan : retryScans) {
             try {
-                OshScanResponse scan = oshRetryService.reconstructScanFromJson(uncollectedScan.getScanDataJson());
+                OshScan scan = oshRetryService.reconstructScanFromJson(uncollectedScan.getScanDataJson());
 
                 ProcessingResult result = processSingleRetryScan(uncollectedScan, scan);
 
@@ -249,7 +247,7 @@ public class OshSchedulerService {
      * @param scan the reconstructed OSH scan response
      * @return processing result
      */
-    private ProcessingResult processSingleRetryScan(OshUncollectedScan uncollectedScan, OshScanResponse scan) {
+    private ProcessingResult processSingleRetryScan(OshUncollectedScan uncollectedScan, OshScan scan) {
         try {
             Optional<Job> createdJob = oshJobCreationService.createJobFromOshScan(scan);
 
@@ -389,8 +387,8 @@ public class OshSchedulerService {
     /**
      * Fetches finished scans from OSH using the provided configuration.
      */
-    private List<OshScanResponse> fetchFinishedScans(PollConfiguration config) {
-        return oshClientService.getFinishedScans(config.startScanId(), config.batchSize());
+    private List<OshScan> fetchFinishedScans(PollConfiguration config) {
+        return oshClientService.fetchOshScansForProcessing(config.startScanId(), config.batchSize());
     }
 
     /**
@@ -401,12 +399,12 @@ public class OshSchedulerService {
      * @param phase processing phase ("incremental" or "retry") for logging
      * @return processing statistics
      */
-    private ProcessingResults processScans(List<OshScanResponse> scans, String phase) {
+    private ProcessingResults processScans(List<OshScan> scans, String phase) {
         int processedCount = 0;
         int skippedCount = 0;
         int failedCount = 0;
 
-        for (OshScanResponse scan : scans) {
+        for (OshScan scan : scans) {
             try {
                 ProcessingResult result = processSingleScan(scan);
                 switch (result) {
@@ -432,7 +430,7 @@ public class OshSchedulerService {
     /**
      * Processes a single OSH scan and returns the result.
      */
-    private ProcessingResult processSingleScan(OshScanResponse scan) {
+    private ProcessingResult processSingleScan(OshScan scan) {
         if (!shouldProcessScan(scan)) {
             LOGGER.debug("Skipped OSH scan {} (package not monitored or scan not eligible)", scan.getScanId());
             return ProcessingResult.SKIPPED;
@@ -483,14 +481,14 @@ public class OshSchedulerService {
                 return lastSeenId;
             }
         } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid cursor token format, falling back to configured start ID: {}", e.getMessage());
+            LOGGER.warn("Invalid cursor token format, fallback to configured start ID. Reason: {}", e.getMessage());
         } catch (Exception e) {
-            LOGGER.warn("Error reading cursor, falling back to configured start ID: {}", e.getMessage());
+            LOGGER.warn("Error reading cursor. Reason: {}", e.getMessage());
         }
 
-        int configuredStartId = oshConfiguration.getStartScanId();
-        LOGGER.info("Using configured start scan ID: {}", configuredStartId);
-        return configuredStartId;
+        int defaultStartId = oshConfiguration.getStartScanId();
+        LOGGER.info("Using configured start scan ID: {}", defaultStartId);
+        return defaultStartId;
     }
 
     /**
@@ -516,15 +514,17 @@ public class OshSchedulerService {
      * 1. Scan is eligible for processing (CLOSED state, has component name)
      * 2. Package is in the monitored package list (if configured)
      */
-    private boolean shouldProcessScan(OshScanResponse scan) {
-        if (oshJobCreationService.canProcessScan(scan)) {
-            String packageName = scan.getPackageName();
-            if (oshConfiguration.shouldMonitorPackage(packageName)) {
-                return true;
-            }
-            LOGGER.debug("Package '{}' not in monitoring list for scan {}", packageName, scan.getScanId());
+    private boolean shouldProcessScan(OshScan scan) {
+        if (!oshJobCreationService.canProcessScan(scan)) {
+            return false;
         }
-        return false;
+
+        String packageName = scan.getPackageName();
+        if (!oshConfiguration.shouldMonitorPackage(packageName)) {
+            LOGGER.debug("Package '{}' not in monitoring list for scan {}", packageName, scan.getScanId());
+            return false;
+        }
+        return true;
     }
 
     /**

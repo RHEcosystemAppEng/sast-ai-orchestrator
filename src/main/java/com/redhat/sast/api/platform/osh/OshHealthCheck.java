@@ -38,7 +38,7 @@ public class OshHealthCheck implements HealthCheck {
 
     @Inject
     @RestClient
-    OshClient oshClient;
+    OshRestClient oshClient;
 
     @Inject
     OshConfiguration config;
@@ -54,7 +54,7 @@ public class OshHealthCheck implements HealthCheck {
         }
 
         try {
-            Response response = oshClient.getScanDetailRaw(TEST_SCAN_ID);
+            Response response = oshClient.fetchScanDetailsRaw(TEST_SCAN_ID);
             int statusCode = response.getStatus();
 
             if (statusCode == 200 || statusCode == 404) {

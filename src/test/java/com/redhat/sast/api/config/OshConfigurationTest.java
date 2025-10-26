@@ -62,7 +62,7 @@ class OshConfigurationTest {
     void testValidateConfiguration_InvalidBatchSize() {
         config.enabled = true;
         config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
-        config.packages = Optional.empty();
+        config.packages = Optional.of(Set.of("systemd"));
         config.batchSize = 0; // Invalid
 
         IllegalStateException exception =
@@ -75,7 +75,7 @@ class OshConfigurationTest {
     void testValidateConfiguration_NegativeStartScanId() {
         config.enabled = true;
         config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
-        config.packages = Optional.empty();
+        config.packages = Optional.of(Set.of("systemd"));
         config.batchSize = 10;
         config.startScanId = -1; // Invalid
 
@@ -89,7 +89,7 @@ class OshConfigurationTest {
     void testValidateConfiguration_InvalidMaxScansPerCycle() {
         config.enabled = true;
         config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
-        config.packages = Optional.empty();
+        config.packages = Optional.of(Set.of("systemd"));
         config.batchSize = 10;
         config.startScanId = 1000;
         config.maxScansPerCycle = 0; // Invalid
@@ -100,11 +100,26 @@ class OshConfigurationTest {
     }
 
     @Test
+    @DisplayName("Should fail validation when packages not configured")
+    void testValidateConfiguration_NoPackagesConfigured() {
+        config.enabled = true;
+        config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
+        config.packages = Optional.empty();
+        config.batchSize = 10;
+        config.startScanId = 1000;
+        config.maxScansPerCycle = 50;
+
+        IllegalStateException exception =
+                assertThrows(IllegalStateException.class, () -> config.validateConfiguration());
+        assertTrue(exception.getMessage().contains("osh.packages"));
+    }
+
+    @Test
     @DisplayName("Should accept zero start scan ID")
     void testValidateConfiguration_ZeroStartScanId() {
         config.enabled = true;
         config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
-        config.packages = Optional.empty();
+        config.packages = Optional.of(Set.of("systemd"));
         config.batchSize = 10;
         config.startScanId = 0; // Valid edge case
         config.maxScansPerCycle = 50;
@@ -118,25 +133,25 @@ class OshConfigurationTest {
     }
 
     @Test
-    @DisplayName("Should monitor all packages when none configured")
+    @DisplayName("Should monitor nothing when no packages configured (fail-safe)")
     void testShouldMonitorPackage_NoPackagesConfigured() {
         config.enabled = true;
         config.packages = Optional.empty();
 
-        assertTrue(config.shouldMonitorPackage("systemd"));
-        assertTrue(config.shouldMonitorPackage("kernel"));
-        assertTrue(config.shouldMonitorPackage("any-package"));
+        assertFalse(config.shouldMonitorPackage("systemd"));
+        assertFalse(config.shouldMonitorPackage("kernel"));
+        assertFalse(config.shouldMonitorPackage("any-package"));
     }
 
     @Test
-    @DisplayName("Should monitor all packages when empty set configured")
+    @DisplayName("Should monitor nothing when empty set configured (fail-safe)")
     void testShouldMonitorPackage_EmptyPackageSet() {
         config.enabled = true;
         config.packages = Optional.of(Set.of());
 
-        assertTrue(config.shouldMonitorPackage("systemd"));
-        assertTrue(config.shouldMonitorPackage("kernel"));
-        assertTrue(config.shouldMonitorPackage("any-package"));
+        assertFalse(config.shouldMonitorPackage("systemd"));
+        assertFalse(config.shouldMonitorPackage("kernel"));
+        assertFalse(config.shouldMonitorPackage("any-package"));
     }
 
     @Test

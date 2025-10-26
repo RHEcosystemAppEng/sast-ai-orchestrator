@@ -142,7 +142,8 @@ public class OshConfiguration {
         LOGGER.info("OSH integration is enabled - validating configuration");
 
         if (packages.isEmpty() || packages.map(Set::isEmpty).orElse(true)) {
-            LOGGER.warn("No packages configured for OSH monitoring - will process all scans");
+            throw new IllegalStateException(
+                    "Invalid osh.packages: empty or not configured (must specify at least one package to monitor)");
         }
 
         if (batchSize <= 0) {
@@ -212,9 +213,9 @@ public class OshConfiguration {
             return false;
         }
 
-        // If no packages configured, monitor all
+        // If no packages configured, monitor nothing
         if (packages.isEmpty() || packages.map(Set::isEmpty).orElse(true)) {
-            return true;
+            return false;
         }
 
         if (packageName == null) {

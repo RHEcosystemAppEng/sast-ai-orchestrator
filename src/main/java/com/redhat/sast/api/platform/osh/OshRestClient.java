@@ -12,19 +12,12 @@ import jakarta.ws.rs.core.Response;
 /**
  * REST client for OSH (Open Scan Hub) API integration.
  *
- * OSH API Overview:
- * - Base URL: https://cov01.lab.eng.brq2.redhat.com
- * - Single endpoint: GET /osh/task/{scanId}
- * - No pagination - uses sequential scan IDs (1001, 1002, 1003...)
- * - Returns JSON or HTML responses (both formats possible)
- * - Returns 404 response for missing/invalid scan IDs
+ * This interface uses Quarkus REST Client to generate an HTTP client implementation
+ * based on configuration properties defined in application.properties:
+ * - quarkus.rest-client.osh-api.url (base URL)
+ * - quarkus.rest-client.osh-api.connect-timeout
+ * - quarkus.rest-client.osh-api.read-timeout
  *
- * This client returns raw Response objects to handle:
- * - Mixed JSON/HTML content types
- * - Normal 404 responses for missing scan IDs
- * - Error status codes that need special handling
- *
- * Business logic and response parsing are handled in OshClientService.
  */
 @Path("/osh")
 @RegisterRestClient(configKey = "osh-api")

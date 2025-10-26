@@ -96,13 +96,9 @@ public class OshClientService {
         LOGGER.debug("Discovering OSH scans from ID {} to {}", startId, startId + batchSize - 1);
 
         for (int scanId = startId; scanId < startId + batchSize; scanId++) {
-            final int currentScanId = scanId;
             getScanDetail(scanId)
                     .filter(scan -> "CLOSED".equals(scan.getState()))
-                    .ifPresent(scan -> {
-                        LOGGER.debug("Found completed scan: {} ({})", currentScanId, scan.getComponent());
-                        finishedScans.add(scan);
-                    });
+                    .ifPresent(finishedScans::add);
         }
 
         LOGGER.info(
@@ -252,7 +248,7 @@ public class OshClientService {
      * @param response response object to populate
      */
     private void parseComponentFromLabel(String label, OshScan response) {
-        if (label == null || label.trim().isEmpty()) {
+        if (label == null || label.isBlank()) {
             return;
         }
 

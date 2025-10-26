@@ -124,7 +124,8 @@ public class OshSchedulerService {
             LOGGER.debug("Starting incremental scan processing");
 
             PollConfiguration config = preparePollConfiguration();
-            List<OshScan> scansToProcess = fetchFinishedScans(config);
+            List<OshScan> scansToProcess =
+                    oshClientService.fetchOshScansForProcessing(config.startScanId(), config.batchSize());
 
             if (scansToProcess.isEmpty()) {
                 LOGGER.debug(
@@ -378,13 +379,6 @@ public class OshSchedulerService {
     }
 
     /**
-     * Fetches finished scans from OSH using the provided configuration.
-     */
-    private List<OshScan> fetchFinishedScans(PollConfiguration config) {
-        return oshClientService.fetchOshScansForProcessing(config.startScanId(), config.batchSize());
-    }
-
-    /**
      * Processes a list of OSH scans and returns processing statistics.
      * Records failures for retry when retry is enabled.
      *
@@ -469,9 +463,7 @@ public class OshSchedulerService {
         try {
             Optional<OshSchedulerCursor> cursor = cursorRepository.getCurrentCursor();
             if (cursor.isPresent() && cursor.get().getLastSeenToken() != null) {
-                int lastSeenId = Integer.parseInt(cursor.get().getLastSeenToken());
-                LOGGER.debug("Using cursor position: last seen scan ID {}", lastSeenId);
-                return lastSeenId;
+                return Integer.parseInt(cursor.get().getLastSeenToken());
             }
         } catch (NumberFormatException e) {
             LOGGER.warn("Invalid cursor token format, fallback to configured start ID. Reason: {}", e.getMessage());

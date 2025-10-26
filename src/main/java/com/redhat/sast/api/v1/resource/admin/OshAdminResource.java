@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.Optional;
 
 import com.redhat.sast.api.model.OshUncollectedScan;
-import com.redhat.sast.api.service.OshRetryService;
-import com.redhat.sast.api.service.OshSchedulerService;
+import com.redhat.sast.api.service.osh.OshRetryService;
+import com.redhat.sast.api.service.osh.OshSchedulerService;
 import com.redhat.sast.api.v1.dto.response.admin.OshRetryQueueResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshRetryStatisticsResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshStatusResponseDto;

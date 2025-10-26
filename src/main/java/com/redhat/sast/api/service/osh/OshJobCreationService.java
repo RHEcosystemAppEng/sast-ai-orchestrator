@@ -1,10 +1,11 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.osh;
 
 import java.util.Optional;
 
 import com.redhat.sast.api.config.OshRetryConfiguration;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.repository.JobRepository;
+import com.redhat.sast.api.service.JobService;
 import com.redhat.sast.api.v1.dto.osh.OshScanResponse;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 

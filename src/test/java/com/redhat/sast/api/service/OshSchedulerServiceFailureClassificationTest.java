@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.redhat.sast.api.enums.OshFailureReason;
+import com.redhat.sast.api.service.osh.OshSchedulerService;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;

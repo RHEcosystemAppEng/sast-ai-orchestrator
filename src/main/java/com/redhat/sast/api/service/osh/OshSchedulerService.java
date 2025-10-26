@@ -1,4 +1,4 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.osh;
 
 import java.time.LocalDateTime;
 import java.util.List;

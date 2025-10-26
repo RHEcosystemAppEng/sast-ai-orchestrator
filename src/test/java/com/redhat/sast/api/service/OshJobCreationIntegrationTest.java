@@ -8,6 +8,7 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.redhat.sast.api.service.osh.OshJobCreationService;
 import com.redhat.sast.api.v1.dto.osh.OshScanResponse;
 
 import io.quarkus.test.junit.QuarkusTest;

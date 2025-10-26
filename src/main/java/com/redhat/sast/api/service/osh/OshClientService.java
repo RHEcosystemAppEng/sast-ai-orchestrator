@@ -1,4 +1,4 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.osh;
 
 import java.util.ArrayList;
 import java.util.HashMap;

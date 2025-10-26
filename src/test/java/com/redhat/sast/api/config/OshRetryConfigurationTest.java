@@ -32,7 +32,6 @@ class OshRetryConfigurationTest {
     void testBasicConfiguration() {
         assertNotNull(retryConfiguration);
 
-        assertNotNull(retryConfiguration.isRetryEnabled());
         assertTrue(retryConfiguration.getEffectiveRetryBatchSize() > 0);
     }
 

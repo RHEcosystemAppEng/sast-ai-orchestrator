@@ -85,10 +85,8 @@ public class OshJobCreationService {
 
             Job job = jobService.createJobEntity(dto);
 
-            if (retryConfiguration.isRetryEnabled()) {
-                oshRetryService.markRetrySuccessful(scan.getScanId());
-                LOGGER.debug("Removed OSH scan {} from retry queue after successful job creation", scan.getScanId());
-            }
+            oshRetryService.markRetrySuccessful(scan.getScanId());
+            LOGGER.debug("Removed OSH scan {} from retry queue after successful job creation", scan.getScanId());
 
             LOGGER.info(
                     "OSH job creation successful: scan {} -> job {} (package: {})",

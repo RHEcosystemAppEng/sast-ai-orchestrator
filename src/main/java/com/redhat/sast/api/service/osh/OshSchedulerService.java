@@ -171,11 +171,6 @@ public class OshSchedulerService {
      * @return processing results for retry scans
      */
     private ProcessingResults processRetryScans() {
-        if (!retryConfiguration.isRetryEnabled()) {
-            LOGGER.trace("Retry disabled, skipping retry phase");
-            return new ProcessingResults(0, 0, 0, PHASE_RETRY);
-        }
-
         try {
             LOGGER.debug("Starting retry scan processing");
 
@@ -366,10 +361,8 @@ public class OshSchedulerService {
                     retryResults.skippedCount());
         }
 
-        if (retryConfiguration.isRetryEnabled()) {
-            String queueStatus = oshRetryService.getRetryQueueStatus();
-            LOGGER.debug("OSH retry queue status: {}", queueStatus);
-        }
+        String queueStatus = oshRetryService.getRetryQueueStatus();
+        LOGGER.debug("OSH retry queue status: {}", queueStatus);
     }
 
     /**
@@ -417,7 +410,7 @@ public class OshSchedulerService {
                 LOGGER.error(
                         "Failed to process OSH scan {} ({}), continuing with next scan", scan.getScanId(), phase, e);
 
-                if (PHASE_INCREMENTAL.equals(phase) && retryConfiguration.isRetryEnabled()) {
+                if (PHASE_INCREMENTAL.equals(phase)) {
                     OshFailureReason failureReason = classifyFailure(e);
                     oshRetryService.recordFailedScan(scan, failureReason, e.getMessage());
                 }

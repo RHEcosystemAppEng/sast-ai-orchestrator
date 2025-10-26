@@ -31,14 +31,6 @@ public class OshRetryConfiguration {
     private static final long MAX_BACKOFF_MINUTES = 1440; // 24 hours
 
     /**
-     * Master toggle for OSH retry mechanism.
-     * When false, failed scans are permanently skipped.
-     * When true, failed scans are stored and retried according to other settings.
-     */
-    @ConfigProperty(name = "osh.retry.enabled", defaultValue = "false")
-    boolean retryEnabled;
-
-    /**
      * Maximum retry attempts before permanent failure.
      * Set to 0 to disable retry limit (use retention-days only).
      */
@@ -86,15 +78,9 @@ public class OshRetryConfiguration {
     /**
      * Validates retry configuration at startup.
      * Fails fast if invalid values are provided.
-     * Only validates when retry is enabled to avoid startup failures.
      */
     @PostConstruct
     public void validateConfiguration() {
-        if (!retryEnabled) {
-            LOGGER.info("OSH retry mechanism is disabled (skip-on-failure mode is enabled)");
-            return;
-        }
-
         if (maxAttempts < 0) {
             throw new IllegalStateException(
                     "Invalid osh.retry.max-attempts: " + maxAttempts + " (must be non-negative, 0 = unlimited)");
@@ -123,7 +109,6 @@ public class OshRetryConfiguration {
         }
 
         LOGGER.info("OSH retry configuration validated successfully:");
-        LOGGER.info("  Retry enabled: {}", retryEnabled);
         LOGGER.info("  Max attempts: {}", maxAttempts == 0 ? "unlimited" : maxAttempts);
         LOGGER.info("  Retry batch size: {}", retryBatchSize);
         LOGGER.info("  Backoff minutes: {}", backoffMinutes);

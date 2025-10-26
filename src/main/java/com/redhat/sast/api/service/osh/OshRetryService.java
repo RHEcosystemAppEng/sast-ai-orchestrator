@@ -64,11 +64,6 @@ public class OshRetryService {
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void recordFailedScan(OshScan scan, OshFailureReason failureReason, String errorMessage) {
-        if (!retryConfiguration.isRetryEnabled()) {
-            LOGGER.debug("Retry disabled, skipping failed scan recording for {}", scan.getScanId());
-            return;
-        }
-
         if (scan == null || scan.getScanId() == null) {
             LOGGER.warn("Cannot record null scan or scan with null ID for retry");
             return;
@@ -123,11 +118,6 @@ public class OshRetryService {
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public List<OshUncollectedScan> fetchRetryableScans(int batchSize) {
-        if (!retryConfiguration.isRetryEnabled()) {
-            LOGGER.debug("Retry disabled, returning empty retry list");
-            return List.of();
-        }
-
         try {
             LocalDateTime cutoffTime = retryConfiguration.getStandardRetryCutoffTime();
             int maxAttempts = retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : 0;
@@ -225,7 +215,7 @@ public class OshRetryService {
     }
 
     /**
-     * Reconstructs OshScanResponse from stored JSON data.
+     * Reconstructs OshScan from stored JSON data.
      * Used when processing retry attempts to avoid re-fetching from OSH.
      *
      * @param scanDataJson JSON representation of the original scan
@@ -247,11 +237,6 @@ public class OshRetryService {
     @Scheduled(every = "${osh.retry.cleanup-interval:24h}")
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void cleanupExpiredRetries() {
-        if (!retryConfiguration.isRetryEnabled()) {
-            LOGGER.trace("Retry disabled, skipping cleanup");
-            return;
-        }
-
         LocalDateTime startTime = LocalDateTime.now();
         try {
             LocalDateTime cutoffTime = retryConfiguration.getRetentionCutoffTime();
@@ -288,7 +273,7 @@ public class OshRetryService {
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public int cleanupExceededRetries() {
-        if (!retryConfiguration.isRetryEnabled() || !retryConfiguration.hasRetryLimit()) {
+        if (!retryConfiguration.hasRetryLimit()) {
             return 0;
         }
 
@@ -326,10 +311,6 @@ public class OshRetryService {
      * @return summary of retry queue status
      */
     public String getRetryQueueStatus() {
-        if (!retryConfiguration.isRetryEnabled()) {
-            return "Retry mechanism disabled";
-        }
-
         try {
             long totalInQueue = uncollectedScanRepository.count();
             LocalDateTime cutoffTime = retryConfiguration.getStandardRetryCutoffTime();
@@ -370,10 +351,6 @@ public class OshRetryService {
      * @return detailed statistics object
      */
     public RetryQueueStatistics getDetailedRetryStatistics() {
-        if (!retryConfiguration.isRetryEnabled()) {
-            return new RetryQueueStatistics(false);
-        }
-
         try {
             long totalInQueue = uncollectedScanRepository.count();
             LocalDateTime cutoffTime = retryConfiguration.getStandardRetryCutoffTime();
@@ -400,10 +377,6 @@ public class OshRetryService {
      * @return list of retry records
      */
     public List<OshUncollectedScan> getRetryQueueSnapshot(int limit, String sortBy) {
-        if (!retryConfiguration.isRetryEnabled()) {
-            return List.of();
-        }
-
         try {
             return retryStatisticsRepository.findRecentScans(limit);
 

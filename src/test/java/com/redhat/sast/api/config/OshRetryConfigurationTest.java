@@ -11,7 +11,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 
 /**
- * Integration tests for OshRetryConfiguration focusing on validation and calculation logic.
+ * Integration tests for OSH retry functionality focusing on validation and calculation logic.
  *
  * Tests cover:
  * - Configuration validation at startup
@@ -25,42 +25,42 @@ import jakarta.inject.Inject;
 class OshRetryConfigurationTest {
 
     @Inject
-    OshRetryConfiguration retryConfiguration;
+    OshConfiguration oshConfiguration;
 
     @Test
     @DisplayName("Should provide basic configuration access")
     void testBasicConfiguration() {
-        assertNotNull(retryConfiguration);
+        assertNotNull(oshConfiguration);
 
-        assertTrue(retryConfiguration.getEffectiveRetryBatchSize() > 0);
+        assertTrue(oshConfiguration.getEffectiveRetryBatchSize() > 0);
     }
 
     @Test
     @DisplayName("Should calculate backoff times correctly")
     void testBackoffCalculation() {
-        long backoff1 = retryConfiguration.calculateBackoffMinutes(1);
-        long backoff2 = retryConfiguration.calculateBackoffMinutes(2);
-        long backoff3 = retryConfiguration.calculateBackoffMinutes(3);
+        long backoff1 = oshConfiguration.calculateBackoffMinutes(1);
+        long backoff2 = oshConfiguration.calculateBackoffMinutes(2);
+        long backoff3 = oshConfiguration.calculateBackoffMinutes(3);
 
         assertTrue(backoff1 > 0);
         assertTrue(backoff2 > 0);
         assertTrue(backoff3 > 0);
 
-        assertTrue(retryConfiguration.calculateBackoffMinutes(0) > 0);
-        assertTrue(retryConfiguration.calculateBackoffMinutes(-1) > 0);
+        assertTrue(oshConfiguration.calculateBackoffMinutes(0) > 0);
+        assertTrue(oshConfiguration.calculateBackoffMinutes(-1) > 0);
 
-        long largeBackoff = retryConfiguration.calculateBackoffMinutes(100);
+        long largeBackoff = oshConfiguration.calculateBackoffMinutes(100);
         assertTrue(largeBackoff <= 1440); // Max 24 hours in minutes
     }
 
     @Test
     @DisplayName("Should calculate cutoff times correctly")
     void testCutoffTimeCalculation() {
-        LocalDateTime cutoff = retryConfiguration.getStandardRetryCutoffTime();
+        LocalDateTime cutoff = oshConfiguration.getStandardRetryCutoffTime();
         assertNotNull(cutoff);
         assertTrue(cutoff.isBefore(LocalDateTime.now()));
 
-        LocalDateTime retentionCutoff = retryConfiguration.getRetentionCutoffTime();
+        LocalDateTime retentionCutoff = oshConfiguration.getRetentionCutoffTime();
         assertNotNull(retentionCutoff);
         assertTrue(retentionCutoff.isBefore(LocalDateTime.now()));
         assertTrue(retentionCutoff.isBefore(cutoff));
@@ -69,9 +69,9 @@ class OshRetryConfigurationTest {
     @Test
     @DisplayName("Should handle attempt-specific cutoff times")
     void testAttemptSpecificCutoffTimes() {
-        LocalDateTime cutoff1 = retryConfiguration.getRetryCutoffTime(1);
-        LocalDateTime cutoff2 = retryConfiguration.getRetryCutoffTime(2);
-        LocalDateTime cutoff3 = retryConfiguration.getRetryCutoffTime(3);
+        LocalDateTime cutoff1 = oshConfiguration.getRetryCutoffTime(1);
+        LocalDateTime cutoff2 = oshConfiguration.getRetryCutoffTime(2);
+        LocalDateTime cutoff3 = oshConfiguration.getRetryCutoffTime(3);
 
         assertNotNull(cutoff1);
         assertNotNull(cutoff2);
@@ -85,7 +85,7 @@ class OshRetryConfigurationTest {
     @Test
     @DisplayName("Should provide effective batch size")
     void testEffectiveBatchSize() {
-        int batchSize = retryConfiguration.getEffectiveRetryBatchSize();
+        int batchSize = oshConfiguration.getEffectiveRetryBatchSize();
         assertTrue(batchSize > 0);
         assertTrue(batchSize <= 50); // Should not exceed maximum
     }
@@ -93,7 +93,7 @@ class OshRetryConfigurationTest {
     @Test
     @DisplayName("Should handle retry limits correctly")
     void testRetryLimits() {
-        boolean hasLimit = retryConfiguration.hasRetryLimit();
+        boolean hasLimit = oshConfiguration.hasRetryLimit();
         assertTrue(hasLimit || !hasLimit);
     }
 }

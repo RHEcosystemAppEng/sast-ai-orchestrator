@@ -6,7 +6,6 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.redhat.sast.api.config.OshConfiguration;
-import com.redhat.sast.api.config.OshRetryConfiguration;
 import com.redhat.sast.api.enums.OshFailureReason;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.OshSchedulerCursor;
@@ -61,9 +60,6 @@ public class OshSchedulerService {
 
     @Inject
     OshRetryService oshRetryService;
-
-    @Inject
-    OshRetryConfiguration retryConfiguration;
 
     /**
      * Main scheduler method that polls OSH for new scans and creates jobs.
@@ -176,7 +172,7 @@ public class OshSchedulerService {
             LOGGER.debug("Starting retry scan processing");
 
             List<OshUncollectedScan> retryScans =
-                    oshRetryService.fetchRetryableScans(retryConfiguration.getEffectiveRetryBatchSize());
+                    oshRetryService.fetchRetryableScans(oshConfiguration.getEffectiveRetryBatchSize());
 
             if (retryScans.isEmpty()) {
                 LOGGER.debug("No retry-eligible scans found");

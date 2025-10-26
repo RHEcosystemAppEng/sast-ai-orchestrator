@@ -6,7 +6,7 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.redhat.sast.api.config.OshRetryConfiguration;
+import com.redhat.sast.api.config.OshConfiguration;
 import com.redhat.sast.api.enums.OshFailureReason;
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.OshRetryStatisticsRepository;
@@ -47,7 +47,7 @@ public class OshRetryService {
     OshRetryStatisticsRepository retryStatisticsRepository;
 
     @Inject
-    OshRetryConfiguration retryConfiguration;
+    OshConfiguration oshConfiguration;
 
     @Inject
     OshJobCreationService oshJobCreationService;
@@ -119,9 +119,9 @@ public class OshRetryService {
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public List<OshUncollectedScan> fetchRetryableScans(int batchSize) {
         try {
-            LocalDateTime cutoffTime = retryConfiguration.getStandardRetryCutoffTime();
-            int maxAttempts = retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : 0;
-            int effectiveBatchSize = Math.min(batchSize, retryConfiguration.getEffectiveRetryBatchSize());
+            LocalDateTime cutoffTime = oshConfiguration.getStandardRetryCutoffTime();
+            int maxAttempts = oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : 0;
+            int effectiveBatchSize = Math.min(batchSize, oshConfiguration.getEffectiveRetryBatchSize());
 
             List<OshUncollectedScan> eligibleScans =
                     uncollectedScanRepository.findRetryableScansWithLock(cutoffTime, maxAttempts, effectiveBatchSize);
@@ -239,7 +239,7 @@ public class OshRetryService {
     public void cleanupExpiredRetries() {
         LocalDateTime startTime = LocalDateTime.now();
         try {
-            LocalDateTime cutoffTime = retryConfiguration.getRetentionCutoffTime();
+            LocalDateTime cutoffTime = oshConfiguration.getRetentionCutoffTime();
             long totalBefore = uncollectedScanRepository.count();
             long deletedCount = uncollectedScanRepository.deleteOlderThan(cutoffTime);
 
@@ -273,12 +273,12 @@ public class OshRetryService {
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public int cleanupExceededRetries() {
-        if (!retryConfiguration.hasRetryLimit()) {
+        if (!oshConfiguration.hasRetryLimit()) {
             return 0;
         }
 
         try {
-            int maxAttempts = retryConfiguration.getMaxAttempts();
+            int maxAttempts = oshConfiguration.getRetryMaxAttempts();
             long totalBefore = uncollectedScanRepository.count();
             long deletedCount = uncollectedScanRepository.deleteExceededRetries(maxAttempts);
 
@@ -313,8 +313,8 @@ public class OshRetryService {
     public String getRetryQueueStatus() {
         try {
             long totalInQueue = uncollectedScanRepository.count();
-            LocalDateTime cutoffTime = retryConfiguration.getStandardRetryCutoffTime();
-            int maxAttempts = retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : 0;
+            LocalDateTime cutoffTime = oshConfiguration.getStandardRetryCutoffTime();
+            int maxAttempts = oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : 0;
             long eligibleNow = retryStatisticsRepository.countEligibleForRetry(cutoffTime, maxAttempts);
 
             return String.format(
@@ -353,8 +353,8 @@ public class OshRetryService {
     public RetryQueueStatistics getDetailedRetryStatistics() {
         try {
             long totalInQueue = uncollectedScanRepository.count();
-            LocalDateTime cutoffTime = retryConfiguration.getStandardRetryCutoffTime();
-            int maxAttempts = retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : 0;
+            LocalDateTime cutoffTime = oshConfiguration.getStandardRetryCutoffTime();
+            int maxAttempts = oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : 0;
             long eligibleNow = retryStatisticsRepository.countEligibleForRetry(cutoffTime, maxAttempts);
 
             long awaitingBackoff = totalInQueue - eligibleNow;
@@ -392,10 +392,10 @@ public class OshRetryService {
     private String getConfigurationSummary() {
         return String.format(
                 "Max attempts: %s, Backoff: %dm, Exponential: %s, Retention: %dd",
-                retryConfiguration.hasRetryLimit() ? retryConfiguration.getMaxAttempts() : UNLIMITED_ATTEMPTS,
-                retryConfiguration.getBackoffMinutes(),
-                retryConfiguration.isExponentialBackoff() ? "yes" : "no",
-                retryConfiguration.getRetentionDays());
+                oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : UNLIMITED_ATTEMPTS,
+                oshConfiguration.getRetryBackoffMinutes(),
+                oshConfiguration.isRetryExponentialBackoff() ? "yes" : "no",
+                oshConfiguration.getRetryRetentionDays());
     }
 
     /**

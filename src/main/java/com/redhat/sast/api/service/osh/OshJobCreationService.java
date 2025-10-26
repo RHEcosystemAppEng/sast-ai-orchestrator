@@ -2,7 +2,7 @@ package com.redhat.sast.api.service.osh;
 
 import java.util.Optional;
 
-import com.redhat.sast.api.config.OshRetryConfiguration;
+import com.redhat.sast.api.config.OshConfiguration;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.service.JobService;
@@ -47,7 +47,7 @@ public class OshJobCreationService {
     OshRetryService oshRetryService;
 
     @Inject
-    OshRetryConfiguration retryConfiguration;
+    OshConfiguration oshConfiguration;
 
     /**
      * Creates a SAST-AI workflow job from an OSH scan result.

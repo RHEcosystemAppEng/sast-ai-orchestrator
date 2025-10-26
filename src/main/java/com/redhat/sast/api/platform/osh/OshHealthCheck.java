@@ -34,7 +34,6 @@ public class OshHealthCheck implements HealthCheck {
     private static final String STATUS_KEY = "status";
     private static final String TEST_SCAN_ID_KEY = "test_scan_id";
     private static final String BASE_URL_KEY = "base_url";
-    private static final String NOT_CONFIGURED_VALUE = "not-configured";
 
     @Inject
     @RestClient
@@ -63,7 +62,7 @@ public class OshHealthCheck implements HealthCheck {
                         .withData(STATUS_KEY, "healthy")
                         .withData(TEST_SCAN_ID_KEY, String.valueOf(TEST_SCAN_ID))
                         .withData("response_status", String.valueOf(statusCode))
-                        .withData(BASE_URL_KEY, config.getBaseUrl().orElse(NOT_CONFIGURED_VALUE))
+                        .withData(BASE_URL_KEY, config.getBaseUrl())
                         .build();
             } else {
                 return HealthCheckResponse.named(HEALTH_CHECK_NAME)
@@ -71,7 +70,7 @@ public class OshHealthCheck implements HealthCheck {
                         .withData(STATUS_KEY, "unhealthy")
                         .withData(TEST_SCAN_ID_KEY, String.valueOf(TEST_SCAN_ID))
                         .withData("response_status", String.valueOf(statusCode))
-                        .withData(BASE_URL_KEY, config.getBaseUrl().orElse(NOT_CONFIGURED_VALUE))
+                        .withData(BASE_URL_KEY, config.getBaseUrl())
                         .withData("message", "Unexpected status code from OSH API")
                         .build();
             }
@@ -82,7 +81,7 @@ public class OshHealthCheck implements HealthCheck {
                     .down()
                     .withData(STATUS_KEY, "error")
                     .withData(TEST_SCAN_ID_KEY, String.valueOf(TEST_SCAN_ID))
-                    .withData(BASE_URL_KEY, config.getBaseUrl().orElse(NOT_CONFIGURED_VALUE))
+                    .withData(BASE_URL_KEY, config.getBaseUrl())
                     .withData("error", e.getMessage())
                     .withData("error_type", e.getClass().getSimpleName())
                     .build();

@@ -59,9 +59,10 @@ class OshRetryServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw exception for null scan")
+    @DisplayName("Should handle null scan gracefully")
     void testRecordFailedScanNull() {
-        assertThrows(Exception.class, () -> {
+        // Should not throw exception - method logs warning and returns early
+        assertDoesNotThrow(() -> {
             oshRetryService.recordFailedScan(null, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Error");
         });
     }

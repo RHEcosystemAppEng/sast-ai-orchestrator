@@ -48,6 +48,11 @@ class OshConfigurationTest {
         config.batchSize = 10;
         config.startScanId = 1000;
         config.maxScansPerCycle = 50;
+        config.retryMaxAttempts = 3;
+        config.retryBatchSize = 5;
+        config.retryBackoffMinutes = 20;
+        config.retryRetentionDays = 7;
+        config.retryCleanupInterval = "24h";
 
         assertDoesNotThrow(() -> config.validateConfiguration());
     }
@@ -103,6 +108,11 @@ class OshConfigurationTest {
         config.batchSize = 10;
         config.startScanId = 0; // Valid edge case
         config.maxScansPerCycle = 50;
+        config.retryMaxAttempts = 3;
+        config.retryBatchSize = 5;
+        config.retryBackoffMinutes = 20;
+        config.retryRetentionDays = 7;
+        config.retryCleanupInterval = "24h";
 
         assertDoesNotThrow(() -> config.validateConfiguration());
     }

@@ -93,7 +93,7 @@ public class OshClientService {
     public List<OshScan> fetchOshScansForProcessing(int startId, int batchSize) {
         List<OshScan> finishedScans = new ArrayList<>();
 
-        LOGGER.debug("Discovering OSH scans from ID {} to {}", startId, startId + batchSize - 1);
+        LOGGER.debug("Discovering OSH scans from ID {} to {} (inclusive)", startId, startId + batchSize - 1);
 
         for (int scanId = startId; scanId < startId + batchSize; scanId++) {
             getScanDetail(scanId)
@@ -102,7 +102,10 @@ public class OshClientService {
         }
 
         LOGGER.info(
-                "Discovered {} finished scans in range {}-{}", finishedScans.size(), startId, startId + batchSize - 1);
+                "Discovered {} finished scans in range {}-{} (inclusive)",
+                finishedScans.size(),
+                startId,
+                startId + batchSize - 1);
         return finishedScans;
     }
 

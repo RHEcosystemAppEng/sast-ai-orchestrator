@@ -2,8 +2,8 @@ package com.redhat.sast.api.config;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,8 +43,8 @@ class OshConfigurationTest {
     @DisplayName("Should validate when OSH is enabled with valid config")
     void testValidateConfiguration_EnabledValid() {
         config.enabled = true;
-        config.baseUrl = Optional.of("https://cov01.lab.eng.brq2.redhat.com");
-        config.packages = Optional.of(List.of("systemd", "kernel"));
+        config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
+        config.packages = Optional.of(Set.of("systemd", "kernel"));
         config.batchSize = 10;
         config.startScanId = 1000;
         config.maxScansPerCycle = 50;
@@ -53,21 +53,11 @@ class OshConfigurationTest {
     }
 
     @Test
-    @DisplayName("Should fail validation when enabled but no base URL")
-    void testValidateConfiguration_EnabledNoBaseUrl() {
-        config.enabled = true;
-        config.baseUrl = Optional.empty();
-
-        IllegalStateException exception =
-                assertThrows(IllegalStateException.class, () -> config.validateConfiguration());
-        assertTrue(exception.getMessage().contains("osh.api.base-url"));
-    }
-
-    @Test
     @DisplayName("Should fail validation with invalid batch size")
     void testValidateConfiguration_InvalidBatchSize() {
         config.enabled = true;
-        config.baseUrl = Optional.of("https://cov01.lab.eng.brq2.redhat.com");
+        config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
+        config.packages = Optional.empty();
         config.batchSize = 0; // Invalid
 
         IllegalStateException exception =
@@ -79,7 +69,8 @@ class OshConfigurationTest {
     @DisplayName("Should fail validation with negative start scan ID")
     void testValidateConfiguration_NegativeStartScanId() {
         config.enabled = true;
-        config.baseUrl = Optional.of("https://cov01.lab.eng.brq2.redhat.com");
+        config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
+        config.packages = Optional.empty();
         config.batchSize = 10;
         config.startScanId = -1; // Invalid
 
@@ -92,7 +83,8 @@ class OshConfigurationTest {
     @DisplayName("Should fail validation with invalid max scans per cycle")
     void testValidateConfiguration_InvalidMaxScansPerCycle() {
         config.enabled = true;
-        config.baseUrl = Optional.of("https://cov01.lab.eng.brq2.redhat.com");
+        config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
+        config.packages = Optional.empty();
         config.batchSize = 10;
         config.startScanId = 1000;
         config.maxScansPerCycle = 0; // Invalid
@@ -106,7 +98,8 @@ class OshConfigurationTest {
     @DisplayName("Should accept zero start scan ID")
     void testValidateConfiguration_ZeroStartScanId() {
         config.enabled = true;
-        config.baseUrl = Optional.of("https://cov01.lab.eng.brq2.redhat.com");
+        config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
+        config.packages = Optional.empty();
         config.batchSize = 10;
         config.startScanId = 0; // Valid edge case
         config.maxScansPerCycle = 50;
@@ -126,10 +119,10 @@ class OshConfigurationTest {
     }
 
     @Test
-    @DisplayName("Should monitor all packages when empty list configured")
-    void testShouldMonitorPackage_EmptyPackageList() {
+    @DisplayName("Should monitor all packages when empty set configured")
+    void testShouldMonitorPackage_EmptyPackageSet() {
         config.enabled = true;
-        config.packages = Optional.of(List.of());
+        config.packages = Optional.of(Set.of());
 
         assertTrue(config.shouldMonitorPackage("systemd"));
         assertTrue(config.shouldMonitorPackage("kernel"));
@@ -140,7 +133,7 @@ class OshConfigurationTest {
     @DisplayName("Should monitor only configured packages")
     void testShouldMonitorPackage_SpecificPackages() {
         config.enabled = true;
-        config.packages = Optional.of(List.of("systemd", "kernel", "glibc"));
+        config.packages = Optional.of(Set.of("systemd", "kernel", "glibc"));
 
         assertTrue(config.shouldMonitorPackage("systemd"));
         assertTrue(config.shouldMonitorPackage("kernel"));
@@ -153,7 +146,7 @@ class OshConfigurationTest {
     @DisplayName("Should not monitor any packages when disabled")
     void testShouldMonitorPackage_Disabled() {
         config.enabled = false;
-        config.packages = Optional.of(List.of("systemd", "kernel"));
+        config.packages = Optional.of(Set.of("systemd", "kernel"));
 
         assertFalse(config.shouldMonitorPackage("systemd"));
         assertFalse(config.shouldMonitorPackage("kernel"));
@@ -197,7 +190,7 @@ class OshConfigurationTest {
     @DisplayName("Should handle null package name gracefully")
     void testShouldMonitorPackage_NullPackageName() {
         config.enabled = true;
-        config.packages = Optional.of(List.of("systemd", "kernel"));
+        config.packages = Optional.of(Set.of("systemd", "kernel"));
 
         assertFalse(config.shouldMonitorPackage(null));
     }
@@ -206,7 +199,7 @@ class OshConfigurationTest {
     @DisplayName("Should handle empty package name")
     void testShouldMonitorPackage_EmptyPackageName() {
         config.enabled = true;
-        config.packages = Optional.of(List.of("systemd", "kernel"));
+        config.packages = Optional.of(Set.of("systemd", "kernel"));
 
         assertFalse(config.shouldMonitorPackage(""));
         assertFalse(config.shouldMonitorPackage("  ")); // Whitespace only
@@ -216,7 +209,7 @@ class OshConfigurationTest {
     @DisplayName("Should be case sensitive for package names")
     void testShouldMonitorPackage_CaseSensitive() {
         config.enabled = true;
-        config.packages = Optional.of(List.of("systemd", "kernel"));
+        config.packages = Optional.of(Set.of("systemd", "kernel"));
 
         assertTrue(config.shouldMonitorPackage("systemd"));
         assertFalse(config.shouldMonitorPackage("Systemd"));

@@ -1,7 +1,6 @@
 package com.redhat.sast.api.config;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.Set;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -33,18 +32,19 @@ public class OshConfiguration {
 
     /**
      * OSH API base URL.
-     * Required when OSH integration is enabled.
+     * Default value is provided in application.properties.
      */
     @ConfigProperty(name = "osh.api.base-url")
-    Optional<String> baseUrl = Optional.empty();
+    String baseUrl;
 
     /**
      * Comma-separated list of package names to monitor.
      * Only scans for these packages will be processed.
+     * If empty, all packages will be monitored.
      * Example: systemd,kernel,glibc
      */
     @ConfigProperty(name = "osh.packages")
-    Optional<List<String>> packages = Optional.empty();
+    java.util.Optional<Set<String>> packages;
 
     /**
      * Number of sequential scan IDs to check in each polling batch.
@@ -87,11 +87,7 @@ public class OshConfiguration {
 
         LOGGER.info("OSH integration is enabled - validating configuration");
 
-        if (baseUrl.isEmpty()) {
-            throw new IllegalStateException("OSH integration enabled but 'osh.api.base-url' is not configured");
-        }
-
-        if (packages.isEmpty() || packages.map(List::isEmpty).orElse(true)) {
+        if (packages.isEmpty() || packages.map(Set::isEmpty).orElse(true)) {
             LOGGER.warn("No packages configured for OSH monitoring - will process all scans");
         }
 
@@ -109,8 +105,8 @@ public class OshConfiguration {
         }
 
         LOGGER.debug("OSH configuration validated successfully:");
-        LOGGER.debug("  Base URL: {}", baseUrl.get());
-        LOGGER.debug("  Packages: {}", packages.orElse(List.of("all")));
+        LOGGER.debug("  Base URL: {}", baseUrl);
+        LOGGER.debug("  Packages: {}", packages.orElse(Set.of("all")));
         LOGGER.debug("  Batch size: {}", batchSize);
         LOGGER.debug("  Poll interval: {}", pollInterval);
         LOGGER.debug("  Start scan ID: {}", startScanId);
@@ -129,7 +125,7 @@ public class OshConfiguration {
         }
 
         // If no packages configured, monitor all
-        if (packages.isEmpty() || packages.map(List::isEmpty).orElse(true)) {
+        if (packages.isEmpty() || packages.map(Set::isEmpty).orElse(true)) {
             return true;
         }
 

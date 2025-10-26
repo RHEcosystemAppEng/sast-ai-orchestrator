@@ -168,17 +168,6 @@ class OshConfigurationTest {
     }
 
     @Test
-    @DisplayName("Should not monitor any packages when disabled")
-    void testShouldMonitorPackage_Disabled() {
-        config.enabled = false;
-        config.packages = Optional.of(Set.of("systemd", "kernel"));
-
-        assertFalse(config.shouldMonitorPackage("systemd"));
-        assertFalse(config.shouldMonitorPackage("kernel"));
-        assertFalse(config.shouldMonitorPackage("any-package"));
-    }
-
-    @Test
     @DisplayName("Should return batch size when smaller than max per cycle")
     void testGetEffectiveBatchSize_BatchSizeSmaller() {
         config.batchSize = 10;
@@ -212,12 +201,12 @@ class OshConfigurationTest {
     }
 
     @Test
-    @DisplayName("Should handle null package name gracefully")
+    @DisplayName("Should throw NullPointerException for null package name")
     void testShouldMonitorPackage_NullPackageName() {
         config.enabled = true;
         config.packages = Optional.of(Set.of("systemd", "kernel"));
 
-        assertFalse(config.shouldMonitorPackage(null));
+        assertThrows(NullPointerException.class, () -> config.shouldMonitorPackage(null));
     }
 
     @Test

@@ -9,6 +9,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -205,20 +206,12 @@ public class OshConfiguration {
     /**
      * Checks if a package should be monitored based on configuration.
      *
-     * @param packageName package name to check
+     * @param packageName package name to check (must not be null)
      * @return true if package should be monitored, false otherwise
      */
-    public boolean shouldMonitorPackage(String packageName) {
-        if (!enabled) {
-            return false;
-        }
-
+    public boolean shouldMonitorPackage(@NonNull String packageName) {
         // If no packages configured, monitor nothing
         if (packages.isEmpty() || packages.map(Set::isEmpty).orElse(true)) {
-            return false;
-        }
-
-        if (packageName == null) {
             return false;
         }
 

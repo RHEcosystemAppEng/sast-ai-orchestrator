@@ -1,4 +1,4 @@
-package com.redhat.sast.api.service.osh;
+package com.redhat.sast.api.startup;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -11,6 +11,9 @@ import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.OshSchedulerCursor;
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.OshSchedulerCursorRepository;
+import com.redhat.sast.api.service.osh.OshClientService;
+import com.redhat.sast.api.service.osh.OshJobCreationService;
+import com.redhat.sast.api.service.osh.OshRetryService;
 import com.redhat.sast.api.v1.dto.osh.OshScan;
 
 import io.quarkus.scheduler.Scheduled;
@@ -20,7 +23,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Scheduler service for automated OSH (Open Scan Hub) scan discovery and job creation.
+ * Scheduler for automated OSH (Open Scan Hub) scan discovery and job creation.
  *
  * This service implements a two-phase automation loop:
  *
@@ -41,7 +44,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @ApplicationScoped
 @Slf4j
-public class OshSchedulerService {
+public class OshScheduler {
 
     private static final String PHASE_INCREMENTAL = "incremental";
     private static final String PHASE_RETRY = "retry";

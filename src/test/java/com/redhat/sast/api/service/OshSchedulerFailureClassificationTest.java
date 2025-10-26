@@ -10,24 +10,24 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.redhat.sast.api.enums.OshFailureReason;
-import com.redhat.sast.api.service.osh.OshSchedulerService;
+import com.redhat.sast.api.startup.OshScheduler;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.PersistenceException;
 
 /**
- * Tests for OshSchedulerService failure classification logic.
+ * Tests for OshScheduler failure classification logic.
  *
  * Tests the classifyFailure method to ensure accurate categorization
  * of different types of exceptions for retry processing.
  */
 @QuarkusTest
-@DisplayName("OSH Scheduler Service Failure Classification Tests")
-class OshSchedulerServiceFailureClassificationTest {
+@DisplayName("OSH Scheduler Failure Classification Tests")
+class OshSchedulerFailureClassificationTest {
 
     @Inject
-    OshSchedulerService oshSchedulerService;
+    OshScheduler oshScheduler;
 
     @Test
     @DisplayName("Should classify network exceptions as JSON download network error")
@@ -188,9 +188,9 @@ class OshSchedulerServiceFailureClassificationTest {
 
     private OshFailureReason classifyFailure(Exception exception) {
         try {
-            var method = OshSchedulerService.class.getDeclaredMethod("classifyFailure", Exception.class);
+            var method = OshScheduler.class.getDeclaredMethod("classifyFailure", Exception.class);
             method.setAccessible(true);
-            return (OshFailureReason) method.invoke(oshSchedulerService, exception);
+            return (OshFailureReason) method.invoke(oshScheduler, exception);
         } catch (Exception e) {
             throw new RuntimeException("Failed to invoke classifyFailure method", e);
         }

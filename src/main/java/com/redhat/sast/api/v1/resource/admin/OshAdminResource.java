@@ -6,7 +6,7 @@ import java.util.Optional;
 
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.service.osh.OshRetryService;
-import com.redhat.sast.api.service.osh.OshSchedulerService;
+import com.redhat.sast.api.startup.OshScheduler;
 import com.redhat.sast.api.v1.dto.response.admin.OshRetryQueueResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshRetryStatisticsResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshStatusResponseDto;
@@ -48,7 +48,7 @@ public class OshAdminResource {
     OshRetryService oshRetryService;
 
     @Inject
-    OshSchedulerService oshSchedulerService;
+    OshScheduler oshScheduler;
 
     /**
      * Get overall OSH integration status including retry queue and cursor information.
@@ -63,7 +63,7 @@ public class OshAdminResource {
 
             status.setRetryQueueStatus(oshRetryService.getRetryQueueStatus());
 
-            status.setCursorStatus(oshSchedulerService.getCursorStatus());
+            status.setCursorStatus(oshScheduler.getCursorStatus());
 
             status.setTimestamp(LocalDateTime.now());
 
@@ -242,7 +242,7 @@ public class OshAdminResource {
     @Path("/polling/trigger")
     public Response triggerManualPoll() {
         try {
-            String result = oshSchedulerService.manualPollOsh();
+            String result = oshScheduler.manualPollOsh();
 
             LOGGER.info("Manual OSH poll triggered via admin endpoint");
             return Response.ok()

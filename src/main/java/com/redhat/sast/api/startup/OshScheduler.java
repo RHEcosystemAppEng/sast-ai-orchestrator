@@ -49,6 +49,16 @@ public class OshScheduler {
     private static final String PHASE_INCREMENTAL = "incremental";
     private static final String PHASE_RETRY = "retry";
 
+    @FunctionalInterface
+    private interface ScanProcessor<T> {
+        ProcessingResult process(T item) throws Exception;
+    }
+
+    @FunctionalInterface
+    private interface ErrorHandler<T> {
+        void handleError(T item, Exception e);
+    }
+
     @Inject
     OshClientService oshClientService;
 
@@ -142,7 +152,7 @@ public class OshScheduler {
                     startScanId,
                     startScanId + batchSize - 1);
 
-            ProcessingResults results = processScans(scansToProcess, PHASE_INCREMENTAL);
+            ProcessingResults results = processScans(scansToProcess);
 
             int highestProcessedId =
                     scansToProcess.stream().mapToInt(OshScan::getScanId).max().orElse(startScanId - 1);
@@ -209,32 +219,17 @@ public class OshScheduler {
      * @return processing results for the retry batch
      */
     private ProcessingResults processRetryScans(List<OshUncollectedScan> retryScans) {
-        int processedCount = 0;
-        int skippedCount = 0;
-        int failedCount = 0;
-
-        for (OshUncollectedScan uncollectedScan : retryScans) {
-            try {
-                OshScan scan = oshRetryService.reconstructScanFromJson(uncollectedScan.getScanDataJson());
-
-                ProcessingResult result = processSingleRetryScan(uncollectedScan, scan);
-
-                switch (result) {
-                    case PROCESSED -> processedCount++;
-                    case SKIPPED -> skippedCount++;
-                    case FAILED -> failedCount++;
-                }
-
-            } catch (Exception e) {
-                failedCount++;
-                LOGGER.error("Failed to process retry scan {}: {}", uncollectedScan.getOshScanId(), e.getMessage(), e);
-
-                OshFailureReason failureReason = classifyFailure(e);
-                oshRetryService.recordRetryAttempt(uncollectedScan.getId(), failureReason, e.getMessage());
-            }
-        }
-
-        return new ProcessingResults(processedCount, skippedCount, failedCount, PHASE_RETRY);
+        return processItems(
+                retryScans,
+                uncollectedScan -> {
+                    OshScan scan = oshRetryService.reconstructScanFromJson(uncollectedScan.getScanDataJson());
+                    return processSingleRetryScan(uncollectedScan, scan);
+                },
+                (uncollectedScan, e) -> {
+                    OshFailureReason failureReason = classifyFailure(e);
+                    oshRetryService.recordRetryAttempt(uncollectedScan.getId(), failureReason, e.getMessage());
+                },
+                PHASE_RETRY);
     }
 
     /**
@@ -380,21 +375,23 @@ public class OshScheduler {
     }
 
     /**
-     * Processes a list of OSH scans and returns processing statistics.
-     * Records failures for retry when retry is enabled.
+     * Generic method to process a list of items (scans or retry scans).
      *
-     * @param scans list of OSH scans to process
-     * @param phase processing phase ("incremental" or "retry") for logging
-     * @return processing statistics
+     * @param items list of items to process
+     * @param processor function to process each item
+     * @param errorHandler function to handle errors for each item
+     * @param phase phase name for logging and results
+     * @return processing results with counts
      */
-    private ProcessingResults processScans(List<OshScan> scans, String phase) {
+    private <T> ProcessingResults processItems(
+            List<T> items, ScanProcessor<T> processor, ErrorHandler<T> errorHandler, String phase) {
         int processedCount = 0;
         int skippedCount = 0;
         int failedCount = 0;
 
-        for (OshScan scan : scans) {
+        for (T item : items) {
             try {
-                ProcessingResult result = processSingleScan(scan);
+                ProcessingResult result = processor.process(item);
                 switch (result) {
                     case PROCESSED -> processedCount++;
                     case SKIPPED -> skippedCount++;
@@ -402,17 +399,23 @@ public class OshScheduler {
                 }
             } catch (Exception e) {
                 failedCount++;
-                LOGGER.error(
-                        "Failed to process OSH scan {} ({}), continuing with next scan", scan.getScanId(), phase, e);
-
-                if (PHASE_INCREMENTAL.equals(phase)) {
-                    OshFailureReason failureReason = classifyFailure(e);
-                    oshRetryService.recordFailedScan(scan, failureReason, e.getMessage());
-                }
+                LOGGER.error("Failed to process item in {} phase, continuing with next item", phase, e);
+                errorHandler.handleError(item, e);
             }
         }
 
         return new ProcessingResults(processedCount, skippedCount, failedCount, phase);
+    }
+
+    private ProcessingResults processScans(List<OshScan> scans) {
+        return processItems(
+                scans,
+                this::processSingleScan,
+                (scan, e) -> {
+                    OshFailureReason failureReason = classifyFailure(e);
+                    oshRetryService.recordFailedScan(scan, failureReason, e.getMessage());
+                },
+                PHASE_INCREMENTAL);
     }
 
     /**

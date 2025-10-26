@@ -123,27 +123,29 @@ public class OshScheduler {
             LOGGER.debug("Starting incremental scan processing");
 
             PollConfiguration config = preparePollConfiguration();
-            List<OshScan> scansToProcess =
-                    oshClientService.fetchOshScansForProcessing(config.startScanId(), config.batchSize());
+            int startScanId = config.startScanId();
+            int batchSize = config.batchSize();
+
+            List<OshScan> scansToProcess = oshClientService.fetchOshScansForProcessing(startScanId, batchSize);
 
             if (scansToProcess.isEmpty()) {
                 LOGGER.debug(
                         "No finished scans found in range {}-{}, cursor unchanged (scans may be in progress)",
-                        config.startScanId(),
-                        config.startScanId() + config.batchSize() - 1);
+                        startScanId,
+                        startScanId + batchSize - 1);
                 return new ProcessingResults(0, 0, 0, PHASE_INCREMENTAL);
             }
 
             LOGGER.debug(
                     "Found {} finished scans in range {}-{}",
                     scansToProcess.size(),
-                    config.startScanId(),
-                    config.startScanId() + config.batchSize() - 1);
+                    startScanId,
+                    startScanId + batchSize - 1);
 
             ProcessingResults results = processScans(scansToProcess, PHASE_INCREMENTAL);
 
             int highestProcessedId =
-                    scansToProcess.stream().mapToInt(OshScan::getScanId).max().orElse(config.startScanId() - 1);
+                    scansToProcess.stream().mapToInt(OshScan::getScanId).max().orElse(startScanId - 1);
 
             int nextScanId = highestProcessedId + 1;
             updateCursorInNewTransaction(nextScanId);

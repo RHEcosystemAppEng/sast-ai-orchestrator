@@ -2,6 +2,7 @@ package com.redhat.sast.api.config;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Set;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -48,11 +49,11 @@ public class OshConfiguration {
     /**
      * Comma-separated list of package names to monitor.
      * Only scans for these packages will be processed.
-     * If empty, all packages will be monitored.
+     * If not configured or empty, no packages will be monitored.
      * Example: systemd,kernel,glibc
      */
     @ConfigProperty(name = "osh.packages")
-    java.util.Optional<Set<String>> packages;
+    Optional<Set<String>> packages;
 
     /**
      * Number of sequential scan IDs to check in each polling batch.
@@ -143,8 +144,7 @@ public class OshConfiguration {
         LOGGER.info("OSH integration is enabled - validating configuration");
 
         if (packages.isEmpty() || packages.map(Set::isEmpty).orElse(true)) {
-            throw new IllegalStateException(
-                    "Invalid osh.packages: empty or not configured (must specify at least one package to monitor)");
+            LOGGER.warn("OSH package filter is empty - no packages will be monitored");
         }
 
         if (batchSize <= 0) {
@@ -190,7 +190,9 @@ public class OshConfiguration {
 
         LOGGER.debug("OSH configuration validated successfully:");
         LOGGER.debug("  Base URL: {}", baseUrl);
-        LOGGER.debug("  Packages: {}", packages.orElse(Set.of("all")));
+        LOGGER.debug(
+                "  Packages: {}",
+                packages.isEmpty() || packages.get().isEmpty() ? "none (monitoring disabled)" : packages.get());
         LOGGER.debug("  Batch size: {}", batchSize);
         LOGGER.debug("  Poll interval: {}", pollInterval);
         LOGGER.debug("  Start scan ID: {}", startScanId);

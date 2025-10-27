@@ -1,10 +1,10 @@
 package com.redhat.sast.api.websocket;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.websocket.OnClose;
@@ -29,7 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 public class DashboardWebSocket {
 
     private static final Map<String, Session> sessions = new ConcurrentHashMap<>();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @OnOpen
     public void onOpen(Session session) {
@@ -78,8 +78,8 @@ public class DashboardWebSocket {
         sessions.values().forEach(session -> {
             if (session.isOpen()) {
                 try {
-                    session.getBasicRemote().sendText(json);
-                } catch (IOException e) {
+                    session.getAsyncRemote().sendText(json);
+                } catch (Exception e) {
                     LOGGER.error("Failed to send to session {}: {}", session.getId(), e.getMessage());
                 }
             }
@@ -91,7 +91,7 @@ public class DashboardWebSocket {
     private void sendToSession(Session session, WebSocketMessage message) {
         try {
             String json = objectMapper.writeValueAsString(message);
-            session.getBasicRemote().sendText(json);
+            session.getAsyncRemote().sendText(json);
         } catch (Exception e) {
             LOGGER.error("Failed to send to session {}: {}", session.getId(), e.getMessage());
         }

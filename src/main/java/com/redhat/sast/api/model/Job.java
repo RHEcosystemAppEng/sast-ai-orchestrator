@@ -86,9 +86,6 @@ public class Job {
     @Column(name = "submitted_by")
     private String submittedBy;
 
-    @Transient
-    private String temporaryJsonContent;
-
     @Column(name = "dvc_data_version")
     private String dvcDataVersion;
 

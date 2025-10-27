@@ -38,9 +38,6 @@ public class OshJobCreationService {
     JobService jobService;
 
     @Inject
-    OshJsonDownloadService oshJsonDownloadService;
-
-    @Inject
     JobRepository jobRepository;
 
     @Inject
@@ -54,9 +51,9 @@ public class OshJobCreationService {
      *
      * Process:
      * 1. Check if scan already processed
-     * 2. Download JSON content from OSH logs
+     * 2. Build OSH report URL from scan metadata
      * 3. Build package NVR from scan metadata
-     * 4. Create job via JobService with JSON content
+     * 4. Create job via JobService with OSH URL
      *
      * @param scan OSH scan response containing scan metadata
      * @return Created Job if successful, empty if skipped or failed
@@ -71,16 +68,11 @@ public class OshJobCreationService {
                 return Optional.empty();
             }
 
-            Optional<String> jsonContent = oshJsonDownloadService.downloadSastReport(scan.getScanId());
-            if (jsonContent.isEmpty()) {
-                LOGGER.warn("No SAST report JSON available for OSH scan {}, cannot create job", scan.getScanId());
-                return Optional.empty();
-            }
-
             String packageNvr = buildNvrFromScan(scan);
+            String oshReportUrl = buildOshReportUrl(scan, packageNvr);
 
-            JobCreationDto dto = new JobCreationDto(
-                    packageNvr, jsonContent.get(), scan.getScanId().toString());
+            JobCreationDto dto = new JobCreationDto(packageNvr, oshReportUrl);
+            dto.setOshScanId(scan.getScanId().toString());
             dto.setSubmittedBy("OSH_SCHEDULER");
 
             Job job = jobService.createJobEntity(dto);
@@ -89,10 +81,11 @@ public class OshJobCreationService {
             LOGGER.debug("Removed OSH scan {} from retry queue after successful job creation", scan.getScanId());
 
             LOGGER.info(
-                    "OSH job creation successful: scan {} -> job {} (package: {})",
+                    "OSH job creation successful: scan {} -> job {} (package: {}, URL: {})",
                     scan.getScanId(),
                     job.getId(),
-                    packageNvr);
+                    packageNvr,
+                    oshReportUrl);
 
             return Optional.of(job);
 
@@ -100,6 +93,26 @@ public class OshJobCreationService {
             LOGGER.error("Failed to create job from OSH scan {}: {}", scan.getScanId(), e.getMessage(), e);
             return Optional.empty();
         }
+    }
+
+    /**
+     * Builds the OSH report URL for a given scan.
+     * URL format: {baseUrl}/osh/task/{scanId}/log/{packageNvr}/scan-results-all.js
+     *
+     * @param scan OSH scan containing scan ID
+     * @param packageNvr package NVR for URL path
+     * @return complete OSH report URL
+     */
+    private String buildOshReportUrl(OshScan scan, String packageNvr) {
+        String baseUrl = oshConfiguration.getBaseUrl();
+        if (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+
+        String url = String.format("%s/osh/task/%d/log/%s/scan-results-all.js", baseUrl, scan.getScanId(), packageNvr);
+
+        LOGGER.debug("Built OSH report URL for scan {}: {}", scan.getScanId(), url);
+        return url;
     }
 
     /**

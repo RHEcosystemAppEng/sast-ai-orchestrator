@@ -88,7 +88,7 @@ public class PipelineParameterMapper {
 
     /**
      * Adds input source parameters based on the job's input source type.
-     * For OSH scans: passes JSON content directly
+     * For OSH scans: passes OSH URL
      * For Google Sheets: passes Google Sheet URL
      */
     private void addInputSourceParameters(List<Param> params, Job job) {
@@ -102,14 +102,7 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_INPUT_SOURCE_TYPE, inputSourceType.toString()));
 
         switch (inputSourceType) {
-            case OSH_SCAN -> {
-                String jsonContent = getOshJsonContentFromJob(job);
-                params.add(createParam(PARAM_INPUT_REPORT_CONTENT, jsonContent));
-                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, ""));
-                LOGGER.debug(
-                        "Job {} using OSH_SCAN input with {} bytes of JSON content", job.getId(), jsonContent.length());
-            }
-            case GOOGLE_SHEET, SARIF -> {
+            case OSH_SCAN, GOOGLE_SHEET, SARIF -> {
                 params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
                 params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
                 LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
@@ -123,20 +116,6 @@ public class PipelineParameterMapper {
                 params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
             }
         }
-    }
-
-    /**
-     * Retrieves JSON content from OSH scan job.
-     * Uses transient field that holds JSON content temporarily during job processing.
-     * This content is not persisted to database - only held in memory during pipeline execution.
-     */
-    private String getOshJsonContentFromJob(Job job) {
-        String jsonContent = job.getTemporaryJsonContent();
-        if (jsonContent == null || jsonContent.trim().isEmpty()) {
-            LOGGER.warn("No JSON content available for OSH job {}", job.getId());
-            return "";
-        }
-        return jsonContent;
     }
 
     /**

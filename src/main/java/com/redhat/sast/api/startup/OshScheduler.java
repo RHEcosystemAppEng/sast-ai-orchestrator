@@ -148,7 +148,7 @@ public class OshScheduler {
                     startScanId,
                     startScanId + batchSize);
 
-            var finalResults = processScans(scansToProcess);
+            var finalResults = triggerWorkflows(scansToProcess, this::processSingleScan, PHASE_INCREMENTAL);
 
             int highestProcessedId =
                     scansToProcess.stream().mapToInt(OshScan::getScanId).max().orElse(startScanId - 1);
@@ -213,7 +213,7 @@ public class OshScheduler {
      * @return processing results for the retry batch
      */
     private ProcessingResults processRetryScans(List<OshUncollectedScan> retryScans) {
-        return processItems(
+        return triggerWorkflows(
                 retryScans,
                 uncollectedScan -> {
                     try {
@@ -371,18 +371,18 @@ public class OshScheduler {
     /**
      * Generic method to process a list of items (scans or retry scans).
      *
-     * @param items list of items to process
+     * @param oshScanList list of items to process
      * @param processor function to process each item (handles its own exceptions)
      * @param phase phase name for logging and results
      * @return processing results with counts
      */
-    private <T> ProcessingResults processItems(List<T> items, ScanProcessor<T> processor, String phase) {
+    private <T> ProcessingResults triggerWorkflows(List<T> oshScanList, ScanProcessor<T> processor, String phase) {
         int processedCount = 0;
         int skippedCount = 0;
         int failedCount = 0;
 
-        for (T item : items) {
-            ProcessingResult result = processor.process(item);
+        for (T e : oshScanList) {
+            ProcessingResult result = processor.process(e);
             switch (result) {
                 case PROCESSED -> processedCount++;
                 case SKIPPED -> skippedCount++;
@@ -393,13 +393,6 @@ public class OshScheduler {
         return new ProcessingResults(processedCount, skippedCount, failedCount, phase);
     }
 
-    private ProcessingResults processScans(List<OshScan> scans) {
-        return processItems(scans, this::processSingleScan, PHASE_INCREMENTAL);
-    }
-
-    /**
-     * Processes a single OSH scan and returns the result.
-     */
     private ProcessingResult processSingleScan(OshScan scan) {
         try {
             if (oshJobCreationService.canProcessScan(scan)) {

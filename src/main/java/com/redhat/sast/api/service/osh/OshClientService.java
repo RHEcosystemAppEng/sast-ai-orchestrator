@@ -21,7 +21,6 @@ import com.redhat.sast.api.v1.dto.osh.OshScan;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -48,37 +47,6 @@ public class OshClientService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * Fetches details for a single OSH scan by ID.
-     *
-     * Handles OSH API behavior:
-     * - 200: Parse response (JSON or HTML)
-     * - 404: Normal for missing scan IDs - return empty
-     * - Other errors: Log and return empty
-     *
-     * @param scanId sequential OSH scan ID
-     * @return scan details if found and parseable, empty otherwise
-     */
-    public Optional<OshScan> getScanDetail(int scanId) {
-        try {
-            Response response = oshClient.fetchScanDetailsRaw(scanId);
-
-            if (response.getStatus() == 200) {
-                String content = response.readEntity(String.class);
-                return parseOshResponse(content, scanId);
-            } else if (response.getStatus() == 404) {
-                LOGGER.debug("Scan {} not found (404) - normal for missing scan IDs", scanId);
-                return Optional.empty();
-            } else {
-                LOGGER.warn("OSH API error for scan {}: status {}", scanId, response.getStatus());
-                return Optional.empty();
-            }
-        } catch (Exception e) {
-            LOGGER.error("Failed to fetch scan {}: {}", scanId, e.getMessage());
-            return Optional.empty();
-        }
-    }
-
-    /**
      * Discovers finished scans in a batch using sequential scan ID iteration.
      *
      * OSH API pattern:
@@ -98,14 +66,43 @@ public class OshClientService {
 
         int scanId = startId;
         while (scanId < end) {
-            getScanDetail(scanId)
-                    .filter(scan -> "CLOSED".equals(scan.getState()))
+            fetchOshScanData(scanId)
+                    .filter(scanObj -> "CLOSED".equals(scanObj.getState()))
                     .ifPresent(oshScanList::add);
             scanId++;
         }
 
         LOGGER.info("Discovered {} finished scans in range {}-{} (exclusive)", oshScanList.size(), startId, end);
         return oshScanList;
+    }
+
+    /**
+     * Fetches details for a single OSH scan by ID.
+     *
+     * Handles OSH API behavior:
+     * - 200: Parse response (JSON or HTML)
+     * - 404: Normal for missing scan IDs - return empty
+     * - Other errors: Log and return empty
+     *
+     * @param oshScanId OSH scan ID
+     * @return scan details if found and parseable, empty otherwise
+     */
+    private Optional<OshScan> fetchOshScanData(int oshScanId) {
+        try {
+            var httpResp = oshClient.fetchScanDetailsRaw(oshScanId);
+
+            switch (httpResp.getStatus()) {
+                case 200 -> {
+                    var strContent = httpResp.readEntity(String.class);
+                    return parseHttpResponse(strContent, oshScanId);
+                }
+                case 404 -> LOGGER.debug("Scan {} not found (404) - normal for missing scan IDs", oshScanId);
+                default -> LOGGER.warn("OSH API error for scan {}: status {}", oshScanId, httpResp.getStatus());
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to fetch scan {}: {}", oshScanId, e.getMessage());
+        }
+        return Optional.empty();
     }
 
     /**
@@ -118,7 +115,7 @@ public class OshClientService {
      * @param scanId scan ID for context in error messages
      * @return parsed scan response or empty if parsing fails
      */
-    private Optional<OshScan> parseOshResponse(String content, int scanId) {
+    private Optional<OshScan> parseHttpResponse(String content, int scanId) {
         try {
             JsonNode json = objectMapper.readTree(content);
             return Optional.of(parseJsonResponse(json, scanId));

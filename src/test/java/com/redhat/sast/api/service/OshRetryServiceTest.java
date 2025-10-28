@@ -80,10 +80,10 @@ class OshRetryServiceTest {
     @Test
     @DisplayName("Should fetch retryable scans")
     void testFetchRetryableScans() {
-        List<OshUncollectedScan> result = oshRetryService.fetchRetryableScans(10);
+        List<OshUncollectedScan> result = oshRetryService.fetchRetryableScans();
 
         assertNotNull(result);
-        assertTrue(result.size() >= 0); // Can be empty if retry disabled or no eligible scans
+        assertTrue(result.size() >= 0);
     }
 
     @Test

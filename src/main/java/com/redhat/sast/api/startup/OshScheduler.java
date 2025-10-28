@@ -181,8 +181,7 @@ public class OshScheduler {
         try {
             LOGGER.debug("Starting retry scan processing");
 
-            List<OshUncollectedScan> retryScans =
-                    oshRetryService.fetchRetryableScans(oshConfiguration.getEffectiveRetryBatchSize());
+            List<OshUncollectedScan> retryScans = oshRetryService.fetchRetryableScans();
 
             if (retryScans.isEmpty()) {
                 LOGGER.debug("No retry-eligible scans found");

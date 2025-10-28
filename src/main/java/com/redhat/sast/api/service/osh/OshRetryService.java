@@ -117,11 +117,11 @@ public class OshRetryService {
      * @return list of scans eligible for retry, locked for update
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
-    public List<OshUncollectedScan> fetchRetryableScans(int batchSize) {
+    public List<OshUncollectedScan> fetchRetryableScans() {
         try {
             LocalDateTime cutoffTime = oshConfiguration.getStandardRetryCutoffTime();
             int maxAttempts = oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : 0;
-            int effectiveBatchSize = Math.min(batchSize, oshConfiguration.getEffectiveRetryBatchSize());
+            int effectiveBatchSize = oshConfiguration.getEffectiveRetryBatchSize();
 
             List<OshUncollectedScan> eligibleScans =
                     uncollectedScanRepository.findRetryableScansWithLock(cutoffTime, maxAttempts, effectiveBatchSize);

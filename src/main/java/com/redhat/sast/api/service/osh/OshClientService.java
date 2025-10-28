@@ -91,22 +91,21 @@ public class OshClientService {
      * @return list of completed scans found in the ID range
      */
     public List<OshScan> fetchOshScansForProcessing(int startId, int batchSize) {
-        List<OshScan> finishedScans = new ArrayList<>();
+        List<OshScan> oshScanList = new ArrayList<>();
 
-        LOGGER.debug("Discovering OSH scans from ID {} to {} (inclusive)", startId, startId + batchSize - 1);
+        int end = startId + batchSize;
+        LOGGER.debug("Discovering OSH scans from ID {} to {} (exclusive)", startId, end);
 
-        for (int scanId = startId; scanId < startId + batchSize; scanId++) {
+        int scanId = startId;
+        while (scanId < end) {
             getScanDetail(scanId)
                     .filter(scan -> "CLOSED".equals(scan.getState()))
-                    .ifPresent(finishedScans::add);
+                    .ifPresent(oshScanList::add);
+            scanId++;
         }
 
-        LOGGER.info(
-                "Discovered {} finished scans in range {}-{} (inclusive)",
-                finishedScans.size(),
-                startId,
-                startId + batchSize - 1);
-        return finishedScans;
+        LOGGER.info("Discovered {} finished scans in range {}-{} (exclusive)", oshScanList.size(), startId, end);
+        return oshScanList;
     }
 
     /**

@@ -47,7 +47,7 @@ public class JobRepository implements PanacheRepository<Job> {
      * @return Optional containing the Job if found, empty otherwise
      */
     public Optional<Job> findByOshScanId(String oshScanId) {
-        if (oshScanId == null || oshScanId.trim().isEmpty()) {
+        if (oshScanId == null || oshScanId.isBlank()) {
             return Optional.empty();
         }
         return find("oshScanId", oshScanId).firstResultOptional();

@@ -134,7 +134,7 @@ public class JobService {
     }
 
     @Transactional
-    public Job createJobEntity(JobCreationDto jobCreationDto) {
+    public Job createJobEntity(@Nonnull final JobCreationDto jobCreationDto) {
         Job job = getJobFromDto(jobCreationDto);
         jobRepository.persist(job);
 

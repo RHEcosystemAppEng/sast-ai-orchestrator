@@ -53,7 +53,7 @@ public class OshConfiguration {
      * Example: systemd,kernel,glibc
      */
     @ConfigProperty(name = "osh.packages")
-    Optional<Set<String>> packages;
+    Optional<Set<String>> packageNameSet;
 
     /**
      * Number of sequential scan IDs to check in each polling batch.
@@ -143,7 +143,7 @@ public class OshConfiguration {
 
         LOGGER.info("OSH integration is enabled - validating configuration");
 
-        if (packages.isEmpty() || packages.get().isEmpty()) {
+        if (packageNameSet.isEmpty() || packageNameSet.get().isEmpty()) {
             LOGGER.warn("OSH package filter is empty - no packages will be monitored");
         }
 
@@ -192,7 +192,9 @@ public class OshConfiguration {
         LOGGER.debug("  Base URL: {}", baseUrl);
         LOGGER.debug(
                 "  Packages: {}",
-                packages.isEmpty() || packages.get().isEmpty() ? "none (monitoring disabled)" : packages.get());
+                packageNameSet.isEmpty() || packageNameSet.get().isEmpty()
+                        ? "none (monitoring disabled)"
+                        : packageNameSet.get());
         LOGGER.debug("  Batch size: {}", batchSize);
         LOGGER.debug("  Poll interval: {}", pollInterval);
         LOGGER.debug("  Start scan ID: {}", startScanId);
@@ -212,11 +214,11 @@ public class OshConfiguration {
      * @return true if package should be monitored, false otherwise
      */
     public boolean shouldMonitorPackage(@NonNull String packageName) {
-        if (packages.isEmpty() || packages.get().isEmpty()) {
+        if (packageNameSet.isEmpty() || packageNameSet.get().isEmpty()) {
             return false;
         }
 
-        return packages.get().contains(packageName);
+        return packageNameSet.get().contains(packageName);
     }
 
     /**

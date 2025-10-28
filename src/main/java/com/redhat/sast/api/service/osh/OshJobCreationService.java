@@ -9,6 +9,7 @@ import com.redhat.sast.api.service.JobService;
 import com.redhat.sast.api.v1.dto.osh.OshScan;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -59,38 +60,29 @@ public class OshJobCreationService {
      * @return Created Job if successful, empty if skipped or failed
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
-    public Optional<Job> createJobFromOshScan(OshScan scan) {
-        LOGGER.debug("Processing OSH scan ID: {} for package: {}", scan.getScanId(), scan.getPackageName());
-
+    public Optional<Job> createJobFromOshScan(@Nonnull OshScan scan) {
+        var scanId = scan.getScanId();
         try {
-            if (isAlreadyProcessed(scan.getScanId())) {
-                LOGGER.debug("OSH scan {} already processed, skipping", scan.getScanId());
+            if (isAlreadyProcessed(scanId)) {
+                LOGGER.debug("OSH scan {} already processed, skipping", scanId);
                 return Optional.empty();
             }
+            var packageNvr = buildNvrFromScan(scan);
+            var oshReportUrl = buildOshReportUrl(scan, packageNvr);
 
-            String packageNvr = buildNvrFromScan(scan);
-            String oshReportUrl = buildOshReportUrl(scan, packageNvr);
-
-            JobCreationDto dto = new JobCreationDto(packageNvr, oshReportUrl);
-            dto.setOshScanId(scan.getScanId().toString());
+            var dto = new JobCreationDto(packageNvr, oshReportUrl);
+            dto.setOshScanId(String.valueOf(scanId));
             dto.setSubmittedBy("OSH_SCHEDULER");
-
             Job job = jobService.createJobEntity(dto);
 
-            oshRetryService.markRetrySuccessful(scan.getScanId());
-            LOGGER.debug("Removed OSH scan {} from retry queue after successful job creation", scan.getScanId());
-
-            LOGGER.info(
-                    "OSH job creation successful: scan {} -> job {} (package: {}, URL: {})",
-                    scan.getScanId(),
-                    job.getId(),
-                    packageNvr,
-                    oshReportUrl);
+            // @TODO for first time successful scenarios, below line is irrelevant
+            oshRetryService.markRetrySuccessful(scanId);
+            LOGGER.debug("Removed OSH scan {} from retry queue after successful job creation", scanId);
 
             return Optional.of(job);
 
         } catch (Exception e) {
-            LOGGER.error("Failed to create job from OSH scan {}: {}", scan.getScanId(), e.getMessage(), e);
+            LOGGER.error("Failed to create job from OSH scan {}: {}", scanId, e.getMessage(), e);
             return Optional.empty();
         }
     }
@@ -118,22 +110,11 @@ public class OshJobCreationService {
     /**
      * Checks if an OSH scan has already been processed to prevent duplicate job creation.
      *
-     * @param scanId OSH scan ID
+     * @param oshScanId OSH scan ID
      * @return true if scan already processed, false otherwise
      */
-    private boolean isAlreadyProcessed(Integer scanId) {
-        if (scanId == null) {
-            return false;
-        }
-
-        try {
-            Optional<Job> existingJob = jobRepository.findByOshScanId(scanId.toString());
-            return existingJob.isPresent();
-        } catch (Exception e) {
-            LOGGER.warn("Error checking if OSH scan {} already processed: {}", scanId, e.getMessage());
-            // assume not processed to avoid missing scans
-            return false;
-        }
+    private boolean isAlreadyProcessed(int oshScanId) {
+        return jobRepository.findByOshScanId(String.valueOf(oshScanId)).isPresent();
     }
 
     /**
@@ -146,7 +127,7 @@ public class OshJobCreationService {
      * @param scan OSH scan response
      * @return NVR string extracted from OSH data
      */
-    private String buildNvrFromScan(OshScan scan) {
+    private String buildNvrFromScan(@Nonnull final OshScan scan) {
         String component = scan.getComponent();
         String version = scan.getVersion();
 

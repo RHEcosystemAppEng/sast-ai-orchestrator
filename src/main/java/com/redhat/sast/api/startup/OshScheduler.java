@@ -402,26 +402,24 @@ public class OshScheduler {
      */
     private ProcessingResult processSingleScan(OshScan scan) {
         try {
-            if (!shouldProcessScan(scan)) {
-                LOGGER.debug("Skipped OSH scan {} (package not monitored or scan not eligible)", scan.getScanId());
-                return ProcessingResult.SKIPPED;
-            }
+            if (oshJobCreationService.canProcessScan(scan)) {
+                if (oshConfiguration.shouldMonitorPackage(scan.getPackageName())) {
 
-            Optional<Job> createdJob = oshJobCreationService.createJobFromOshScan(scan);
-            if (createdJob.isPresent()) {
-                LOGGER.debug(
-                        "Successfully processed OSH scan {} -> job {}",
-                        scan.getScanId(),
-                        createdJob.get().getId());
-                return ProcessingResult.PROCESSED;
+                    Optional<Job> job = oshJobCreationService.createJobFromOshScan(scan);
+                    if (job.isPresent()) {
+                        return ProcessingResult.PROCESSED;
+                    }
+                    LOGGER.debug("Skipped OSH scan {} (already processed or no JSON available)", scan.getScanId());
+                }
+
             } else {
-                LOGGER.debug("Skipped OSH scan {} (already processed or no JSON available)", scan.getScanId());
-                return ProcessingResult.SKIPPED;
+                LOGGER.debug("Skipped OSH scan {} (scan not eligible for processing)", scan.getScanId());
             }
+            return ProcessingResult.SKIPPED;
+
         } catch (Exception e) {
             LOGGER.error("Failed to process OSH scan {}: {}", scan.getScanId(), e.getMessage(), e);
-            OshFailureReason failureReason = classifyFailure(e);
-            oshRetryService.recordFailedScan(scan, failureReason, e.getMessage());
+            oshRetryService.recordFailedScan(scan, classifyFailure(e), e.getMessage());
             return ProcessingResult.FAILED;
         }
     }
@@ -475,26 +473,6 @@ public class OshScheduler {
         } catch (Exception e) {
             LOGGER.error("Failed to update OSH cursor to position {}, will retry next cycle", newCursorPosition, e);
         }
-    }
-
-    /**
-     * Determines whether a specific OSH scan should be processed.
-     *
-     * Checks:
-     * 1. Scan is eligible for processing (CLOSED state, has component name)
-     * 2. Package is in the monitored package list (if configured)
-     */
-    private boolean shouldProcessScan(OshScan scan) {
-        if (!oshJobCreationService.canProcessScan(scan)) {
-            return false;
-        }
-
-        String packageName = scan.getPackageName();
-        if (!oshConfiguration.shouldMonitorPackage(packageName)) {
-            LOGGER.debug("Package '{}' not in monitoring list for scan {}", packageName, scan.getScanId());
-            return false;
-        }
-        return true;
     }
 
     /**

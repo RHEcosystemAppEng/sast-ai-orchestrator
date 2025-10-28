@@ -44,7 +44,7 @@ class OshConfigurationTest {
     void testValidateConfiguration_EnabledValid() {
         config.enabled = true;
         config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
-        config.packages = Optional.of(Set.of("systemd", "kernel"));
+        config.packageNameSet = Optional.of(Set.of("systemd", "kernel"));
         config.batchSize = 10;
         config.startScanId = 1000;
         config.maxScansPerCycle = 50;
@@ -62,7 +62,7 @@ class OshConfigurationTest {
     void testValidateConfiguration_InvalidBatchSize() {
         config.enabled = true;
         config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
-        config.packages = Optional.of(Set.of("systemd"));
+        config.packageNameSet = Optional.of(Set.of("systemd"));
         config.batchSize = 0; // Invalid
 
         IllegalStateException exception =
@@ -75,7 +75,7 @@ class OshConfigurationTest {
     void testValidateConfiguration_NegativeStartScanId() {
         config.enabled = true;
         config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
-        config.packages = Optional.of(Set.of("systemd"));
+        config.packageNameSet = Optional.of(Set.of("systemd"));
         config.batchSize = 10;
         config.startScanId = -1; // Invalid
 
@@ -89,7 +89,7 @@ class OshConfigurationTest {
     void testValidateConfiguration_InvalidMaxScansPerCycle() {
         config.enabled = true;
         config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
-        config.packages = Optional.of(Set.of("systemd"));
+        config.packageNameSet = Optional.of(Set.of("systemd"));
         config.batchSize = 10;
         config.startScanId = 1000;
         config.maxScansPerCycle = 0; // Invalid
@@ -104,7 +104,7 @@ class OshConfigurationTest {
     void testValidateConfiguration_NoPackagesConfigured() {
         config.enabled = true;
         config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
-        config.packages = Optional.empty();
+        config.packageNameSet = Optional.empty();
         config.batchSize = 10;
         config.startScanId = 1000;
         config.maxScansPerCycle = 50;
@@ -119,7 +119,7 @@ class OshConfigurationTest {
     void testValidateConfiguration_ZeroStartScanId() {
         config.enabled = true;
         config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
-        config.packages = Optional.of(Set.of("systemd"));
+        config.packageNameSet = Optional.of(Set.of("systemd"));
         config.batchSize = 10;
         config.startScanId = 0; // Valid edge case
         config.maxScansPerCycle = 50;
@@ -136,7 +136,7 @@ class OshConfigurationTest {
     @DisplayName("Should monitor nothing when no packages configured (fail-safe)")
     void testShouldMonitorPackage_NoPackagesConfigured() {
         config.enabled = true;
-        config.packages = Optional.empty();
+        config.packageNameSet = Optional.empty();
 
         assertFalse(config.shouldMonitorPackage("systemd"));
         assertFalse(config.shouldMonitorPackage("kernel"));
@@ -147,7 +147,7 @@ class OshConfigurationTest {
     @DisplayName("Should monitor nothing when empty set configured (fail-safe)")
     void testShouldMonitorPackage_EmptyPackageSet() {
         config.enabled = true;
-        config.packages = Optional.of(Set.of());
+        config.packageNameSet = Optional.of(Set.of());
 
         assertFalse(config.shouldMonitorPackage("systemd"));
         assertFalse(config.shouldMonitorPackage("kernel"));
@@ -158,7 +158,7 @@ class OshConfigurationTest {
     @DisplayName("Should monitor only configured packages")
     void testShouldMonitorPackage_SpecificPackages() {
         config.enabled = true;
-        config.packages = Optional.of(Set.of("systemd", "kernel", "glibc"));
+        config.packageNameSet = Optional.of(Set.of("systemd", "kernel", "glibc"));
 
         assertTrue(config.shouldMonitorPackage("systemd"));
         assertTrue(config.shouldMonitorPackage("kernel"));
@@ -204,7 +204,7 @@ class OshConfigurationTest {
     @DisplayName("Should throw NullPointerException for null package name")
     void testShouldMonitorPackage_NullPackageName() {
         config.enabled = true;
-        config.packages = Optional.of(Set.of("systemd", "kernel"));
+        config.packageNameSet = Optional.of(Set.of("systemd", "kernel"));
 
         assertThrows(NullPointerException.class, () -> config.shouldMonitorPackage(null));
     }
@@ -213,7 +213,7 @@ class OshConfigurationTest {
     @DisplayName("Should handle empty package name")
     void testShouldMonitorPackage_EmptyPackageName() {
         config.enabled = true;
-        config.packages = Optional.of(Set.of("systemd", "kernel"));
+        config.packageNameSet = Optional.of(Set.of("systemd", "kernel"));
 
         assertFalse(config.shouldMonitorPackage(""));
         assertFalse(config.shouldMonitorPackage("  ")); // Whitespace only
@@ -223,7 +223,7 @@ class OshConfigurationTest {
     @DisplayName("Should be case sensitive for package names")
     void testShouldMonitorPackage_CaseSensitive() {
         config.enabled = true;
-        config.packages = Optional.of(Set.of("systemd", "kernel"));
+        config.packageNameSet = Optional.of(Set.of("systemd", "kernel"));
 
         assertTrue(config.shouldMonitorPackage("systemd"));
         assertFalse(config.shouldMonitorPackage("Systemd"));

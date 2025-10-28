@@ -143,7 +143,7 @@ public class OshConfiguration {
 
         LOGGER.info("OSH integration is enabled - validating configuration");
 
-        if (packages.isEmpty() || packages.map(Set::isEmpty).orElse(true)) {
+        if (packages.isEmpty() || packages.get().isEmpty()) {
             LOGGER.warn("OSH package filter is empty - no packages will be monitored");
         }
 
@@ -212,8 +212,7 @@ public class OshConfiguration {
      * @return true if package should be monitored, false otherwise
      */
     public boolean shouldMonitorPackage(@NonNull String packageName) {
-        // If no packages configured, monitor nothing
-        if (packages.isEmpty() || packages.map(Set::isEmpty).orElse(true)) {
+        if (packages.isEmpty() || packages.get().isEmpty()) {
             return false;
         }
 

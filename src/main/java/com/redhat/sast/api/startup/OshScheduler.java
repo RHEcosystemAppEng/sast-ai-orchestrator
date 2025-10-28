@@ -127,43 +127,43 @@ public class OshScheduler {
         try {
             LOGGER.debug("Starting incremental scan processing");
 
-            PollConfiguration config = preparePollConfiguration();
-            int startScanId = config.startScanId();
-            int batchSize = config.batchSize();
+            int startScanId = getStartScanId();
+            int batchSize = oshConfiguration.getBatchSize();
+
+            LOGGER.debug("Polling OSH for scans starting from ID {} with batch size {}", startScanId, batchSize);
 
             List<OshScan> scansToProcess = oshClientService.fetchOshScansForProcessing(startScanId, batchSize);
 
             if (scansToProcess.isEmpty()) {
                 LOGGER.debug(
-                        "No finished scans found in range {}-{}, cursor unchanged (scans may be in progress)",
+                        "No finished scans found in range {}-{}(exclusive), cursor unchanged (scans may be in progress)",
                         startScanId,
-                        startScanId + batchSize - 1);
+                        startScanId + batchSize);
                 return new ProcessingResults(0, 0, 0, PHASE_INCREMENTAL);
             }
 
             LOGGER.debug(
-                    "Found {} finished scans in range {}-{}",
+                    "Found {} finished scans in range {}-{}(exclusive)",
                     scansToProcess.size(),
                     startScanId,
-                    startScanId + batchSize - 1);
+                    startScanId + batchSize);
 
-            ProcessingResults results = processScans(scansToProcess);
+            var finalResults = processScans(scansToProcess);
 
             int highestProcessedId =
                     scansToProcess.stream().mapToInt(OshScan::getScanId).max().orElse(startScanId - 1);
-
             int nextScanId = highestProcessedId + 1;
             updateCursorInNewTransaction(nextScanId);
 
             LOGGER.debug(
                     "Incremental scan processing completed: {} processed, {} skipped, {} failed. "
                             + "Cursor advanced to {}",
-                    results.processedCount(),
-                    results.skippedCount(),
-                    results.failedCount(),
+                    finalResults.processedCount(),
+                    finalResults.skippedCount(),
+                    finalResults.failedCount(),
                     nextScanId);
 
-            return results;
+            return finalResults;
 
         } catch (Exception e) {
             LOGGER.error("Incremental scan processing failed: {}", e.getMessage(), e);
@@ -370,18 +370,6 @@ public class OshScheduler {
     }
 
     /**
-     * Prepares polling configuration with start scan ID and batch size.
-     */
-    private PollConfiguration preparePollConfiguration() {
-        int startScanId = determineStartScanId();
-        int batchSize = oshConfiguration.getBatchSize();
-
-        LOGGER.debug("Polling OSH for scans starting from ID {} with batch size {}", startScanId, batchSize);
-
-        return new PollConfiguration(startScanId, batchSize);
-    }
-
-    /**
      * Generic method to process a list of items (scans or retry scans).
      *
      * @param items list of items to process
@@ -440,11 +428,6 @@ public class OshScheduler {
     }
 
     /**
-     * Configuration record for polling parameters.
-     */
-    private record PollConfiguration(int startScanId, int batchSize) {}
-
-    /**
      * Results record for processing statistics with phase information.
      */
     private record ProcessingResults(int processedCount, int skippedCount, int failedCount, String phase) {}
@@ -462,7 +445,7 @@ public class OshScheduler {
      * Determines the starting scan ID for the current polling cycle.
      * Uses cursor from database, or falls back to configured start ID.
      */
-    private int determineStartScanId() {
+    private int getStartScanId() {
         try {
             Optional<OshSchedulerCursor> cursor = cursorRepository.getCurrentCursor();
             if (cursor.isPresent() && cursor.get().getLastSeenToken() != null) {

@@ -112,17 +112,22 @@ public class OshClientService {
      * 2. Fall back to HTML table parsing if JSON fails
      *
      * @param content raw response content from OSH
-     * @param scanId scan ID for context in error messages
+     * @param scanId OSH scan ID
      * @return parsed scan response or empty if parsing fails
      */
     private Optional<OshScan> parseHttpResponse(String content, int scanId) {
+        if (content == null || content.isBlank()) {
+            return Optional.empty();
+        }
+
         try {
             JsonNode json = objectMapper.readTree(content);
-            return Optional.of(parseJsonResponse(json, scanId));
+            return parseJsonResponse(json, scanId);
         } catch (JsonProcessingException e) {
-            LOGGER.debug("JSON parsing failed for scan {}, trying HTML", scanId);
-            return parseHtmlResponse(content, scanId);
+            LOGGER.debug("JSON parsing failed for scan {}, trying HTML: {}", scanId, e.getMessage());
         }
+
+        return parseHtmlResponse(content, scanId);
     }
 
     /**
@@ -133,9 +138,13 @@ public class OshClientService {
      *
      * @param json parsed JSON response
      * @param scanId scan ID for context
-     * @return parsed scan response
+     * @return parsed scan response or empty if data is invalid
      */
-    private OshScan parseJsonResponse(JsonNode json, int scanId) {
+    private Optional<OshScan> parseJsonResponse(JsonNode json, int scanId) {
+        if (json == null || json.isNull() || (!json.isObject() && !json.isArray())) {
+            LOGGER.warn("Invalid JSON structure for scan {}: not an object or array", scanId);
+            return Optional.empty();
+        }
         OshScan response = new OshScan();
         response.setScanId(scanId);
 
@@ -167,7 +176,7 @@ public class OshClientService {
                 response.getState(),
                 response.getComponent());
 
-        return response;
+        return Optional.of(response);
     }
 
     /**

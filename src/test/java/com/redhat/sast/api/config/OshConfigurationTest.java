@@ -100,7 +100,7 @@ class OshConfigurationTest {
     }
 
     @Test
-    @DisplayName("Should fail validation when packages not configured")
+    @DisplayName("Should allow validation with no packages configured (with warning)")
     void testValidateConfiguration_NoPackagesConfigured() {
         config.enabled = true;
         config.baseUrl = "https://cov01.lab.eng.brq2.redhat.com";
@@ -108,10 +108,16 @@ class OshConfigurationTest {
         config.batchSize = 10;
         config.startScanId = 1000;
         config.maxScansPerCycle = 50;
+        config.retryMaxAttempts = 3;
+        config.retryBatchSize = 5;
+        config.retryBackoffMinutes = 20;
+        config.retryRetentionDays = 7;
+        config.retryCleanupInterval = "24h";
 
-        IllegalStateException exception =
-                assertThrows(IllegalStateException.class, () -> config.validateConfiguration());
-        assertTrue(exception.getMessage().contains("osh.packages"));
+        assertDoesNotThrow(() -> config.validateConfiguration());
+
+        assertFalse(config.shouldMonitorPackage("systemd"));
+        assertFalse(config.shouldMonitorPackage("any-package"));
     }
 
     @Test

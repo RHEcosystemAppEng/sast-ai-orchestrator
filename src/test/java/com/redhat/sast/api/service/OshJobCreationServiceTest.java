@@ -5,36 +5,34 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.redhat.sast.api.service.osh.OshJobCreationService;
 import com.redhat.sast.api.v1.dto.osh.OshScan;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
-import jakarta.inject.Inject;
-
 /**
- * Integration tests for OshJobCreationService focusing on business logic
- * that can be tested without complex HTTP mocking.
+ * Unit tests for OshJobCreationService focusing on business logic validation.
  *
  * Tests:
- * - Scan eligibility validation
- * - NVR building from OSH metadata
- * - Error handling and edge cases
+ * - Scan eligibility validation rules
+ * - Input validation and edge cases
+ * - Data consistency checks
  */
-@QuarkusTest
-@TestProfile(com.redhat.sast.api.config.TestProfile.class)
-@DisplayName("OSH Job Creation Integration Tests")
-class OshJobCreationIntegrationTest {
+@DisplayName("OSH Job Creation Service Tests")
+class OshJobCreationServiceTest {
 
-    @Inject
-    OshJobCreationService oshJobCreationService;
+    private OshJobCreationService oshJobCreationService;
+
+    @BeforeEach
+    void setUp() {
+        oshJobCreationService = new OshJobCreationService();
+    }
 
     @Test
     @DisplayName("Should validate scan eligibility correctly")
-    void testCanProcessScan() {
+    void canProcessScan_handleValidations() {
         OshScan validScan = createValidOshScan();
         assertTrue(oshJobCreationService.canProcessScan(validScan));
 
@@ -67,7 +65,7 @@ class OshJobCreationIntegrationTest {
 
     @Test
     @DisplayName("Should build NVR correctly from Label field")
-    void testNvrBuildingFromLabel() {
+    void oshScan_buildNvrFromLabelField() {
         OshScan systemdScan = createOshScanWithLabel("systemd", "252", "systemd-252-54.el9.src.rpm");
         assertNotNull(systemdScan.getRawData());
         assertEquals("systemd-252-54.el9.src.rpm", systemdScan.getRawData().get("Label"));
@@ -87,7 +85,7 @@ class OshJobCreationIntegrationTest {
 
     @Test
     @DisplayName("Should handle missing Label field gracefully")
-    void testNvrBuildingWithoutLabel() {
+    void canProcessScan_handleMissingLabelField() {
         OshScan scanWithoutLabel = createValidOshScan();
         scanWithoutLabel.setRawData(null);
 
@@ -112,7 +110,7 @@ class OshJobCreationIntegrationTest {
 
     @Test
     @DisplayName("Should handle complex package names correctly")
-    void testComplexPackageNames() {
+    void canProcessScan_handleComplexPackageNames() {
         String[] complexPackages = {"zlib-ng", "python3-pip", "container-tools", "java-11-openjdk", "nodejs-npm"};
 
         for (String packageName : complexPackages) {
@@ -126,7 +124,7 @@ class OshJobCreationIntegrationTest {
 
     @Test
     @DisplayName("Should validate scan data consistency")
-    void testScanDataConsistency() {
+    void canProcessScan_validateDataConsistency() {
         OshScan consistentScan = createOshScanWithLabel("systemd", "252", "systemd-252-54.el9.src.rpm");
         assertTrue(oshJobCreationService.canProcessScan(consistentScan));
 
@@ -137,7 +135,7 @@ class OshJobCreationIntegrationTest {
 
     @Test
     @DisplayName("Should handle edge cases in scan data")
-    void testScanDataEdgeCases() {
+    void canProcessScan_handleEdgeCases() {
         OshScan minScan = createValidOshScan();
         minScan.setScanId(1);
         assertTrue(oshJobCreationService.canProcessScan(minScan));
@@ -157,7 +155,7 @@ class OshJobCreationIntegrationTest {
 
     @Test
     @DisplayName("Should require CLOSED state for processing")
-    void testStateRequirement() {
+    void canProcessScan_requireClosedState() {
         String[] validStates = {"CLOSED"};
         String[] invalidStates = {"OPEN", "FAILED", "RUNNING", "CANCELLED", "closed", "", null};
 

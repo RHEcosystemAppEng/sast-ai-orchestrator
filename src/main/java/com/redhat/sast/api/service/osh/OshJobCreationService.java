@@ -8,6 +8,7 @@ import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.service.JobService;
 import com.redhat.sast.api.v1.dto.osh.OshScan;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
+import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -48,13 +49,14 @@ public class OshJobCreationService {
     OshConfiguration oshConfiguration;
 
     /**
-     * Creates a SAST-AI workflow job from an OSH scan result.
+     * Creates a SAST-AI workflow job from an OSH scan result and triggers the pipeline.
      *
      * Process:
      * 1. Check if scan already processed
      * 2. Build OSH report URL from scan metadata
      * 3. Build package NVR from scan metadata
      * 4. Create job via JobService with OSH URL
+     * 5. Trigger AI workflow pipeline asynchronously
      *
      * @param scan OSH scan response containing scan metadata
      * @return Created Job if successful, empty if skipped or failed
@@ -73,11 +75,21 @@ public class OshJobCreationService {
             var dto = new JobCreationDto(packageNvr, oshReportUrl);
             dto.setOshScanId(String.valueOf(scanId));
             dto.setSubmittedBy("OSH_SCHEDULER");
-            Job job = jobService.createJobEntity(dto);
 
-            // @TODO for first time successful scenarios, below line is irrelevant
+            JobResponseDto response = jobService.createJob(dto);
+            Job job = jobService.getJobEntityById(response.getJobId());
+
             oshRetryService.markRetrySuccessful(scanId);
-            LOGGER.debug("Removed OSH scan {} from retry queue after successful job creation", scanId);
+            LOGGER.debug(
+                    "Removed OSH scan {} from retry queue after successful job creation and pipeline trigger initiation",
+                    scanId);
+
+            LOGGER.info(
+                    "OSH job creation and pipeline trigger successful: scan {} -> job {} (package: {}, URL: {})",
+                    scanId,
+                    job.getId(),
+                    packageNvr,
+                    oshReportUrl);
 
             return Optional.of(job);
 

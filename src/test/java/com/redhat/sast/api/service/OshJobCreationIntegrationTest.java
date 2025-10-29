@@ -12,6 +12,7 @@ import com.redhat.sast.api.service.osh.OshJobCreationService;
 import com.redhat.sast.api.v1.dto.osh.OshScan;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 
 /**
@@ -24,6 +25,7 @@ import jakarta.inject.Inject;
  * - Error handling and edge cases
  */
 @QuarkusTest
+@TestProfile(com.redhat.sast.api.config.TestProfile.class)
 @DisplayName("OSH Job Creation Integration Tests")
 class OshJobCreationIntegrationTest {
 

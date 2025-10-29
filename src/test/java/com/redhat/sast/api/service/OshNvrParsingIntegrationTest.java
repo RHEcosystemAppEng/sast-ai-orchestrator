@@ -9,6 +9,7 @@ import com.redhat.sast.api.util.url.NvrParser;
 import com.redhat.sast.api.v1.dto.osh.OshScan;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 
 /**
@@ -19,6 +20,7 @@ import jakarta.inject.Inject;
  * (like zlib-ng-2.1.6-2.el10) were incorrectly parsed.
  */
 @QuarkusTest
+@TestProfile(com.redhat.sast.api.config.TestProfile.class)
 @DisplayName("OSH NVR Parsing Integration Tests")
 class OshNvrParsingIntegrationTest {
 

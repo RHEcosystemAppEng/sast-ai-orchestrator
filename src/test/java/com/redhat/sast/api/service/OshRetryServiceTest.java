@@ -19,6 +19,7 @@ import com.redhat.sast.api.service.osh.OshRetryService.RetryQueueStatistics;
 import com.redhat.sast.api.v1.dto.osh.OshScan;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
@@ -32,6 +33,7 @@ import jakarta.transaction.Transactional;
  * - JSON reconstruction
  */
 @QuarkusTest
+@TestProfile(com.redhat.sast.api.config.TestProfile.class)
 @DisplayName("OSH Retry Service Tests")
 class OshRetryServiceTest {
 

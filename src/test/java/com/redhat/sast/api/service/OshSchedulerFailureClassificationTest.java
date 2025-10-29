@@ -13,6 +13,7 @@ import com.redhat.sast.api.enums.OshFailureReason;
 import com.redhat.sast.api.startup.OshScheduler;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.persistence.PersistenceException;
 
@@ -23,6 +24,7 @@ import jakarta.persistence.PersistenceException;
  * of different types of exceptions for retry processing.
  */
 @QuarkusTest
+@TestProfile(com.redhat.sast.api.config.TestProfile.class)
 @DisplayName("OSH Scheduler Failure Classification Tests")
 class OshSchedulerFailureClassificationTest {
 

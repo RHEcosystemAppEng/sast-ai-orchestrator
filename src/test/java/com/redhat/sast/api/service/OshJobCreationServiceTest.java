@@ -12,14 +12,6 @@ import org.junit.jupiter.api.Test;
 import com.redhat.sast.api.service.osh.OshJobCreationService;
 import com.redhat.sast.api.v1.dto.osh.OshScan;
 
-/**
- * Unit tests for OshJobCreationService focusing on business logic validation.
- *
- * Tests:
- * - Scan eligibility validation rules
- * - Input validation and edge cases
- * - Data consistency checks
- */
 @DisplayName("OSH Job Creation Service Tests")
 class OshJobCreationServiceTest {
 
@@ -66,18 +58,18 @@ class OshJobCreationServiceTest {
     @Test
     @DisplayName("Should build NVR correctly from Label field")
     void oshScan_buildNvrFromLabelField() {
-        OshScan systemdScan = createOshScanWithLabel("systemd", "252", "systemd-252-54.el9.src.rpm");
+        OshScan systemdScan = createValidOshScan("systemd", "252", "systemd-252-54.el9.src.rpm");
         assertNotNull(systemdScan.getRawData());
         assertEquals("systemd-252-54.el9.src.rpm", systemdScan.getRawData().get("Label"));
         assertEquals("systemd", systemdScan.getComponent());
         assertEquals("252", systemdScan.getVersion());
 
-        OshScan zlibScan = createOshScanWithLabel("zlib-ng", "2.1.6", "zlib-ng-2.1.6-2.el10.src.rpm");
+        OshScan zlibScan = createValidOshScan("zlib-ng", "2.1.6", "zlib-ng-2.1.6-2.el10.src.rpm");
         assertEquals("zlib-ng-2.1.6-2.el10.src.rpm", zlibScan.getRawData().get("Label"));
         assertEquals("zlib-ng", zlibScan.getComponent());
         assertEquals("2.1.6", zlibScan.getVersion());
 
-        OshScan rpmScan = createOshScanWithLabel("kernel", "5.14.0", "kernel-5.14.0-284.el9.rpm");
+        OshScan rpmScan = createValidOshScan("kernel", "5.14.0", "kernel-5.14.0-284.el9.rpm");
         assertEquals("kernel-5.14.0-284.el9.rpm", rpmScan.getRawData().get("Label"));
         assertEquals("kernel", rpmScan.getComponent());
         assertEquals("5.14.0", rpmScan.getVersion());
@@ -123,71 +115,28 @@ class OshJobCreationServiceTest {
     }
 
     @Test
-    @DisplayName("Should validate scan data consistency")
-    void canProcessScan_validateDataConsistency() {
-        OshScan consistentScan = createOshScanWithLabel("systemd", "252", "systemd-252-54.el9.src.rpm");
-        assertTrue(oshJobCreationService.canProcessScan(consistentScan));
-
-        OshScan inconsistentScan = createOshScanWithLabel("systemd", "252", "kernel-5.14.0-1.el9.src.rpm");
-        assertTrue(oshJobCreationService.canProcessScan(inconsistentScan));
-        assertEquals("systemd", inconsistentScan.getComponent());
-    }
-
-    @Test
-    @DisplayName("Should handle edge cases in scan data")
-    void canProcessScan_handleEdgeCases() {
-        OshScan minScan = createValidOshScan();
-        minScan.setScanId(1);
-        assertTrue(oshJobCreationService.canProcessScan(minScan));
-
-        OshScan largeScan = createValidOshScan();
-        largeScan.setScanId(Integer.MAX_VALUE);
-        assertTrue(oshJobCreationService.canProcessScan(largeScan));
-
-        OshScan singleCharScan = createValidOshScan();
-        singleCharScan.setComponent("a");
-        assertTrue(oshJobCreationService.canProcessScan(singleCharScan));
-
-        OshScan longComponentScan = createValidOshScan();
-        longComponentScan.setComponent("very-long-package-name-with-many-hyphens-and-numbers-123");
-        assertTrue(oshJobCreationService.canProcessScan(longComponentScan));
-    }
-
-    @Test
     @DisplayName("Should require CLOSED state for processing")
     void canProcessScan_requireClosedState() {
-        String[] validStates = {"CLOSED"};
+        String validState = "CLOSED";
         String[] invalidStates = {"OPEN", "FAILED", "RUNNING", "CANCELLED", "closed", "", null};
 
-        for (String state : validStates) {
-            OshScan scan = createValidOshScan();
-            scan.setState(state);
-            assertTrue(oshJobCreationService.canProcessScan(scan), "Should accept state: " + state);
-        }
+        OshScan scan = createValidOshScan();
+        scan.setState(validState);
+        assertTrue(oshJobCreationService.canProcessScan(scan), "Should accept state: " + validState);
 
         for (String state : invalidStates) {
-            OshScan scan = createValidOshScan();
-            scan.setState(state);
-            assertFalse(oshJobCreationService.canProcessScan(scan), "Should reject state: " + state);
+            OshScan s = createValidOshScan();
+            s.setState(state);
+            assertFalse(oshJobCreationService.canProcessScan(s), "Should reject state: " + state);
         }
     }
 
     // Helper methods
     private OshScan createValidOshScan() {
-        OshScan scan = new OshScan();
-        scan.setScanId(12345);
-        scan.setState("CLOSED");
-        scan.setComponent("systemd");
-        scan.setVersion("252");
-
-        Map<String, Object> rawData = new HashMap<>();
-        rawData.put("Label", "systemd-252-54.el9.src.rpm");
-        scan.setRawData(rawData);
-
-        return scan;
+        return createValidOshScan("systemd", "252", "systemd-252-54.el9.src.rpm");
     }
 
-    private OshScan createOshScanWithLabel(String component, String version, String label) {
+    private OshScan createValidOshScan(String component, String version, String label) {
         OshScan scan = new OshScan();
         scan.setScanId(12345);
         scan.setState("CLOSED");

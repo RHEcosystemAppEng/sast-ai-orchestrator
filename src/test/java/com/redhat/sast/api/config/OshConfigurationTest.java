@@ -2,14 +2,13 @@ package com.redhat.sast.api.config;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import io.quarkus.test.junit.QuarkusTest;
 
 /**
  * Unit tests for OshConfiguration.
@@ -18,9 +17,9 @@ import io.quarkus.test.junit.QuarkusTest;
  * - Configuration validation at startup
  * - Package filtering logic
  * - Effective batch size calculation
+ * - Retry mechanism configuration and calculations
  * - Edge cases and error conditions
  */
-@QuarkusTest
 @DisplayName("OSH Configuration Tests")
 class OshConfigurationTest {
 
@@ -235,5 +234,94 @@ class OshConfigurationTest {
         assertFalse(config.shouldMonitorPackage("Systemd"));
         assertFalse(config.shouldMonitorPackage("SYSTEMD"));
         assertFalse(config.shouldMonitorPackage("SystemD"));
+    }
+
+    // ==================== Retry Configuration Tests ====================
+
+    @Test
+    @DisplayName("Should calculate backoff times correctly")
+    void testBackoffCalculation() {
+        // Set up retry configuration
+        config.retryBackoffMinutes = 20;
+        config.retryExponentialBackoff = true;
+
+        long backoff1 = config.calculateBackoffMinutes(1);
+        long backoff2 = config.calculateBackoffMinutes(2);
+        long backoff3 = config.calculateBackoffMinutes(3);
+
+        assertTrue(backoff1 > 0);
+        assertTrue(backoff2 > 0);
+        assertTrue(backoff3 > 0);
+
+        // Test edge cases
+        assertTrue(config.calculateBackoffMinutes(0) > 0);
+        assertTrue(config.calculateBackoffMinutes(-1) > 0);
+
+        // Test maximum cap (24 hours = 1440 minutes)
+        long largeBackoff = config.calculateBackoffMinutes(100);
+        assertTrue(largeBackoff <= 1440); // Max 24 hours in minutes
+    }
+
+    @Test
+    @DisplayName("Should calculate cutoff times correctly")
+    void testCutoffTimeCalculation() {
+        // Set up retry configuration
+        config.retryBackoffMinutes = 20;
+        config.retryRetentionDays = 7;
+
+        LocalDateTime cutoff = config.getStandardRetryCutoffTime();
+        assertNotNull(cutoff);
+        assertTrue(cutoff.isBefore(LocalDateTime.now()));
+
+        LocalDateTime retentionCutoff = config.getRetentionCutoffTime();
+        assertNotNull(retentionCutoff);
+        assertTrue(retentionCutoff.isBefore(LocalDateTime.now()));
+        assertTrue(retentionCutoff.isBefore(cutoff));
+    }
+
+    @Test
+    @DisplayName("Should handle attempt-specific cutoff times")
+    void testAttemptSpecificCutoffTimes() {
+        // Set up retry configuration
+        config.retryBackoffMinutes = 20;
+
+        LocalDateTime cutoff1 = config.getRetryCutoffTime(1);
+        LocalDateTime cutoff2 = config.getRetryCutoffTime(2);
+        LocalDateTime cutoff3 = config.getRetryCutoffTime(3);
+
+        assertNotNull(cutoff1);
+        assertNotNull(cutoff2);
+        assertNotNull(cutoff3);
+
+        assertTrue(cutoff1.isBefore(LocalDateTime.now()));
+        assertTrue(cutoff2.isBefore(LocalDateTime.now()));
+        assertTrue(cutoff3.isBefore(LocalDateTime.now()));
+    }
+
+    @Test
+    @DisplayName("Should provide effective retry batch size")
+    void testEffectiveRetryBatchSize() {
+        config.retryBatchSize = 5;
+
+        int batchSize = config.getEffectiveRetryBatchSize();
+        assertTrue(batchSize > 0);
+        assertTrue(batchSize <= 50); // Should not exceed maximum
+
+        // Test with larger retry batch size
+        config.retryBatchSize = 100;
+        int cappedBatchSize = config.getEffectiveRetryBatchSize();
+        assertEquals(50, cappedBatchSize); // Should be capped at maximum
+    }
+
+    @Test
+    @DisplayName("Should handle retry limits correctly")
+    void testRetryLimits() {
+        // With retryMaxAttempts = 3, should have a limit
+        config.retryMaxAttempts = 3;
+        assertTrue(config.hasRetryLimit());
+
+        // Test when retryMaxAttempts = 0 (unlimited)
+        config.retryMaxAttempts = 0;
+        assertFalse(config.hasRetryLimit());
     }
 }

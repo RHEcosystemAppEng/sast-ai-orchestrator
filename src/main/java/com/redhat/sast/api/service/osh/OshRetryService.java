@@ -390,10 +390,12 @@ public class OshRetryService {
      * Gets configuration summary for admin display.
      */
     private String getConfigurationSummary() {
+        long backoffMinutes = java.time.Duration.parse(oshConfiguration.getRetryBackoffDuration())
+                .toMinutes();
         return String.format(
                 "Max attempts: %s, Backoff: %dm, Exponential: %s, Retention: %dd",
                 oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : UNLIMITED_ATTEMPTS,
-                oshConfiguration.getRetryBackoffDuration(),
+                backoffMinutes,
                 oshConfiguration.isRetryExponentialBackoff() ? "yes" : "no",
                 oshConfiguration.getRetryRetentionDays());
     }

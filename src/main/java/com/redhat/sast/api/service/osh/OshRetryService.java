@@ -393,7 +393,7 @@ public class OshRetryService {
         return String.format(
                 "Max attempts: %s, Backoff: %dm, Exponential: %s, Retention: %dd",
                 oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : UNLIMITED_ATTEMPTS,
-                oshConfiguration.getRetryBackoffMinutes(),
+                oshConfiguration.getRetryBackoffDuration(),
                 oshConfiguration.isRetryExponentialBackoff() ? "yes" : "no",
                 oshConfiguration.getRetryRetentionDays());
     }

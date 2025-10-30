@@ -2,6 +2,7 @@ package com.redhat.sast.api.config;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.Set;
 
@@ -11,6 +12,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -104,8 +106,9 @@ public class OshConfiguration {
      * Prevents immediate hammering of failing resources.
      * Used as base time for exponential backoff if enabled.
      */
-    @ConfigProperty(name = "osh.retry.backoff-minutes", defaultValue = "20")
-    int retryBackoffMinutes;
+    @Setter
+    @ConfigProperty(name = "osh.retry.initial-backoff-duration", defaultValue = "PT20M")
+    String retryBackoffDuration;
 
     /**
      * Use exponential backoff strategy for retry timing.
@@ -170,9 +173,11 @@ public class OshConfiguration {
             throw new IllegalStateException("Invalid osh.retry.batch-size: " + retryBatchSize + " (must be positive)");
         }
 
-        if (retryBackoffMinutes <= 0) {
+        try {
+            Duration.parse(retryBackoffDuration);
+        } catch (DateTimeParseException e) {
             throw new IllegalStateException(
-                    "Invalid osh.retry.backoff-minutes: " + retryBackoffMinutes + " (must be positive)");
+                    "Invalid osh.retry.backoff-minutes: " + retryBackoffDuration + " (must be positive)");
         }
 
         if (retryRetentionDays <= 0) {
@@ -201,7 +206,7 @@ public class OshConfiguration {
         LOGGER.debug("  Max scans per cycle: {}", maxScansPerCycle);
         LOGGER.debug("  Retry max attempts: {}", retryMaxAttempts == 0 ? "unlimited" : retryMaxAttempts);
         LOGGER.debug("  Retry batch size: {}", retryBatchSize);
-        LOGGER.debug("  Retry backoff minutes: {}", retryBackoffMinutes);
+        LOGGER.debug("  Retry backoff minutes: {}", retryBackoffDuration);
         LOGGER.debug("  Retry exponential backoff: {}", retryExponentialBackoff);
         LOGGER.debug("  Retry retention days: {}", retryRetentionDays);
         LOGGER.debug("  Retry cleanup interval: {}", retryCleanupInterval);
@@ -240,11 +245,12 @@ public class OshConfiguration {
      * @return backoff time in minutes
      */
     public long calculateBackoffMinutes(int attemptNumber) {
+        long retryInMinutes = Duration.parse(retryBackoffDuration).toMinutes();
         if (!retryExponentialBackoff || attemptNumber <= 1) {
-            return retryBackoffMinutes;
+            return retryInMinutes;
         }
 
-        long calculatedBackoff = retryBackoffMinutes * (long) Math.pow(2.0, attemptNumber - 1.0);
+        long calculatedBackoff = retryInMinutes * (long) Math.pow(2.0, attemptNumber - 1.0);
 
         return Math.min(calculatedBackoff, MAX_BACKOFF_MINUTES);
     }
@@ -268,7 +274,7 @@ public class OshConfiguration {
      * @return cutoff timestamp for basic retry eligibility
      */
     public LocalDateTime getStandardRetryCutoffTime() {
-        return LocalDateTime.now().minusMinutes(retryBackoffMinutes);
+        return LocalDateTime.now().minus(Duration.parse(retryBackoffDuration));
     }
 
     /**

@@ -49,7 +49,7 @@ class OshConfigurationTest {
         config.maxScansPerCycle = 50;
         config.retryMaxAttempts = 3;
         config.retryBatchSize = 5;
-        config.retryBackoffMinutes = 20;
+        config.retryBackoffDuration = "PT20M";
         config.retryRetentionDays = 7;
         config.retryCleanupInterval = "24h";
 
@@ -109,7 +109,7 @@ class OshConfigurationTest {
         config.maxScansPerCycle = 50;
         config.retryMaxAttempts = 3;
         config.retryBatchSize = 5;
-        config.retryBackoffMinutes = 20;
+        config.retryBackoffDuration = "PT20M";
         config.retryRetentionDays = 7;
         config.retryCleanupInterval = "24h";
 
@@ -130,7 +130,7 @@ class OshConfigurationTest {
         config.maxScansPerCycle = 50;
         config.retryMaxAttempts = 3;
         config.retryBatchSize = 5;
-        config.retryBackoffMinutes = 20;
+        config.retryBackoffDuration = "PT20M";
         config.retryRetentionDays = 7;
         config.retryCleanupInterval = "24h";
 
@@ -242,7 +242,7 @@ class OshConfigurationTest {
     @DisplayName("Should calculate backoff times correctly")
     void testBackoffCalculation() {
         // Set up retry configuration
-        config.retryBackoffMinutes = 20;
+        config.retryBackoffDuration = "PT20M";
         config.retryExponentialBackoff = true;
 
         long backoff1 = config.calculateBackoffMinutes(1);
@@ -266,7 +266,7 @@ class OshConfigurationTest {
     @DisplayName("Should calculate cutoff times correctly")
     void testCutoffTimeCalculation() {
         // Set up retry configuration
-        config.retryBackoffMinutes = 20;
+        config.retryBackoffDuration = "PT20M";
         config.retryRetentionDays = 7;
 
         LocalDateTime cutoff = config.getStandardRetryCutoffTime();
@@ -283,7 +283,7 @@ class OshConfigurationTest {
     @DisplayName("Should handle attempt-specific cutoff times")
     void testAttemptSpecificCutoffTimes() {
         // Set up retry configuration
-        config.retryBackoffMinutes = 20;
+        config.retryBackoffDuration = "PT20M";
 
         LocalDateTime cutoff1 = config.getRetryCutoffTime(1);
         LocalDateTime cutoff2 = config.getRetryCutoffTime(2);

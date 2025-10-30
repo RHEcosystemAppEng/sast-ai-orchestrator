@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.redhat.sast.api.config.OshConfiguration;
 import com.redhat.sast.api.enums.OshFailureReason;
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.OshUncollectedScanRepository;
@@ -35,13 +36,16 @@ import jakarta.transaction.Transactional;
 @QuarkusTest
 @TestProfile(com.redhat.sast.api.config.TestProfile.class)
 @DisplayName("OSH Retry Service Tests")
-class OshRetryServiceTest {
+class OshRetryServiceIT {
 
     @Inject
     OshRetryService oshRetryService;
 
     @Inject
     OshUncollectedScanRepository uncollectedScanRepository;
+
+    @Inject
+    OshConfiguration oshConfiguration;
 
     @BeforeEach
     @Transactional
@@ -65,9 +69,37 @@ class OshRetryServiceTest {
         assertEquals(OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, uncollected.getFailureReason());
         assertEquals("Network timeout occurred", uncollected.getLastErrorMessage());
         assertEquals("test-package", uncollected.getPackageName());
-        assertEquals(1, uncollected.getAttemptCount());
+        assertEquals(0, uncollected.getAttemptCount());
         assertNotNull(uncollected.getCreatedAt());
         assertNotNull(uncollected.getLastAttemptAt());
+    }
+
+    @Test
+    @DisplayName("Should record failed scan with 3 retry attempts")
+    void recordFailedScan_capturesRetryInfoCorrectly() {
+        OshScan scan = createTestScan(1001, "test-package");
+
+        oshRetryService.recordFailedScan(
+                scan, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Network timeout occurred");
+
+        Optional<OshUncollectedScan> optionalOshUncollectedScan = oshRetryService.findRetryInfo(1001);
+        assertTrue(optionalOshUncollectedScan.isPresent());
+        var uncollectedScan = optionalOshUncollectedScan.get();
+        assertEquals(OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, uncollectedScan.getFailureReason());
+        assertEquals(0, uncollectedScan.getAttemptCount());
+
+        oshRetryService.recordRetryAttempt(
+                uncollectedScan.getId(), OshFailureReason.OSH_API_ERROR, "My exception message");
+        uncollectedScan = oshRetryService.findRetryInfo(1001).get();
+        assertEquals(OshFailureReason.OSH_API_ERROR, uncollectedScan.getFailureReason());
+        assertEquals(1, uncollectedScan.getAttemptCount());
+
+        uncollectedScan.setAttemptCount(3);
+        oshRetryService.recordRetryAttempt(
+                uncollectedScan.getId(), OshFailureReason.DATABASE_ERROR, "My exception message");
+        uncollectedScan = oshRetryService.findRetryInfo(1001).get();
+        assertEquals(OshFailureReason.DATABASE_ERROR, uncollectedScan.getFailureReason());
+        assertEquals(3, uncollectedScan.getAttemptCount());
     }
 
     @Test
@@ -105,9 +137,10 @@ class OshRetryServiceTest {
         oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_API_ERROR, "API error");
 
         // Should now find the failed scan
+        oshConfiguration.setRetryBackoffDuration("PT0.001S");
         List<OshUncollectedScan> result = oshRetryService.fetchRetryableScans();
         assertEquals(1, result.size());
-        assertEquals(2001, result.get(0).getOshScanId());
+        assertEquals(2001, result.getFirst().getOshScanId());
     }
 
     @Test
@@ -212,6 +245,7 @@ class OshRetryServiceTest {
     @Test
     @DisplayName("Should provide detailed statistics")
     void testGetDetailedRetryStatistics() {
+
         RetryQueueStatistics stats = oshRetryService.getDetailedRetryStatistics();
 
         assertNotNull(stats);

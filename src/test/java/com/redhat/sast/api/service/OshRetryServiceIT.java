@@ -61,15 +61,14 @@ class OshRetryServiceIT {
     void recordFailedScan_storesCompleteRetryInformation() {
         OshScan scan = createTestScan(1001, "test-package");
 
-        oshRetryService.recordFailedScan(
-                scan, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Network timeout occurred");
+        oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Network timeout occurred");
 
         Optional<OshUncollectedScan> recorded = oshRetryService.findRetryInfo(1001);
         assertTrue(recorded.isPresent(), "Failed scan should be recorded in retry queue");
 
         OshUncollectedScan uncollected = recorded.get();
         assertEquals(1001, uncollected.getOshScanId());
-        assertEquals(OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, uncollected.getFailureReason());
+        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, uncollected.getFailureReason());
         assertEquals("Network timeout occurred", uncollected.getLastErrorMessage());
         assertEquals("test-package", uncollected.getPackageName());
         assertEquals(0, uncollected.getAttemptCount());
@@ -83,13 +82,12 @@ class OshRetryServiceIT {
     void recordFailedScan_capturesRetryInfoCorrectly() {
         OshScan scan = createTestScan(1001, "test-package");
 
-        oshRetryService.recordFailedScan(
-                scan, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Network timeout occurred");
+        oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Network timeout occurred");
 
         Optional<OshUncollectedScan> optionalOshUncollectedScan = oshRetryService.findRetryInfo(1001);
         assertTrue(optionalOshUncollectedScan.isPresent());
         var uncollectedScan = optionalOshUncollectedScan.get();
-        assertEquals(OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, uncollectedScan.getFailureReason());
+        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, uncollectedScan.getFailureReason());
         assertEquals(0, uncollectedScan.getAttemptCount());
 
         oshRetryService.recordRetryAttempt(
@@ -118,7 +116,7 @@ class OshRetryServiceIT {
     @DisplayName("Should handle null scan gracefully")
     void recordFailedScan_handleNullScanGracefully() {
         assertDoesNotThrow(
-                () -> oshRetryService.recordFailedScan(null, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Error"));
+                () -> oshRetryService.recordFailedScan(null, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Error"));
 
         assertEquals(0, uncollectedScanRepository.count());
     }
@@ -129,7 +127,7 @@ class OshRetryServiceIT {
         OshScan scan = createTestScan(null, "test-package");
 
         assertDoesNotThrow(
-                () -> oshRetryService.recordFailedScan(scan, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Error"));
+                () -> oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Error"));
 
         assertEquals(0, uncollectedScanRepository.count());
     }
@@ -153,7 +151,7 @@ class OshRetryServiceIT {
     @DisplayName("Should mark retry successful and remove from queue")
     void markRetrySuccessful_removesFromRetryQueue() {
         OshScan scan = createTestScan(3001, "success-package");
-        oshRetryService.recordFailedScan(scan, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Download error");
+        oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Download error");
 
         assertTrue(oshRetryService.findRetryInfo(3001).isPresent());
 
@@ -235,7 +233,7 @@ class OshRetryServiceIT {
         OshScan scan3 = createTestScan(1003, "package3");
 
         oshRetryService.recordFailedScan(scan1, OshFailureReason.OSH_API_ERROR, "Error 1");
-        oshRetryService.recordFailedScan(scan2, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Error 2");
+        oshRetryService.recordFailedScan(scan2, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Error 2");
         oshRetryService.recordFailedScan(scan3, OshFailureReason.DATABASE_ERROR, "Error 3");
 
         entityManager.clear();
@@ -274,7 +272,7 @@ class OshRetryServiceIT {
         OshScan scan3 = createTestScan(1003, "package3");
 
         oshRetryService.recordFailedScan(scan1, OshFailureReason.OSH_API_ERROR, "Error 1");
-        oshRetryService.recordFailedScan(scan2, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Error 2");
+        oshRetryService.recordFailedScan(scan2, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Error 2");
         oshRetryService.recordFailedScan(scan3, OshFailureReason.DATABASE_ERROR, "Error 3");
 
         List<OshUncollectedScan> result = oshRetryService.getRetryQueueSnapshot(10, "created");
@@ -314,7 +312,7 @@ class OshRetryServiceIT {
         OshScan scan3 = createTestScan(1003, "package3");
 
         oshRetryService.recordFailedScan(scan1, OshFailureReason.OSH_API_ERROR, "Error 1");
-        oshRetryService.recordFailedScan(scan2, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Error 2");
+        oshRetryService.recordFailedScan(scan2, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Error 2");
         oshRetryService.recordFailedScan(scan3, OshFailureReason.DATABASE_ERROR, "Error 3");
 
         entityManager.clear();

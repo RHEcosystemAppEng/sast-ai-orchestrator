@@ -20,11 +20,11 @@ import lombok.extern.slf4j.Slf4j;
  * Service responsible for creating SAST-AI workflow jobs from OSH (Open Scan Hub) scan results.
  *
  * This service handles the complete flow from OSH scan discovery to job creation:
- * 1. Downloads JSON content from OSH logs
- * 2. Extracts package NVR from OSH scan metadata
+ * 1. Extracts package NVR from OSH scan metadata
+ * 2. Builds OSH report URLs from scan metadata
  * 3. Creates jobs via existing JobService infrastructure
  * 4. Ensures idempotency (no duplicate processing)
- * 5. Cleans up successful scans from retry queue (if retry enabled)
+ * 5. Cleans up successful scans from retry queue
  *
  * Transaction Boundaries:
  * - Each scan is processed in a separate REQUIRES_NEW transaction

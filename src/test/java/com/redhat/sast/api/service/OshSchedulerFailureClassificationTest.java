@@ -32,19 +32,19 @@ class OshSchedulerFailureClassificationTest {
     OshScheduler oshScheduler;
 
     @Test
-    @DisplayName("Should classify network exceptions as JSON download network error")
+    @DisplayName("Should classify network exceptions as OSH metadata network error")
     void testNetworkExceptionClassification() {
         ConnectException connectException = new ConnectException("Connection refused");
         OshFailureReason result = classifyFailure(connectException);
-        assertEquals(OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, result);
+        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
 
         SocketTimeoutException timeoutException = new SocketTimeoutException("Connection timed out");
         result = classifyFailure(timeoutException);
-        assertEquals(OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, result);
+        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
 
         IOException ioException = new IOException("Network error");
         result = classifyFailure(ioException);
-        assertEquals(OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, result);
+        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
     }
 
     @Test
@@ -52,15 +52,15 @@ class OshSchedulerFailureClassificationTest {
     void testNetworkExceptionClassificationByMessage() {
         RuntimeException connectionError = new RuntimeException("connection failed");
         OshFailureReason result = classifyFailure(connectionError);
-        assertEquals(OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, result);
+        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
 
         RuntimeException timeoutError = new RuntimeException("Request timeout occurred");
         result = classifyFailure(timeoutError);
-        assertEquals(OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, result);
+        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
 
         RuntimeException upperCaseError = new RuntimeException("CONNECTION ERROR");
         result = classifyFailure(upperCaseError);
-        assertEquals(OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, result);
+        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
     }
 
     @Test
@@ -170,7 +170,7 @@ class OshSchedulerFailureClassificationTest {
             RuntimeException exception = new RuntimeException(message);
             OshFailureReason result = classifyFailure(exception);
             assertEquals(
-                    OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR,
+                    OshFailureReason.OSH_METADATA_NETWORK_ERROR,
                     result,
                     "Should classify message as network error: " + message);
         }
@@ -181,7 +181,7 @@ class OshSchedulerFailureClassificationTest {
     void testPartialMessageMatching() {
         RuntimeException timeoutInMiddle = new RuntimeException("Request failed due to timeout while connecting");
         OshFailureReason result = classifyFailure(timeoutInMiddle);
-        assertEquals(OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, result);
+        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
 
         RuntimeException invalidInMiddle = new RuntimeException("The provided invalid data caused processing to fail");
         result = classifyFailure(invalidInMiddle);

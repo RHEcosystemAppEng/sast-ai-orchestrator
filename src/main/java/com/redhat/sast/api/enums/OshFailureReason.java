@@ -6,14 +6,14 @@ package com.redhat.sast.api.enums;
 public enum OshFailureReason {
 
     /**
-     * Network error downloading SAST report JSON from OSH logs.
+     * Network error fetching OSH scan metadata from OSH API.
      */
-    JSON_DOWNLOAD_NETWORK_ERROR("Network error downloading SAST report JSON"),
+    OSH_METADATA_NETWORK_ERROR("Network error fetching OSH scan metadata"),
 
     /**
-     * HTTP error downloading SAST report JSON (timeouts, 4xx, 5xx errors).
+     * Error parsing OSH API response (JSON parsing failures, malformed responses).
      */
-    JSON_DOWNLOAD_HTTP_ERROR("HTTP error downloading SAST report JSON"),
+    OSH_METADATA_PARSE_ERROR("Error parsing OSH API response"),
 
     /**
      * OSH API error when fetching scan details.

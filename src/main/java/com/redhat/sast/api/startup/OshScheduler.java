@@ -280,8 +280,13 @@ public class OshScheduler {
     /**
      * Classifies an exception into a failure reason for retry tracking.
      *
+     * This method categorizes exceptions based on their type and message content to determine
+     * the appropriate failure reason. Network and I/O exceptions during OSH API calls are classified
+     * as metadata network errors, while JSON parsing failures of OSH responses are classified as
+     * metadata parse errors.
+     *
      * @param exception the exception that occurred
-     * @return appropriate failure reason
+     * @return appropriate failure reason for categorizing the error
      */
     private OshFailureReason classifyFailure(Exception exception) {
         if (exception == null) {
@@ -290,18 +295,18 @@ public class OshScheduler {
 
         String message = exception.getMessage() != null ? exception.getMessage().toLowerCase() : "";
 
-        // Network/IO failures
+        // Network/IO failures when fetching OSH scan metadata
         if (exception instanceof java.net.ConnectException
                 || exception instanceof java.net.SocketTimeoutException
                 || exception instanceof java.io.IOException
                 || message.contains("connection")
                 || message.contains("timeout")) {
-            return OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR;
+            return OshFailureReason.OSH_METADATA_NETWORK_ERROR;
         }
 
-        // JSON parsing failures
+        // JSON parsing failures when parsing OSH API responses
         if (exception instanceof JsonProcessingException || message.contains("json") || message.contains("parsing")) {
-            return OshFailureReason.JSON_DOWNLOAD_HTTP_ERROR;
+            return OshFailureReason.OSH_METADATA_PARSE_ERROR;
         }
 
         // Data validation failures

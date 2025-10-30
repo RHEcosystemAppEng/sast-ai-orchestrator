@@ -47,6 +47,9 @@ class OshRetryServiceIT {
     @Inject
     OshConfiguration oshConfiguration;
 
+    @Inject
+    jakarta.persistence.EntityManager entityManager;
+
     @BeforeEach
     @Transactional
     void setUp() {
@@ -75,6 +78,7 @@ class OshRetryServiceIT {
     }
 
     @Test
+    @Transactional
     @DisplayName("Should record failed scan with 3 retry attempts")
     void recordFailedScan_capturesRetryInfoCorrectly() {
         OshScan scan = createTestScan(1001, "test-package");
@@ -90,15 +94,23 @@ class OshRetryServiceIT {
 
         oshRetryService.recordRetryAttempt(
                 uncollectedScan.getId(), OshFailureReason.OSH_API_ERROR, "My exception message");
+        entityManager.clear();
         uncollectedScan = oshRetryService.findRetryInfo(1001).get();
         assertEquals(OshFailureReason.OSH_API_ERROR, uncollectedScan.getFailureReason());
         assertEquals(1, uncollectedScan.getAttemptCount());
 
-        uncollectedScan.setAttemptCount(3);
         oshRetryService.recordRetryAttempt(
                 uncollectedScan.getId(), OshFailureReason.DATABASE_ERROR, "My exception message");
+        entityManager.clear();
         uncollectedScan = oshRetryService.findRetryInfo(1001).get();
         assertEquals(OshFailureReason.DATABASE_ERROR, uncollectedScan.getFailureReason());
+        assertEquals(2, uncollectedScan.getAttemptCount());
+
+        oshRetryService.recordRetryAttempt(
+                uncollectedScan.getId(), OshFailureReason.JOB_CREATION_ERROR, "My exception message");
+        entityManager.clear();
+        uncollectedScan = oshRetryService.findRetryInfo(1001).get();
+        assertEquals(OshFailureReason.JOB_CREATION_ERROR, uncollectedScan.getFailureReason());
         assertEquals(3, uncollectedScan.getAttemptCount());
     }
 

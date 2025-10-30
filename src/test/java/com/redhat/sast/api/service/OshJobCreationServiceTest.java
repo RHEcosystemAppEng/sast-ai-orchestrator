@@ -56,23 +56,22 @@ class OshJobCreationServiceTest {
     }
 
     @Test
-    @DisplayName("Should build NVR correctly from Label field")
-    void oshScan_buildNvrFromLabelField() {
+    @DisplayName("Should extract package NVR from Label field")
+    void extractPackageNvr_fromLabelField() throws Exception {
+        var method = OshJobCreationService.class.getDeclaredMethod("extractPackageNvr", OshScan.class);
+        method.setAccessible(true);
+
         OshScan systemdScan = createValidOshScan("systemd", "252", "systemd-252-54.el9.src.rpm");
-        assertNotNull(systemdScan.getRawData());
-        assertEquals("systemd-252-54.el9.src.rpm", systemdScan.getRawData().get("Label"));
-        assertEquals("systemd", systemdScan.getComponent());
-        assertEquals("252", systemdScan.getVersion());
+        String nvr = (String) method.invoke(oshJobCreationService, systemdScan);
+        assertEquals("systemd-252-54.el9", nvr, "Should extract NVR from Label");
 
         OshScan zlibScan = createValidOshScan("zlib-ng", "2.1.6", "zlib-ng-2.1.6-2.el10.src.rpm");
-        assertEquals("zlib-ng-2.1.6-2.el10.src.rpm", zlibScan.getRawData().get("Label"));
-        assertEquals("zlib-ng", zlibScan.getComponent());
-        assertEquals("2.1.6", zlibScan.getVersion());
+        nvr = (String) method.invoke(oshJobCreationService, zlibScan);
+        assertEquals("zlib-ng-2.1.6-2.el10", nvr, "Should handle multi-part package names");
 
         OshScan rpmScan = createValidOshScan("kernel", "5.14.0", "kernel-5.14.0-284.el9.rpm");
-        assertEquals("kernel-5.14.0-284.el9.rpm", rpmScan.getRawData().get("Label"));
-        assertEquals("kernel", rpmScan.getComponent());
-        assertEquals("5.14.0", rpmScan.getVersion());
+        nvr = (String) method.invoke(oshJobCreationService, rpmScan);
+        assertEquals("kernel-5.14.0-284.el9", nvr, "Should handle .rpm extension");
     }
 
     @Test
@@ -101,17 +100,23 @@ class OshJobCreationServiceTest {
     }
 
     @Test
-    @DisplayName("Should handle complex package names correctly")
-    void canProcessScan_handleComplexPackageNames() {
-        String[] complexPackages = {"zlib-ng", "python3-pip", "container-tools", "java-11-openjdk", "nodejs-npm"};
+    @DisplayName("Should extract NVR correctly for packages with hyphens and numbers")
+    void extractPackageNvr_handleComplexPackageNames() throws Exception {
+        var method = OshJobCreationService.class.getDeclaredMethod("extractPackageNvr", OshScan.class);
+        method.setAccessible(true);
 
-        for (String packageName : complexPackages) {
-            OshScan scan = createValidOshScan();
-            scan.setComponent(packageName);
+        OshScan zlibScan = createValidOshScan("zlib-ng", "2.1.6", "zlib-ng-2.1.6-2.el10.src.rpm");
+        String nvr = (String) method.invoke(oshJobCreationService, zlibScan);
+        assertEquals("zlib-ng-2.1.6-2.el10", nvr, "Should handle package with hyphen");
 
-            assertTrue(oshJobCreationService.canProcessScan(scan), "Should be able to process package: " + packageName);
-            assertEquals(packageName, scan.getComponent());
-        }
+        OshScan pythonScan = createValidOshScan("python3-pip", "21.2.3", "python3-pip-21.2.3-1.el9.src.rpm");
+        nvr = (String) method.invoke(oshJobCreationService, pythonScan);
+        assertEquals("python3-pip-21.2.3-1.el9", nvr, "Should handle package with numbers");
+
+        OshScan javaScan =
+                createValidOshScan("java-11-openjdk", "11.0.19.0.7", "java-11-openjdk-11.0.19.0.7-1.el9.src.rpm");
+        nvr = (String) method.invoke(oshJobCreationService, javaScan);
+        assertEquals("java-11-openjdk-11.0.19.0.7-1.el9", nvr, "Should handle multi-hyphen package names");
     }
 
     @Test

@@ -50,58 +50,90 @@ class OshRetryServiceTest {
     }
 
     @Test
-    @DisplayName("Should record failed scan when enabled")
-    void testRecordFailedScan() {
+    @DisplayName("Should record failed scan with correct details")
+    void recordFailedScan_storesCompleteRetryInformation() {
         OshScan scan = createTestScan(1001, "test-package");
 
-        oshRetryService.recordFailedScan(scan, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Test error");
+        oshRetryService.recordFailedScan(
+                scan, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Network timeout occurred");
 
         Optional<OshUncollectedScan> recorded = oshRetryService.findRetryInfo(1001);
-        assertNotNull(recorded); // Should return a valid Optional (empty or present)
+        assertTrue(recorded.isPresent(), "Failed scan should be recorded in retry queue");
+
+        OshUncollectedScan uncollected = recorded.get();
+        assertEquals(1001, uncollected.getOshScanId());
+        assertEquals(OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, uncollected.getFailureReason());
+        assertEquals("Network timeout occurred", uncollected.getLastErrorMessage());
+        assertEquals("test-package", uncollected.getPackageName());
+        assertEquals(1, uncollected.getAttemptCount());
+        assertNotNull(uncollected.getCreatedAt());
+        assertNotNull(uncollected.getLastAttemptAt());
     }
 
     @Test
     @DisplayName("Should handle null scan gracefully")
-    void testRecordFailedScanNull() {
+    void recordFailedScan_handleNullScanGracefully() {
         // Should not throw exception - method logs warning and returns early
-        assertDoesNotThrow(() -> {
-            oshRetryService.recordFailedScan(null, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Error");
-        });
+        assertDoesNotThrow(
+                () -> oshRetryService.recordFailedScan(null, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Error"));
+
+        // Verify no records were created
+        assertEquals(0, uncollectedScanRepository.count());
     }
 
     @Test
     @DisplayName("Should handle scan with null ID gracefully")
-    void testRecordFailedScanNullId() {
+    void recordFailedScan_handleNullIdGracefully() {
         OshScan scan = createTestScan(null, "test-package");
 
-        assertDoesNotThrow(() -> {
-            oshRetryService.recordFailedScan(scan, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Error");
-        });
+        assertDoesNotThrow(
+                () -> oshRetryService.recordFailedScan(scan, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Error"));
+
+        // Verify no records were created
+        assertEquals(0, uncollectedScanRepository.count());
     }
 
     @Test
-    @DisplayName("Should fetch retryable scans")
-    void testFetchRetryableScans() {
+    @DisplayName("Should fetch retryable scans and include recorded failures")
+    void fetchRetryableScans_includesRecordedFailures() {
+        // Start with empty queue
+        List<OshUncollectedScan> initialResult = oshRetryService.fetchRetryableScans();
+        assertTrue(initialResult.isEmpty());
+
+        // Record a failed scan
+        OshScan scan = createTestScan(2001, "failed-package");
+        oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_API_ERROR, "API error");
+
+        // Should now find the failed scan
         List<OshUncollectedScan> result = oshRetryService.fetchRetryableScans();
-
-        assertNotNull(result);
-        assertTrue(result.size() >= 0);
+        assertEquals(1, result.size());
+        assertEquals(2001, result.get(0).getOshScanId());
     }
 
     @Test
-    @DisplayName("Should mark retry successful without error")
-    void testMarkRetrySuccessful() {
-        assertDoesNotThrow(() -> {
-            oshRetryService.markRetrySuccessful(1001);
-        });
+    @DisplayName("Should mark retry successful and remove from queue")
+    void markRetrySuccessful_removesFromRetryQueue() {
+        // Record a failed scan first
+        OshScan scan = createTestScan(3001, "success-package");
+        oshRetryService.recordFailedScan(scan, OshFailureReason.JSON_DOWNLOAD_NETWORK_ERROR, "Download error");
+
+        // Verify it's in the queue
+        assertTrue(oshRetryService.findRetryInfo(3001).isPresent());
+
+        // Mark as successful
+        oshRetryService.markRetrySuccessful(3001);
+
+        // Should no longer be in the queue
+        assertTrue(oshRetryService.findRetryInfo(3001).isEmpty());
     }
 
     @Test
-    @DisplayName("Should handle null scan ID in mark successful")
-    void testMarkRetrySuccessfulNullId() {
-        assertDoesNotThrow(() -> {
-            oshRetryService.markRetrySuccessful(null);
-        });
+    @DisplayName("Should handle null scan ID gracefully in mark successful")
+    void markRetrySuccessful_handleNullIdGracefully() {
+        assertDoesNotThrow(() -> oshRetryService.markRetrySuccessful(null));
+
+        // Verify no side effects on existing data
+        assertEquals(0, uncollectedScanRepository.count());
     }
 
     @Test

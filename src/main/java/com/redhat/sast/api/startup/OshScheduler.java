@@ -148,7 +148,7 @@ public class OshScheduler {
                     startScanId,
                     startScanId + batchSize);
 
-            var finalResults = triggerWorkflows(scansToProcess, this::processSingleScan, PHASE_INCREMENTAL);
+            var finalResults = commonOshScanHandler(scansToProcess, this::processSingleScan, PHASE_INCREMENTAL);
 
             int highestProcessedId =
                     scansToProcess.stream().mapToInt(OshScan::getScanId).max().orElse(startScanId - 1);
@@ -213,7 +213,7 @@ public class OshScheduler {
      * @return processing results for the retry batch
      */
     private ProcessingResults processRetryScans(List<OshUncollectedScan> retryScans) {
-        return triggerWorkflows(
+        return commonOshScanHandler(
                 retryScans,
                 uncollectedScan -> {
                     try {
@@ -376,7 +376,7 @@ public class OshScheduler {
      * @param phase phase name for logging and results
      * @return processing results with counts
      */
-    private <T> ProcessingResults triggerWorkflows(List<T> oshScanList, ScanProcessor<T> processor, String phase) {
+    private <T> ProcessingResults commonOshScanHandler(List<T> oshScanList, ScanProcessor<T> processor, String phase) {
         int processedCount = 0;
         int skippedCount = 0;
         int failedCount = 0;

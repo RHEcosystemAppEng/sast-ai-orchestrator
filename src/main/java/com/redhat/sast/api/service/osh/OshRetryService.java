@@ -120,7 +120,7 @@ public class OshRetryService {
     public List<OshUncollectedScan> fetchRetryableScans() {
         try {
             LocalDateTime cutoffTime = oshConfiguration.getStandardRetryCutoffTime();
-            int maxAttempts = oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : 0;
+            int maxAttempts = oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : -1;
             int effectiveBatchSize = oshConfiguration.getEffectiveRetryBatchSize();
 
             List<OshUncollectedScan> eligibleScans =
@@ -131,7 +131,7 @@ public class OshRetryService {
                         "Found {} scans eligible for retry (cutoff: {}, max attempts: {})",
                         eligibleScans.size(),
                         cutoffTime,
-                        maxAttempts == 0 ? UNLIMITED_ATTEMPTS : maxAttempts);
+                        maxAttempts == -1 ? UNLIMITED_ATTEMPTS : maxAttempts);
             }
 
             return eligibleScans;
@@ -314,7 +314,7 @@ public class OshRetryService {
         try {
             long totalInQueue = uncollectedScanRepository.count();
             LocalDateTime cutoffTime = oshConfiguration.getStandardRetryCutoffTime();
-            int maxAttempts = oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : 0;
+            int maxAttempts = oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : -1;
             long eligibleNow = retryStatisticsRepository.countEligibleForRetry(cutoffTime, maxAttempts);
 
             return String.format(
@@ -354,11 +354,11 @@ public class OshRetryService {
         try {
             long totalInQueue = uncollectedScanRepository.count();
             LocalDateTime cutoffTime = oshConfiguration.getStandardRetryCutoffTime();
-            int maxAttempts = oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : 0;
+            int maxAttempts = oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : -1;
             long eligibleNow = retryStatisticsRepository.countEligibleForRetry(cutoffTime, maxAttempts);
 
             long awaitingBackoff = totalInQueue - eligibleNow;
-            long exceededMax = maxAttempts > 0 ? retryStatisticsRepository.countExceededRetries(maxAttempts) : 0;
+            long exceededMax = maxAttempts >= 0 ? retryStatisticsRepository.countExceededRetries(maxAttempts) : 0;
 
             return new RetryQueueStatistics(
                     true, totalInQueue, eligibleNow, awaitingBackoff, exceededMax, getConfigurationSummary());

@@ -225,7 +225,7 @@ class OshRetryServiceIT {
     @Transactional
     @DisplayName("Should provide accurate detailed statistics")
     void testGetDetailedRetryStatistics() throws InterruptedException {
-        // Set very short backoff FIRST
+        oshConfiguration.setRetryMaxAttempts(3);
         oshConfiguration.setRetryBackoffDuration("PT0.001S");
 
         OshScan scan1 = createTestScan(1001, "package1");
@@ -267,6 +267,8 @@ class OshRetryServiceIT {
     @Transactional
     @DisplayName("Should get retry queue snapshot")
     void testGetRetryQueueSnapshot() {
+        oshConfiguration.setRetryMaxAttempts(3);
+
         OshScan scan1 = createTestScan(1001, "package1");
         OshScan scan2 = createTestScan(1002, "package2");
         OshScan scan3 = createTestScan(1003, "package3");
@@ -305,6 +307,7 @@ class OshRetryServiceIT {
     @Transactional
     @DisplayName("Should cleanup scans that exceeded max retry attempts")
     void testCleanupExceededRetries() throws InterruptedException {
+        oshConfiguration.setRetryMaxAttempts(3);
         oshConfiguration.setRetryBackoffDuration("PT0.001S");
 
         OshScan scan1 = createTestScan(1001, "package1");
@@ -343,6 +346,62 @@ class OshRetryServiceIT {
 
         assertTrue(oshRetryService.findRetryInfo(1002).isPresent(), "Scan 1002 should still exist");
         assertTrue(oshRetryService.findRetryInfo(1003).isPresent(), "Scan 1003 should still exist");
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Should not retry when max attempts is 0")
+    void testZeroMaxAttempts_noRetries() {
+        oshConfiguration.setRetryMaxAttempts(0);
+        oshConfiguration.setRetryBackoffDuration("PT0.001S"); // Very short backoff for testing
+
+        OshScan scan = createTestScan(4001, "no-retry-package");
+        oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_API_ERROR, "Initial failure");
+
+        Optional<OshUncollectedScan> uncollected = oshRetryService.findRetryInfo(4001);
+        assertTrue(uncollected.isPresent(), "Failed scan should be recorded in retry queue");
+        assertEquals(0, uncollected.get().getAttemptCount(), "Should have 0 attempts (initial failure)");
+
+        entityManager.clear();
+
+        List<OshUncollectedScan> eligible = oshRetryService.fetchRetryableScans();
+        assertTrue(eligible.isEmpty(), "No scans should be eligible for retry when maxAttempts = 0");
+
+        int cleaned = oshRetryService.cleanupExceededRetries();
+        assertEquals(1, cleaned, "Should cleanup scan that exceeded max attempts (0)");
+
+        assertTrue(oshRetryService.findRetryInfo(4001).isEmpty(), "Scan should be removed after cleanup");
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Should allow unlimited retries when max attempts is -1")
+    void testUnlimitedRetries() throws InterruptedException {
+        // Set max attempts to -1 (unlimited retries)
+        oshConfiguration.setRetryMaxAttempts(-1);
+        oshConfiguration.setRetryBackoffDuration("PT0.001S");
+
+        OshScan scan = createTestScan(5001, "unlimited-retry-package");
+        oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_API_ERROR, "Initial failure");
+
+        Optional<OshUncollectedScan> uncollected = oshRetryService.findRetryInfo(5001);
+        assertTrue(uncollected.isPresent());
+
+        for (int i = 0; i < 10; i++) {
+            uncollected = oshRetryService.findRetryInfo(5001);
+            assertTrue(uncollected.isPresent(), "Scan should still exist after " + i + " retries");
+            oshRetryService.recordRetryAttempt(
+                    uncollected.get().getId(), OshFailureReason.OSH_API_ERROR, "Retry attempt " + (i + 1));
+            entityManager.clear();
+        }
+
+        List<OshUncollectedScan> eligible = oshRetryService.fetchRetryableScans();
+        assertEquals(1, eligible.size(), "Scan should still be eligible with unlimited retries");
+
+        int cleaned = oshRetryService.cleanupExceededRetries();
+        assertEquals(0, cleaned, "Should not cleanup scan with unlimited retries");
+
+        assertTrue(oshRetryService.findRetryInfo(5001).isPresent(), "Scan should still exist with unlimited retries");
     }
 
     // Helper methods

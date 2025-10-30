@@ -89,8 +89,10 @@ public class OshConfiguration {
 
     /**
      * Maximum retry attempts before permanent failure.
-     * Set to 0 to disable retry limit (use retention-days only).
+     * Set to 0 for no retries (try once, fail immediately).
+     * Set to -1 to disable retry limit (unlimited retries, use retention-days only).
      */
+    @Setter
     @ConfigProperty(name = "osh.retry.max-attempts", defaultValue = "3")
     int retryMaxAttempts;
 
@@ -164,9 +166,9 @@ public class OshConfiguration {
         }
 
         // Validate retry configuration
-        if (retryMaxAttempts < 0) {
+        if (retryMaxAttempts < -1) {
             throw new IllegalStateException(
-                    "Invalid osh.retry.max-attempts: " + retryMaxAttempts + " (must be non-negative, 0 = unlimited)");
+                    "Invalid osh.retry.max-attempts: " + retryMaxAttempts + " (must be >= -1, where -1 = unlimited)");
         }
 
         if (retryBatchSize <= 0) {
@@ -204,7 +206,7 @@ public class OshConfiguration {
         LOGGER.debug("  Poll interval: {}", pollInterval);
         LOGGER.debug("  Start scan ID: {}", startScanId);
         LOGGER.debug("  Max scans per cycle: {}", maxScansPerCycle);
-        LOGGER.debug("  Retry max attempts: {}", retryMaxAttempts == 0 ? "unlimited" : retryMaxAttempts);
+        LOGGER.debug("  Retry max attempts: {}", retryMaxAttempts == -1 ? "unlimited" : retryMaxAttempts);
         LOGGER.debug("  Retry batch size: {}", retryBatchSize);
         LOGGER.debug("  Retry backoff minutes: {}", retryBackoffDuration);
         LOGGER.debug("  Retry exponential backoff: {}", retryExponentialBackoff);
@@ -289,12 +291,12 @@ public class OshConfiguration {
 
     /**
      * Checks if retry attempts should be limited.
-     * Returns false if maxAttempts is 0 (unlimited retries).
+     * Returns false if maxAttempts is -1 (unlimited retries).
      *
      * @return true if retry attempts should be counted and limited
      */
     public boolean hasRetryLimit() {
-        return retryMaxAttempts > 0;
+        return retryMaxAttempts >= 0;
     }
 
     /**

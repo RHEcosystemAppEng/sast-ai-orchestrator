@@ -59,7 +59,7 @@ public class OshRetryStatisticsRepository implements PanacheRepository<OshUncoll
      * Counts scans eligible for retry based on backoff and attempt limits.
      *
      * @param cutoffTime minimum time since last attempt (for backoff enforcement)
-     * @param maxAttempts maximum retry attempts allowed (0 = unlimited)
+     * @param maxAttempts maximum retry attempts allowed (-1 = unlimited)
      * @return number of immediately eligible scans
      */
     public long countEligibleForRetry(LocalDateTime cutoffTime, int maxAttempts) {
@@ -67,7 +67,7 @@ public class OshRetryStatisticsRepository implements PanacheRepository<OshUncoll
                 """
             SELECT COUNT(u) FROM OshUncollectedScan u
             WHERE u.lastAttemptAt < :cutoffTime
-            AND (:maxAttempts = 0 OR u.attemptCount < :maxAttempts)
+            AND (:maxAttempts = -1 OR u.attemptCount < :maxAttempts)
             """;
 
         return getEntityManager()
@@ -84,7 +84,7 @@ public class OshRetryStatisticsRepository implements PanacheRepository<OshUncoll
      * @return number of scans that exceeded limit
      */
     public long countExceededRetries(int maxAttempts) {
-        if (maxAttempts <= 0) {
+        if (maxAttempts < 0) {
             return 0; // Unlimited retries
         }
         return count("attemptCount >= ?1", maxAttempts);

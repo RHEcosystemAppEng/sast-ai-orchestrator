@@ -376,11 +376,16 @@ class OshConfigurationTest {
     @DisplayName("Should handle retry limits correctly")
     void testRetryLimits() {
         // With retryMaxAttempts = 3, should have a limit
-        config.retryMaxAttempts = 3;
+        config.setRetryMaxAttempts(3);
         assertTrue(config.hasRetryLimit());
 
-        // Test when retryMaxAttempts = 0 (unlimited)
-        config.retryMaxAttempts = 0;
+        // Test when retryMaxAttempts = -1 (unlimited)
+        config.setRetryMaxAttempts(-1);
         assertFalse(config.hasRetryLimit());
+
+        // Test when retryMaxAttempts = 0 (no retries)
+        config.setRetryMaxAttempts(0);
+        assertTrue(config.hasRetryLimit());
+        assertEquals(0, config.getRetryMaxAttempts());
     }
 }

@@ -53,7 +53,7 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
      * are skipped rather than blocking.
      *
      * @param cutoffTime minimum time since last attempt (for backoff enforcement)
-     * @param maxAttempts maximum retry attempts allowed (0 = unlimited)
+     * @param maxAttempts maximum retry attempts allowed (-1 = unlimited)
      * @param limit maximum number of scans to return
      * @return list of scans eligible for retry, locked for update
      */
@@ -64,7 +64,7 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
                 """
             SELECT u FROM OshUncollectedScan u
             WHERE u.lastAttemptAt < :cutoffTime
-            AND (:maxAttempts = 0 OR u.attemptCount < :maxAttempts)
+            AND (:maxAttempts = -1 OR u.attemptCount < :maxAttempts)
             ORDER BY u.createdAt ASC
             """;
 
@@ -123,7 +123,7 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
      */
     @Transactional
     public long deleteExceededRetries(int maxAttempts) {
-        if (maxAttempts <= 0) {
+        if (maxAttempts < 0) {
             return 0; // Unlimited retries
         }
         return delete("attemptCount >= ?1", maxAttempts);

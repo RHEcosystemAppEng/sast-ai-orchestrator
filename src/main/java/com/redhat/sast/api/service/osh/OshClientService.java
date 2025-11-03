@@ -88,9 +88,7 @@ public class OshClientService {
      * @return scan details if found and parseable, empty otherwise
      */
     private Optional<OshScan> fetchOshScanData(int oshScanId) {
-        try {
-            var httpResp = oshClient.fetchScanDetailsRaw(oshScanId);
-
+        try (var httpResp = oshClient.fetchScanDetailsRaw(oshScanId)) {
             switch (httpResp.getStatus()) {
                 case 200 -> {
                     var strContent = httpResp.readEntity(String.class);

@@ -70,6 +70,20 @@ public class OshScheduler {
     OshRetryService oshRetryService;
 
     /**
+     * Results record for processing statistics with phase information.
+     */
+    private record ProcessingResults(int processedCount, int skippedCount, int failedCount, String phase) {}
+
+    /**
+     * Enum representing the result of processing a single scan.
+     */
+    private enum ProcessingResult {
+        PROCESSED,
+        SKIPPED,
+        FAILED
+    }
+
+    /**
      * Main scheduler method that polls OSH for new scans and creates jobs.
      *
      * Execution pattern (two-phase):
@@ -93,45 +107,25 @@ public class OshScheduler {
     @Scheduled(every = "${osh.poll.interval:5m}", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     @Transactional(Transactional.TxType.NEVER)
     public void pollOshForNewScans() {
-        if (!oshConfiguration.isEnabled()) {
-            LOGGER.trace("OSH integration disabled, skipping poll cycle");
-            return;
-        }
-
         try {
+            if (!oshConfiguration.isEnabled()) {
+                LOGGER.trace("OSH integration disabled, skipping poll cycle");
+                return;
+            }
             LOGGER.debug("Starting OSH two-phase polling cycle");
-
-            ProcessingResults incrementalResults = processIncrementalScans();
-
-            ProcessingResults retryResults = processRetryScans();
-
+            ProcessingResults incrementalResults = consumeIncrementalScans();
+            ProcessingResults retryResults = consumeRetryScans();
             logCombinedResults(incrementalResults, retryResults);
-
         } catch (Exception e) {
             LOGGER.error("OSH polling cycle failed, will retry next scheduled interval", e);
         }
     }
 
-    /**
-     * PHASE 1: Process incremental scans.
-     * Handles new scans from OSH with cursor advancement.
-     *
-     * Cursor advancement strategy:
-     * - Only advances when scans are successfully processed
-     * - Advances to (highest processed scan ID + 1)
-     * - Does NOT advance if no finished scans found (they might be in progress)
-     *
-     * @return processing results for incremental scans
-     */
-    private ProcessingResults processIncrementalScans() {
+    private ProcessingResults consumeIncrementalScans() {
         try {
-            LOGGER.debug("Starting incremental scan processing");
-
             int startScanId = getStartScanId();
             int batchSize = oshConfiguration.getBatchSize();
-
             LOGGER.debug("Polling OSH for scans starting from ID {} with batch size {}", startScanId, batchSize);
-
             List<OshScan> scansToProcess = oshClientService.fetchOshScansForProcessing(startScanId, batchSize);
 
             if (scansToProcess.isEmpty()) {
@@ -141,127 +135,81 @@ public class OshScheduler {
                         startScanId + batchSize);
                 return new ProcessingResults(0, 0, 0, PHASE_INCREMENTAL);
             }
-
-            LOGGER.debug(
-                    "Found {} finished scans in range {}-{}(exclusive)",
-                    scansToProcess.size(),
-                    startScanId,
-                    startScanId + batchSize);
-
-            var finalResults = commonOshScanHandler(scansToProcess, this::processSingleScan, PHASE_INCREMENTAL);
-
+            var finalResults = commonOshScanHandler(scansToProcess, this::singleScanProcessor, PHASE_INCREMENTAL);
             int highestProcessedId =
                     scansToProcess.stream().mapToInt(OshScan::getScanId).max().orElse(startScanId - 1);
             int nextScanId = highestProcessedId + 1;
             updateCursorInNewTransaction(nextScanId);
-
-            LOGGER.debug(
-                    "Incremental scan processing completed: {} processed, {} skipped, {} failed. "
-                            + "Cursor advanced to {}",
-                    finalResults.processedCount(),
-                    finalResults.skippedCount(),
-                    finalResults.failedCount(),
-                    nextScanId);
-
             return finalResults;
-
         } catch (Exception e) {
             LOGGER.error("Incremental scan processing failed: {}", e.getMessage(), e);
             return new ProcessingResults(0, 0, 0, PHASE_INCREMENTAL);
         }
     }
 
-    /**
-     * PHASE 2: Process retry scans.
-     * Handles failed scans from the retry queue with backoff enforcement.
-     *
-     * @return processing results for retry scans
-     */
-    private ProcessingResults processRetryScans() {
+    private ProcessingResult singleScanProcessor(OshScan scan) {
         try {
-            LOGGER.debug("Starting retry scan processing");
+            if (oshJobCreationService.canProcessScan(scan)) {
+                if (oshConfiguration.shouldMonitorPackage(scan.getPackageName())) {
+                    Optional<Job> job = oshJobCreationService.createJobFromOshScan(scan);
+                    if (job.isPresent()) {
+                        return ProcessingResult.PROCESSED;
+                    }
+                    LOGGER.debug("Skipped OSH scan {} (already processed or no JSON available)", scan.getScanId());
+                }
+            } else {
+                LOGGER.debug("Skipped OSH scan {} (scan not eligible for processing)", scan.getScanId());
+            }
+            return ProcessingResult.SKIPPED;
+        } catch (Exception e) {
+            LOGGER.error("Failed to process OSH scan {}: {}", scan.getScanId(), e.getMessage(), e);
+            oshRetryService.recordFailedScan(scan, classifyFailure(e), e.getMessage());
+            return ProcessingResult.FAILED;
+        }
+    }
 
+    private ProcessingResults consumeRetryScans() {
+        try {
             List<OshUncollectedScan> retryScans = oshRetryService.fetchRetryableScans();
-
             if (retryScans.isEmpty()) {
                 LOGGER.debug("No retry-eligible scans found");
                 return new ProcessingResults(0, 0, 0, PHASE_RETRY);
             }
-
             LOGGER.debug("Processing {} retry-eligible scans", retryScans.size());
-
-            ProcessingResults results = processRetryScans(retryScans);
-
-            LOGGER.debug(
-                    "Retry scan processing completed: {} processed, {} skipped, {} failed",
-                    results.processedCount(),
-                    results.skippedCount(),
-                    results.failedCount());
-
-            return results;
-
+            return commonOshScanHandler(retryScans, this::singleRetryScanProcessor, PHASE_RETRY);
         } catch (Exception e) {
             LOGGER.error("Retry scan processing failed: {}", e.getMessage(), e);
             return new ProcessingResults(0, 0, 0, PHASE_RETRY);
         }
     }
 
-    /**
-     * Processes a list of retry scans from the uncollected scan queue.
-     *
-     * @param retryScans list of uncollected scans to retry
-     * @return processing results for the retry batch
-     */
-    private ProcessingResults processRetryScans(List<OshUncollectedScan> retryScans) {
-        return commonOshScanHandler(
-                retryScans,
-                uncollectedScan -> {
-                    try {
-                        OshScan scan = oshRetryService.reconstructScanFromJson(uncollectedScan.getScanDataJson());
-                        return processSingleRetryScan(uncollectedScan, scan);
-                    } catch (Exception e) {
-                        LOGGER.error(
-                                "Failed to reconstruct scan from JSON for retry scan {}: {}",
-                                uncollectedScan.getId(),
-                                e.getMessage(),
-                                e);
-                        OshFailureReason failureReason = classifyFailure(e);
-                        oshRetryService.recordRetryAttempt(uncollectedScan.getId(), failureReason, e.getMessage());
-                        return ProcessingResult.FAILED;
-                    }
-                },
-                PHASE_RETRY);
+    private ProcessingResult singleRetryScanProcessor(OshUncollectedScan uncollectedScan) {
+        try {
+            OshScan scan = oshRetryService.reconstructScanFromJson(uncollectedScan.getScanDataJson());
+            return processSingleRetryScan(uncollectedScan, scan);
+        } catch (Exception e) {
+            LOGGER.error(
+                    "Failed to reconstruct scan from JSON for retry scan {}: {}",
+                    uncollectedScan.getId(),
+                    e.getMessage(),
+                    e);
+            OshFailureReason failureReason = classifyFailure(e);
+            oshRetryService.recordRetryAttempt(uncollectedScan.getId(), failureReason, e.getMessage());
+            return ProcessingResult.FAILED;
+        }
     }
 
-    /**
-     * Processes a single retry scan with attempt tracking.
-     *
-     * @param uncollectedScan the uncollected scan record
-     * @param scan the reconstructed OSH scan response
-     * @return processing result
-     */
     private ProcessingResult processSingleRetryScan(OshUncollectedScan uncollectedScan, OshScan scan) {
         try {
             Optional<Job> createdJob = oshJobCreationService.createJobFromOshScan(scan);
-
             if (createdJob.isPresent()) {
                 oshRetryService.markRetrySuccessful(scan.getScanId());
-
-                LOGGER.info(
-                        "Retry successful: OSH scan {} -> job {} (attempt {})",
-                        scan.getScanId(),
-                        createdJob.get().getId(),
-                        uncollectedScan.getAttemptCount() + 1);
-
                 return ProcessingResult.PROCESSED;
-
             } else {
                 oshRetryService.markRetrySuccessful(scan.getScanId());
-
                 LOGGER.debug("Retry scan {} skipped (already processed or no JSON)", scan.getScanId());
                 return ProcessingResult.SKIPPED;
             }
-
         } catch (Exception e) {
             LOGGER.error(
                     "Retry attempt failed for scan {} (attempt {}): {}",
@@ -269,25 +217,12 @@ public class OshScheduler {
                     uncollectedScan.getAttemptCount() + 1,
                     e.getMessage(),
                     e);
-
             OshFailureReason failureReason = classifyFailure(e);
             oshRetryService.recordRetryAttempt(uncollectedScan.getId(), failureReason, e.getMessage());
-
             return ProcessingResult.FAILED;
         }
     }
 
-    /**
-     * Classifies an exception into a failure reason for retry tracking.
-     *
-     * This method categorizes exceptions based on their type and message content to determine
-     * the appropriate failure reason. Network and I/O exceptions during OSH API calls are classified
-     * as metadata network errors, while JSON parsing failures of OSH responses are classified as
-     * metadata parse errors.
-     *
-     * @param exception the exception that occurred
-     * @return appropriate failure reason for categorizing the error
-     */
     private OshFailureReason classifyFailure(Exception exception) {
         if (exception == null) {
             return OshFailureReason.UNKNOWN_ERROR;
@@ -295,55 +230,37 @@ public class OshScheduler {
 
         String message = exception.getMessage() != null ? exception.getMessage().toLowerCase() : "";
 
-        // Network/IO failures when fetching OSH scan metadata
-        if (exception instanceof java.net.ConnectException
-                || exception instanceof java.net.SocketTimeoutException
-                || exception instanceof java.io.IOException
-                || message.contains("connection")
-                || message.contains("timeout")) {
+        if (exception instanceof java.io.IOException
+                && (message.contains("connection") || message.contains("timeout"))) {
             return OshFailureReason.OSH_METADATA_NETWORK_ERROR;
         }
 
-        // JSON parsing failures when parsing OSH API responses
         if (exception instanceof JsonProcessingException || message.contains("json") || message.contains("parsing")) {
             return OshFailureReason.OSH_METADATA_PARSE_ERROR;
         }
 
-        // Data validation failures
-        if (exception instanceof IllegalArgumentException
-                || exception instanceof IllegalStateException
-                || message.contains("invalid")
-                || message.contains("missing")) {
+        if ((exception instanceof IllegalArgumentException || exception instanceof IllegalStateException)
+                && (message.contains("invalid") || message.contains("missing"))) {
             return OshFailureReason.SCAN_DATA_ERROR;
         }
 
-        // Database failures
         if (exception instanceof jakarta.persistence.PersistenceException
                 || message.contains("database")
                 || message.contains("constraint")) {
             return OshFailureReason.DATABASE_ERROR;
         }
 
-        // API failures
         if (message.contains("http") || message.contains("api") || message.contains("osh")) {
             return OshFailureReason.OSH_API_ERROR;
         }
 
-        // Job creation failures
         if (message.contains("job") || message.contains("creation")) {
             return OshFailureReason.JOB_CREATION_ERROR;
         }
 
-        // Default to unknown
         return OshFailureReason.UNKNOWN_ERROR;
     }
 
-    /**
-     * Logs combined results from both incremental and retry phases.
-     *
-     * @param incrementalResults results from incremental processing
-     * @param retryResults results from retry processing
-     */
     private void logCombinedResults(ProcessingResults incrementalResults, ProcessingResults retryResults) {
         int totalProcessed = incrementalResults.processedCount() + retryResults.processedCount();
         int totalSkipped = incrementalResults.skippedCount() + retryResults.skippedCount();
@@ -398,44 +315,6 @@ public class OshScheduler {
         return new ProcessingResults(processedCount, skippedCount, failedCount, phase);
     }
 
-    private ProcessingResult processSingleScan(OshScan scan) {
-        try {
-            if (oshJobCreationService.canProcessScan(scan)) {
-                if (oshConfiguration.shouldMonitorPackage(scan.getPackageName())) {
-
-                    Optional<Job> job = oshJobCreationService.createJobFromOshScan(scan);
-                    if (job.isPresent()) {
-                        return ProcessingResult.PROCESSED;
-                    }
-                    LOGGER.debug("Skipped OSH scan {} (already processed or no JSON available)", scan.getScanId());
-                }
-
-            } else {
-                LOGGER.debug("Skipped OSH scan {} (scan not eligible for processing)", scan.getScanId());
-            }
-            return ProcessingResult.SKIPPED;
-
-        } catch (Exception e) {
-            LOGGER.error("Failed to process OSH scan {}: {}", scan.getScanId(), e.getMessage(), e);
-            oshRetryService.recordFailedScan(scan, classifyFailure(e), e.getMessage());
-            return ProcessingResult.FAILED;
-        }
-    }
-
-    /**
-     * Results record for processing statistics with phase information.
-     */
-    private record ProcessingResults(int processedCount, int skippedCount, int failedCount, String phase) {}
-
-    /**
-     * Enum representing the result of processing a single scan.
-     */
-    private enum ProcessingResult {
-        PROCESSED,
-        SKIPPED,
-        FAILED
-    }
-
     /**
      * Determines the starting scan ID for the current polling cycle.
      * Uses cursor from database, or falls back to configured start ID.
@@ -480,13 +359,11 @@ public class OshScheduler {
      * @return Summary of processing results
      */
     public String manualPollOsh() {
-        if (!oshConfiguration.isEnabled()) {
-            return "OSH integration is disabled";
-        }
-
-        LOGGER.info("Manual OSH poll triggered");
-
         try {
+            if (!oshConfiguration.isEnabled()) {
+                return "OSH integration is disabled";
+            }
+            LOGGER.info("Manual OSH poll triggered");
             pollOshForNewScans();
             return "Manual OSH poll completed successfully";
         } catch (Exception e) {
@@ -495,9 +372,6 @@ public class OshScheduler {
         }
     }
 
-    /**
-     * Gets the current cursor status for monitoring/debugging.
-     */
     public String getCursorStatus() {
         try {
             Optional<OshSchedulerCursor> cursor = cursorRepository.getCurrentCursor();
@@ -510,7 +384,7 @@ public class OshScheduler {
                 return "No cursor found - will start from configured startScanId: " + oshConfiguration.getStartScanId();
             }
         } catch (Exception e) {
-            return "Error reading cursor: " + e.getMessage();
+            return "Error reading cursor from database: " + e.getMessage();
         }
     }
 }

@@ -76,17 +76,6 @@ public class OshClientService {
         return oshScanList;
     }
 
-    /**
-     * Fetches details for a single OSH scan by ID.
-     *
-     * Handles OSH API behavior:
-     * - 200: Parse response (JSON or HTML)
-     * - 404: Normal for missing scan IDs - return empty
-     * - Other errors: Log and return empty
-     *
-     * @param oshScanId OSH scan ID
-     * @return scan details if found and parseable, empty otherwise
-     */
     private Optional<OshScan> fetchOshScanData(int oshScanId) {
         try (var httpResp = oshClient.fetchScanDetailsRaw(oshScanId)) {
             switch (httpResp.getStatus()) {
@@ -103,22 +92,11 @@ public class OshClientService {
         return Optional.empty();
     }
 
-    /**
-     * Parses OSH response content, handling both JSON and HTML formats.
-     *
-     * 1. Try JSON parsing first (preferred format)
-     * 2. Fall back to HTML table parsing if JSON fails
-     *
-     * @param content raw response content from OSH
-     * @param scanId OSH scan ID
-     * @return parsed scan response or empty if parsing fails
-     */
     private Optional<OshScan> parseHttpResponse(String content, int scanId) {
-        if (content == null || content.isBlank()) {
-            return Optional.empty();
-        }
-
         try {
+            if (content == null || content.isBlank()) {
+                return Optional.empty();
+            }
             JsonNode json = objectMapper.readTree(content);
             return parseJsonResponse(json, scanId);
         } catch (JsonProcessingException e) {
@@ -128,16 +106,6 @@ public class OshClientService {
         return parseHtmlResponse(content, scanId);
     }
 
-    /**
-     * Parses JSON response from OSH API.
-     *
-     * Maps OSH JSON fields to OshScanResponse DTO.
-     * Preserves raw data for debugging.
-     *
-     * @param json parsed JSON response
-     * @param scanId scan ID for context
-     * @return parsed scan response or empty if data is invalid
-     */
     private Optional<OshScan> parseJsonResponse(JsonNode json, int scanId) {
         if (json == null || json.isNull() || (!json.isObject() && !json.isArray())) {
             LOGGER.warn("Invalid JSON structure for scan {}: not an object or array", scanId);
@@ -165,9 +133,7 @@ public class OshClientService {
                 case "label" -> parseComponentFromLabel(value, response);
             }
         });
-
         response.setRawData(rawData);
-
         LOGGER.debug(
                 "Parsed JSON response for scan {}: state={}, component={}",
                 scanId,
@@ -177,19 +143,9 @@ public class OshClientService {
         return Optional.of(response);
     }
 
-    /**
-     * Parses HTML response from OSH API.
-     *
-     * OSH returns HTML table with scan details when JSON is not available.
-     *
-     * @param html raw HTML content
-     * @param scanId scan ID for context
-     * @return parsed scan response or empty if parsing fails
-     */
     private Optional<OshScan> parseHtmlResponse(String html, int scanId) {
         try {
             Document doc = Jsoup.parse(html);
-
             // Look for table rows with scan details
             Elements rows = doc.select("table tr");
 
@@ -242,17 +198,6 @@ public class OshClientService {
         }
     }
 
-    /**
-     * Extracts component name and version from OSH label field using NvrParser.
-     *
-     * OSH label format examples:
-     * - "systemd-252-13.el9" → component: "systemd", version: "252"
-     * - "kernel-5.14.0-284.el9" → component: "kernel", version: "5.14.0"
-     * - "zlib-ng-2.1.6-2.el10" → component: "zlib-ng", version: "2.1.6"
-     *
-     * @param label OSH label string (NVR format)
-     * @param response response object to populate
-     */
     private void parseComponentFromLabel(String label, OshScan response) {
         if (label == null || label.isBlank()) {
             return;
@@ -273,13 +218,6 @@ public class OshClientService {
         }
     }
 
-    /**
-     * Safely extracts string value from JSON node.
-     *
-     * @param json JSON node
-     * @param fieldName field to extract
-     * @return field value or null if not present
-     */
     private String getJsonStringValue(JsonNode json, String fieldName) {
         JsonNode node = json.get(fieldName);
         return (node != null && !node.isNull()) ? node.asText() : null;

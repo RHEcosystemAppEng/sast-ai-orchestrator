@@ -179,21 +179,12 @@ class JobResourceIT {
     @Test
     @DisplayName("Should validate required fields")
     void shouldValidateRequiredFields() {
+        // inputSourceUrl is required for standard jobs
         JobCreationDto invalidJob = new JobCreationDto();
-        invalidJob.setInputSourceUrl("https://example.com/report.json");
+        invalidJob.setPackageNvr("test-package-1.0.0-1.el10");
 
         given().contentType(ContentType.JSON)
                 .body(invalidJob)
-                .when()
-                .post("/api/v1/jobs/simple")
-                .then()
-                .statusCode(400);
-
-        JobCreationDto invalidJob2 = new JobCreationDto();
-        invalidJob2.setPackageNvr("test-package-1.0.0-1.el10");
-
-        given().contentType(ContentType.JSON)
-                .body(invalidJob2)
                 .when()
                 .post("/api/v1/jobs/simple")
                 .then()

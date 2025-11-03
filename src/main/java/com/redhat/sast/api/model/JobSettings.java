@@ -45,4 +45,16 @@ public class JobSettings {
 
     @Column(name = "use_known_false_positive_file")
     private Boolean useKnownFalsePositiveFile;
+
+    @Column(name = "dvc_nvr_version")
+    private String dvcNvrVersion;
+
+    @Column(name = "dvc_known_false_positives_version")
+    private String dvcKnownFalsePositivesVersion;
+
+    @Column(name = "dvc_prompts_version")
+    private String dvcPromptsVersion;
+
+    @Column(name = "image_version")
+    private String imageVersion;
 }

@@ -17,8 +17,9 @@ src/test/java/com/redhat/sast/api/
 │   ├── JobBatchTestDataBuilder.java
 │   └── JobTestDataBuilder.java      # Test data builders
 └── v1/resource/
-    ├── JobBatchResourceIT.java     # Job batch endpoint integration tests
-    └── JobResourceIT.java          # Job endpoint integration tests
+    ├── JobBatchResourceIT.java         # Job batch endpoint integration tests
+    ├── JobResourceIT.java              # Job endpoint integration tests
+    └── MlOpsJobBatchResourceIT.java    # MLOps batch endpoint integration tests
 ```
 
 ## Running Tests
@@ -43,6 +44,7 @@ src/test/java/com/redhat/sast/api/
 ```bash
 ./mvnw test -Dtest=JobResourceIT
 ./mvnw test -Dtest=JobBatchResourceIT
+./mvnw test -Dtest=MlOpsJobBatchResourceIT
 ```
 
 ### Run with debug logging
@@ -91,6 +93,20 @@ The integration tests use a **simple profile-based mocking approach**:
 - Validate batch submissions
 - Handle Google Sheets integration
 - Create individual jobs within batches
+
+### MLOps Job Batch Resource Tests (`MlOpsJobBatchResourceIT`)
+- Submit MLOps batch jobs with DVC configuration
+- Retrieve MLOps batches with pagination
+- Validate DVC parameters (repo URL, data versions)
+- Test granular DVC version control:
+  - `dvcDataVersion`: Primary data version
+  - `dvcNvrVersion`: NVR data version
+  - `dvcKnownFalsePositivesVersion`: False positives version
+  - `dvcScansVersion`: Scans data version
+  - `dvcPromptsVersion`: Prompts data version
+- Test container image version specification (`imageVersion`)
+- Handle invalid DVC configurations
+- Cancel MLOps batches
 
 ## Test Data
 

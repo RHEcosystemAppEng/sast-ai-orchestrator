@@ -43,6 +43,12 @@ public class PipelineParameterMapper {
     private static final String PARAM_EMBEDDINGS_LLM_API_KEY = "EMBEDDINGS_LLM_API_KEY";
     private static final String PARAM_USE_KNOWN_FALSE_POSITIVE_FILE = "USE_KNOWN_FALSE_POSITIVE_FILE";
 
+    // MLOps-specific pipeline parameter names
+    private static final String PARAM_DVC_NVR_VERSION = "DVC_NVR_VERSION";
+    private static final String PARAM_DVC_KNOWN_FALSE_POSITIVES_VERSION = "DVC_KNOWN_FALSE_POSITIVES_VERSION";
+    private static final String PARAM_DVC_PROMPTS_VERSION = "DVC_PROMPTS_VERSION";
+    private static final String PARAM_IMAGE_VERSION = "IMAGE_VERSION";
+
     @Inject
     TektonClient tektonClient;
 
@@ -65,6 +71,43 @@ public class PipelineParameterMapper {
         addLlmParameters(params, job);
 
         return params;
+    }
+
+    /**
+     * Extracts and converts Job data to MLOps pipeline parameters.
+     * Includes both standard parameters and MLOps-specific parameters.
+     *
+     * @param job the job containing data to be converted
+     * @return list of pipeline parameters including MLOps-specific parameters
+     */
+    public List<Param> extractMlOpsPipelineParams(@Nonnull Job job) {
+        List<Param> params = new ArrayList<>();
+
+        addBasicJobParameters(params, job);
+        addLlmParameters(params, job);
+        addMlOpsParameters(params, job);
+
+        return params;
+    }
+
+    /**
+     * Adds MLOps-specific pipeline parameters.
+     */
+    private void addMlOpsParameters(List<Param> params, Job job) {
+        if (job.getJobSettings() != null) {
+            params.add(createParam(PARAM_DVC_NVR_VERSION, job.getJobSettings().getDvcNvrVersion()));
+            params.add(createParam(
+                    PARAM_DVC_KNOWN_FALSE_POSITIVES_VERSION,
+                    job.getJobSettings().getDvcKnownFalsePositivesVersion()));
+            params.add(createParam(PARAM_DVC_PROMPTS_VERSION, job.getJobSettings().getDvcPromptsVersion()));
+            params.add(createParam(PARAM_IMAGE_VERSION, job.getJobSettings().getImageVersion()));
+        } else {
+            LOGGER.warn("Job {} has NO JobSettings - using empty MLOps parameter values", job.getId());
+            params.add(createParam(PARAM_DVC_NVR_VERSION, ""));
+            params.add(createParam(PARAM_DVC_KNOWN_FALSE_POSITIVES_VERSION, ""));
+            params.add(createParam(PARAM_DVC_PROMPTS_VERSION, ""));
+            params.add(createParam(PARAM_IMAGE_VERSION, "latest"));
+        }
     }
 
     /**

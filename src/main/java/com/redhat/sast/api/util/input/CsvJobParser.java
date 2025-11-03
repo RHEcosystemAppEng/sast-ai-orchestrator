@@ -173,6 +173,7 @@ public class CsvJobParser {
     }
 
     private void validateRequiredFields(JobCreationDto job, long recordNumber) {
+        // CSV parsing requires both NVR and googleSheetUrl to be present in the sheet
         if (job.getPackageNvr() == null || job.getPackageNvr().trim().isEmpty()) {
             throw new IllegalArgumentException(
                     String.format("Record %d is missing required field 'nvr'", recordNumber));

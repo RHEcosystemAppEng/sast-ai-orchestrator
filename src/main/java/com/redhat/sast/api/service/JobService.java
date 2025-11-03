@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
 import com.redhat.sast.api.common.constants.ApplicationConstants;
+import com.redhat.sast.api.common.constants.PipelineConstants;
 import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.mapper.JobMapper;
@@ -16,6 +17,7 @@ import com.redhat.sast.api.platform.PipelineParameterMapper;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.repository.JobSettingsRepository;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
+import com.redhat.sast.api.v1.dto.request.MlOpsJobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 
 import io.fabric8.tekton.v1.Param;
@@ -50,7 +52,7 @@ public class JobService {
         managedExecutor.execute(() -> {
             try {
                 LOGGER.info("Starting async pipeline execution for job ID: {}", jobId);
-                platformService.startSastAIWorkflow(jobId, pipelineParams, llmSecretName);
+                platformService.startPipeline(jobId, PipelineConstants.SAST_AI_PIPELINE, pipelineParams, llmSecretName);
             } catch (Exception e) {
                 LOGGER.error("Failed to start pipeline for job ID: {}", jobId, e);
                 try {
@@ -154,11 +156,74 @@ public class JobService {
         return job;
     }
 
+    /**
+     * Creates an MLOps job entity with DVC version parameters.
+     * MLOps jobs don't use Google Sheets - they use package NVR directly.
+     */
+    @Transactional
+    public Job createMlOpsJobEntity(
+            MlOpsJobCreationDto jobCreationDto,
+            String dvcNvrVersion,
+            String dvcKnownFalsePositivesVersion,
+            String dvcPromptsVersion,
+            String imageVersion) {
+        Job job = getMlOpsJobFromDto(jobCreationDto);
+        jobRepository.persist(job);
+
+        LOGGER.debug("Creating JobSettings for MLOps job with DVC parameters");
+
+        JobSettings settings = new JobSettings();
+        settings.setJob(job);
+        settings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
+        settings.setDvcNvrVersion(dvcNvrVersion);
+        settings.setDvcKnownFalsePositivesVersion(dvcKnownFalsePositivesVersion);
+        settings.setDvcPromptsVersion(dvcPromptsVersion);
+        settings.setImageVersion(imageVersion);
+
+        Boolean useKnownFalsePositiveFile =
+                jobCreationDto.getUseKnownFalsePositiveFile() != null
+                        ? jobCreationDto.getUseKnownFalsePositiveFile()
+                        : true;
+        settings.setUseKnownFalsePositiveFile(useKnownFalsePositiveFile);
+
+        jobSettingsRepository.persist(settings);
+
+        job.setJobSettings(settings);
+
+        return job;
+    }
+
     private Job getJobFromDto(JobCreationDto jobCreationDto) {
         Job job = new Job();
 
+        // packageNvr comes from CSV data in Google Sheets
         job.setPackageNvr(jobCreationDto.getPackageNvr());
 
+        if (jobCreationDto.getPackageNvr() != null) {
+            job.setProjectName(nvrResolutionService.resolveProjectName(jobCreationDto.getPackageNvr()));
+            job.setProjectVersion(nvrResolutionService.resolveProjectVersion(jobCreationDto.getPackageNvr()));
+            job.setPackageName(nvrResolutionService.resolvePackageName(jobCreationDto.getPackageNvr()));
+            job.setPackageSourceCodeUrl(nvrResolutionService.resolveSourceCodeUrl(jobCreationDto.getPackageNvr()));
+            job.setKnownFalsePositivesUrl(
+                    nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
+        }
+
+        // Set input source - always Google Sheet for standard jobs
+        job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
+        job.setGSheetUrl(jobCreationDto.getInputSourceUrl());
+
+        // Set submittedBy with default value "unknown" if not provided
+        job.setSubmittedBy(jobCreationDto.getSubmittedBy() != null ? jobCreationDto.getSubmittedBy() : "unknown");
+
+        job.setStatus(JobStatus.PENDING);
+        job.setPipelineName(PipelineConstants.SAST_AI_PIPELINE);
+        return job;
+    }
+
+    private Job getMlOpsJobFromDto(MlOpsJobCreationDto jobCreationDto) {
+        Job job = new Job();
+
+        job.setPackageNvr(jobCreationDto.getPackageNvr());
         job.setProjectName(nvrResolutionService.resolveProjectName(jobCreationDto.getPackageNvr()));
         job.setProjectVersion(nvrResolutionService.resolveProjectVersion(jobCreationDto.getPackageNvr()));
         job.setPackageName(nvrResolutionService.resolvePackageName(jobCreationDto.getPackageNvr()));
@@ -166,13 +231,14 @@ public class JobService {
         job.setKnownFalsePositivesUrl(
                 nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
 
-        // Handle different input source types based on DTO content
-        configureInputSource(job, jobCreationDto);
+        // MLOps jobs don't use input source configuration like SAST AI jobs
+        // They get their data from DVC-tracked datasets
 
         // Set submittedBy with default value "unknown" if not provided
         job.setSubmittedBy(jobCreationDto.getSubmittedBy() != null ? jobCreationDto.getSubmittedBy() : "unknown");
 
         job.setStatus(JobStatus.PENDING);
+        job.setPipelineName(PipelineConstants.MLOPS_PIPELINE);
         return job;
     }
 

@@ -86,6 +86,9 @@ public class Job {
     @Column(name = "submitted_by")
     private String submittedBy;
 
+    @Column(name = "pipeline_name")
+    private String pipelineName;
+
     @Column(name = "dvc_data_version")
     private String dvcDataVersion;
 

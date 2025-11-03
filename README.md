@@ -174,6 +174,121 @@ Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosy
 **Error Responses:**
 - `404 Not Found` - Batch not found
 
+### MLOps Pipeline API
+
+The MLOps Pipeline API provides endpoints for managing machine learning operations workflows with DVC (Data Version Control) integration. These endpoints use the `sast-ai-workflow-pipeline-mlops` pipeline which includes parameters for data versioning and container image control.
+
+#### `POST /api/v1/mlops-batches`
+**Description:** Submit MLOps batch processing jobs with DVC configuration and granular version control
+
+**Request Body:**
+```json
+{
+  "submittedBy": "user@example.com",
+  "useKnownFalsePositiveFile": true,
+  "dvcNvrVersion": "v1.2.3-nvr",
+  "dvcKnownFalsePositivesVersion": "v1.2.3-fp",
+  "dvcPromptsVersion": "v1.2.3-prompts",
+  "imageVersion": "v2.1.0"
+}
+```
+
+**Field Descriptions:**
+- `submittedBy` (optional): Username or email of submitter (defaults to "unknown")
+- `useKnownFalsePositiveFile` (optional): Whether to use known false positives filtering (defaults to true)
+- `dvcNvrVersion` (required): DVC version for NVR (Name-Version-Release) data
+- `dvcKnownFalsePositivesVersion` (required): DVC version for known false positives data
+- `dvcPromptsVersion` (required): DVC version for prompts data
+- `imageVersion` (required): Container image version for the pipeline
+
+**Response:** `201 Created`
+```json
+{
+  "batchId": 789,
+  "submittedBy": "user@example.com",
+  "submittedAt": "2025-01-01T10:00:00",
+  "status": "PROCESSING",
+  "totalJobs": 15,
+  "completedJobs": 0,
+  "failedJobs": 0
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Invalid request body or missing required fields
+
+**cURL Example:**
+```bash
+curl -X POST http://localhost:8080/api/v1/mlops-batches \
+  -H "Content-Type: application/json" \
+  -d '{
+    "submittedBy": "user@example.com",
+    "useKnownFalsePositiveFile": true,
+    "dvcNvrVersion": "v1.2.3-nvr",
+    "dvcKnownFalsePositivesVersion": "v1.2.3-fp",
+    "dvcPromptsVersion": "v1.2.3-prompts",
+    "imageVersion": "v2.1.0"
+  }'
+```
+
+#### `GET /api/v1/mlops-batches`
+**Description:** List all MLOps batches with pagination
+
+**Query Parameters:**
+- `page` (optional, default: 0): Page number
+- `size` (optional, default: 20): Page size
+
+**Response:** `200 OK` - Array of MLOps batch objects (same structure as batch creation response)
+
+#### `GET /api/v1/mlops-batches/{batchId}`
+**Description:** Get specific MLOps batch details
+
+**Response:** `200 OK` - Same structure as batch creation response
+**Error Responses:**
+- `404 Not Found` - Batch not found
+
+#### `POST /api/v1/mlops-batches/{batchId}/cancel`
+**Description:** Cancel an MLOps batch job
+
+**Response:** `200 OK`
+```json
+"MLOps job batch cancellation requested"
+```
+**Error Responses:**
+- `404 Not Found` - Batch not found
+
+#### Pipeline Type Differences
+
+**SAST AI Pipeline** (`sast-ai-workflow-pipeline`):
+- Standard security analysis workflow
+- Uses `/api/v1/job-batches` endpoints
+- Fetches job lists from Google Sheets
+- Package NVR comes from the Google Sheets CSV data
+- Focuses on vulnerability detection and analysis
+
+**MLOps Pipeline** (`sast-ai-workflow-pipeline-mlops`):
+- Machine learning operations workflow
+- Uses `/api/v1/mlops-batches` endpoints
+- Package lists determined internally (no Google Sheets input)
+- Includes granular DVC version control (NVR, false positives, prompts)
+- Container image version control
+- Required parameters: `dvcNvrVersion`, `dvcKnownFalsePositivesVersion`, `dvcPromptsVersion`, `imageVersion`
+
+#### Required Configuration for MLOps Pipeline
+
+**Kubernetes Secrets:**
+The MLOps pipeline requires these secrets:
+- `sast-ai-gitlab-token`: GitLab access token for repository access
+- `sast-ai-default-llm-creds`: LLM credentials (URL, API key, model names)
+
+**Package List Resolution:**
+Currently, MLOps batches use a hardcoded package list for testing purposes:
+- `libconfig-1.7.3-8.el10`
+- `tpm2-tools-5.6-2.el10`
+
+**Future Implementation:**
+Package lists will be fetched from DVC repository based on the `dvcNvrVersion` parameter. This will enable dynamic package selection and version control for MLOps workflows.
+
 ### Package Analysis
 
 #### `GET /api/v1/packages`
@@ -247,7 +362,24 @@ Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosy
    cd sast-ai-orchestrator
    ```
 
-2. **Setup PostgreSQL**
+2. **Setup Git Hooks (Optional but Recommended)**
+   
+   Install pre-commit hooks that enforce code formatting:
+   ```bash
+   ./mvnw initialize -Psetup-git-hooks
+   ```
+   
+   This installs a pre-commit hook that:
+   - Runs `spotless:check` before each commit
+   - Prevents commits with formatting violations
+   - Ensures consistent code style across the team
+   
+   To manually format code at any time:
+   ```bash
+   ./mvnw spotless:apply
+   ```
+
+3. **Setup PostgreSQL**
    ```bash
    # Using Docker
    docker run --name postgres \
@@ -258,12 +390,12 @@ Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosy
    -d postgres:13
    ```
 
-3. **Run the application**
+4. **Run the application**
    ```bash
    ./mvnw quarkus:dev
    ```
 
-4. **Access the API**
+5. **Access the API**
    ```
    http://localhost:8080/api/v1/health
    ```

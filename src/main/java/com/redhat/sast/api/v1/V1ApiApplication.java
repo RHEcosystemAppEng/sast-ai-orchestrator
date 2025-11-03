@@ -6,6 +6,7 @@ import java.util.Set;
 import com.redhat.sast.api.v1.resource.HealthResource;
 import com.redhat.sast.api.v1.resource.JobBatchResource;
 import com.redhat.sast.api.v1.resource.JobResource;
+import com.redhat.sast.api.v1.resource.MlOpsJobBatchResource;
 import com.redhat.sast.api.v1.resource.PackageResource;
 
 import jakarta.ws.rs.ApplicationPath;
@@ -21,6 +22,7 @@ public class V1ApiApplication extends Application {
         // Add all v1 resources here
         resources.add(JobBatchResource.class);
         resources.add(JobResource.class);
+        resources.add(MlOpsJobBatchResource.class);
         resources.add(PackageResource.class);
         resources.add(HealthResource.class);
 

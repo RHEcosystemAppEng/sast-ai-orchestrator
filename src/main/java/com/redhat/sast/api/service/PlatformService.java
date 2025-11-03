@@ -25,7 +25,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class PlatformService {
 
-    private static final String PIPELINE_NAME = "sast-ai-workflow-pipeline";
 
     // Workspace names
     private static final String GITLAB_TOKEN_WORKSPACE = "gitlab-token-ws";
@@ -50,23 +49,34 @@ public class PlatformService {
     @ConfigProperty(name = "quarkus.profile", defaultValue = "prod")
     String profile;
 
-    public void startSastAIWorkflow(@Nonnull Long jobId, @Nonnull List<Param> pipelineParams, String llmSecretName) {
+    /**
+     * Starts a Tekton pipeline workflow.
+     *
+     * @param jobId the job ID
+     * @param pipelineName the Tekton pipeline name (e.g., "sast-ai-workflow-pipeline")
+     * @param pipelineParams the pipeline parameters
+     * @param llmSecretName the LLM secret name
+     */
+    public void startPipeline(
+            @Nonnull Long jobId,
+            @Nonnull String pipelineName,
+            @Nonnull List<Param> pipelineParams,
+            String llmSecretName) {
         // Skip Kubernetes operations in test mode
         if ("test".equals(profile)) {
             LOGGER.info("TEST MODE: Skipping Kubernetes operations for job {}", jobId);
             return;
         }
-        String pipelineRunName =
-                PIPELINE_NAME + "-" + UUID.randomUUID().toString().substring(0, 5);
+        String pipelineRunName = pipelineName + "-" + UUID.randomUUID().toString().substring(0, 5);
         LOGGER.info(
                 "Initiating PipelineRun: {} for Pipeline: {} in namespace: {}",
                 pipelineRunName,
-                PIPELINE_NAME,
+                pipelineName,
                 namespace);
 
         PipelineRun createdPipelineRun;
         try {
-            PipelineRun pipelineRun = buildPipelineRun(pipelineRunName, pipelineParams, llmSecretName);
+            PipelineRun pipelineRun = buildPipelineRun(pipelineRunName, pipelineName, pipelineParams, llmSecretName);
             createdPipelineRun = tektonClient
                     .v1()
                     .pipelineRuns()
@@ -147,7 +157,10 @@ public class PlatformService {
      * Builds a Tekton PipelineRun with the specified configuration.
      */
     private PipelineRun buildPipelineRun(
-            @Nonnull String pipelineRunName, @Nonnull List<Param> params, String llmSecretName) {
+            @Nonnull String pipelineRunName,
+            @Nonnull String pipelineName,
+            @Nonnull List<Param> params,
+            String llmSecretName) {
 
         return new PipelineRunBuilder()
                 .withNewMetadata()
@@ -156,7 +169,7 @@ public class PlatformService {
                 .endMetadata()
                 .withNewSpec()
                 .withNewPipelineRef()
-                .withName(PIPELINE_NAME)
+                .withName(pipelineName)
                 .endPipelineRef()
                 .withWorkspaces(buildWorkspaceBindings(llmSecretName))
                 .withParams(params)

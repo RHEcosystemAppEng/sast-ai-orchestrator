@@ -25,7 +25,7 @@ public class JobBatch {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "batch_google_sheet_url", nullable = false)
+    @Column(name = "batch_google_sheet_url")
     private String batchGoogleSheetUrl;
 
     @Column(name = "submitted_by")
@@ -52,6 +52,9 @@ public class JobBatch {
 
     @Column(name = "use_known_false_positive_file")
     private Boolean useKnownFalsePositiveFile;
+
+    @Column(name = "pipeline_name")
+    private String pipelineName;
 
     @OneToMany(mappedBy = "jobBatch", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Job> jobs;

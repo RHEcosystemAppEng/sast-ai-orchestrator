@@ -5,6 +5,7 @@ import java.util.Optional;
 import com.redhat.sast.api.config.OshConfiguration;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.repository.JobRepository;
+import com.redhat.sast.api.service.DashboardBroadcastService;
 import com.redhat.sast.api.service.JobService;
 import com.redhat.sast.api.v1.dto.osh.OshScan;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
@@ -48,6 +49,9 @@ public class OshJobCreationService {
     @Inject
     OshConfiguration oshConfiguration;
 
+    @Inject
+    DashboardBroadcastService dashboardBroadcastService;
+
     /**
      * Creates a SAST-AI workflow job from an OSH scan result and triggers the pipeline.
      *
@@ -90,6 +94,12 @@ public class OshJobCreationService {
                     job.getId(),
                     packageNvr,
                     oshReportUrl);
+
+            try {
+                dashboardBroadcastService.broadcastOshScanCollected(job);
+            } catch (Exception e) {
+                LOGGER.warn("Failed to broadcast OSH scan collection for job ID {}: {}", job.getId(), e.getMessage());
+            }
 
             return Optional.of(job);
 

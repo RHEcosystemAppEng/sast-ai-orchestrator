@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.Optional;
 
 import com.redhat.sast.api.model.OshUncollectedScan;
+import com.redhat.sast.api.service.osh.OshQueryService;
 import com.redhat.sast.api.service.osh.OshRetryService;
 import com.redhat.sast.api.startup.OshScheduler;
+import com.redhat.sast.api.v1.dto.response.OshScanWithJobDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshRetryQueueResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshRetryStatisticsResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshStatusResponseDto;
@@ -50,6 +52,9 @@ public class OshAdminResource {
     @Inject
     OshScheduler oshScheduler;
 
+    @Inject
+    OshQueryService oshQueryService;
+
     /**
      * Get overall OSH integration status including retry queue and cursor information.
      *
@@ -77,6 +82,50 @@ public class OshAdminResource {
                     .build();
         } catch (Exception e) {
             LOGGER.error("Unexpected error retrieving OSH status: {}", e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Internal server error")
+                    .build();
+        }
+    }
+
+    /**
+     * Get all OSH scans (both collected and uncollected) with pagination and filtering.
+     *
+     * @param page page number
+     * @param size page size
+     * @param status filter by status: "COLLECTED", "UNCOLLECTED", or null for all
+     * @return paginated list of OSH scans with job and retry information
+     */
+    @GET
+    @Path("/scans/all")
+    public Response getAllOshScans(
+            @QueryParam("page") @DefaultValue("0") Integer page,
+            @QueryParam("size") @DefaultValue("20") Integer size,
+            @QueryParam("status") String status) {
+        try {
+            if (status != null && !status.isEmpty() && !status.equals("COLLECTED") && !status.equals("UNCOLLECTED")) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Invalid status parameter. Must be 'COLLECTED' or 'UNCOLLECTED'")
+                        .build();
+            }
+
+            List<OshScanWithJobDto> scans = oshQueryService.getAllScans(page, size, status);
+
+            LOGGER.debug(
+                    "OSH scans requested via admin endpoint (page: {}, size: {}, status: {})",
+                    page,
+                    size,
+                    status != null ? status : "all");
+
+            return Response.ok(scans).build();
+
+        } catch (jakarta.persistence.PersistenceException e) {
+            LOGGER.error("Database error retrieving OSH scans: {}", e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Database error occurred")
+                    .build();
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error retrieving OSH scans: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("Internal server error")
                     .build();

@@ -11,6 +11,7 @@ import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.OshSchedulerCursor;
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.OshSchedulerCursorRepository;
+import com.redhat.sast.api.service.DashboardBroadcastService;
 import com.redhat.sast.api.service.osh.OshClientService;
 import com.redhat.sast.api.service.osh.OshJobCreationService;
 import com.redhat.sast.api.service.osh.OshRetryService;
@@ -68,6 +69,9 @@ public class OshScheduler {
 
     @Inject
     OshRetryService oshRetryService;
+
+    @Inject
+    DashboardBroadcastService dashboardBroadcastService;
 
     /**
      * Results record for processing statistics with phase information.
@@ -163,7 +167,17 @@ public class OshScheduler {
             return ProcessingResult.SKIPPED;
         } catch (Exception e) {
             LOGGER.error("Failed to process OSH scan {}: {}", scan.getScanId(), e.getMessage(), e);
-            oshRetryService.recordFailedScan(scan, classifyFailure(e), e.getMessage());
+            OshFailureReason failureReason = classifyFailure(e);
+            oshRetryService.recordFailedScan(scan, failureReason, e.getMessage());
+
+            try {
+                dashboardBroadcastService.broadcastOshScanFailed(
+                        String.valueOf(scan.getScanId()), failureReason.name(), 1);
+            } catch (Exception ex) {
+                LOGGER.warn(
+                        "Failed to broadcast OSH scan failure for scan ID {}: {}", scan.getScanId(), ex.getMessage());
+            }
+
             return ProcessingResult.FAILED;
         }
     }

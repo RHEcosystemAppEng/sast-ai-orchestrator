@@ -38,6 +38,7 @@ public class JobService {
     private final NvrResolutionService nvrResolutionService;
     private final PipelineParameterMapper parameterMapper;
     private final UrlValidationService urlValidationService;
+    private final DashboardBroadcastService dashboardBroadcastService;
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
         final Job job = createJobEntity(jobCreationDto);
@@ -119,6 +120,12 @@ public class JobService {
 
         jobRepository.persist(job);
         LOGGER.debug("Updated job ID {} status from {} to {}", jobId, currentStatus, newStatus);
+
+        try {
+            dashboardBroadcastService.broadcastJobStatusChange(job);
+        } catch (Exception e) {
+            LOGGER.warn("Failed to broadcast job status change for job ID {}: {}", jobId, e.getMessage());
+        }
     }
 
     @Transactional

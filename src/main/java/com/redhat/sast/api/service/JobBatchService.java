@@ -41,6 +41,7 @@ public class JobBatchService {
     private final GoogleSheetsService googleSheetsService;
     private final CsvConverter csvConverter;
     private final PipelineParameterMapper parameterMapper;
+    private final DashboardBroadcastService dashboardBroadcastService;
 
     @ConfigProperty(name = "sast.ai.batch.job.polling.interval", defaultValue = "5000")
     long jobPollingIntervalMs;
@@ -362,6 +363,12 @@ public class JobBatchService {
                 batch.setFailedJobs(failedJobs);
                 jobBatchRepository.persist(batch);
                 LOGGER.info("Updated batch {} final status: {}", batchId, status);
+
+                try {
+                    dashboardBroadcastService.broadcastBatchProgress(batch);
+                } catch (Exception e) {
+                    LOGGER.warn("Failed to broadcast batch progress for batch ID {}: {}", batchId, e.getMessage());
+                }
             }
         } catch (Exception e) {
             LOGGER.error("Failed to update batch status for batch {}", batchId, e);
@@ -410,6 +417,12 @@ public class JobBatchService {
             batch.setCompletedJobs(completedJobs);
             batch.setFailedJobs(failedJobs);
             jobBatchRepository.persist(batch);
+
+            try {
+                dashboardBroadcastService.broadcastBatchProgress(batch);
+            } catch (Exception e) {
+                LOGGER.warn("Failed to broadcast batch progress for batch ID {}: {}", batchId, e.getMessage());
+            }
         }
     }
 

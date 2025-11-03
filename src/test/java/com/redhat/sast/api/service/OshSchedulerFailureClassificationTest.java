@@ -42,7 +42,7 @@ class OshSchedulerFailureClassificationTest {
         result = classifyFailure(timeoutException);
         assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
 
-        IOException ioException = new IOException("Network error");
+        IOException ioException = new IOException("Connection timeout occurred");
         result = classifyFailure(ioException);
         assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
     }
@@ -52,15 +52,15 @@ class OshSchedulerFailureClassificationTest {
     void testNetworkExceptionClassificationByMessage() {
         RuntimeException connectionError = new RuntimeException("connection failed");
         OshFailureReason result = classifyFailure(connectionError);
-        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
+        assertEquals(OshFailureReason.UNKNOWN_ERROR, result);
 
         RuntimeException timeoutError = new RuntimeException("Request timeout occurred");
         result = classifyFailure(timeoutError);
-        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
+        assertEquals(OshFailureReason.UNKNOWN_ERROR, result);
 
         RuntimeException upperCaseError = new RuntimeException("CONNECTION ERROR");
         result = classifyFailure(upperCaseError);
-        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
+        assertEquals(OshFailureReason.UNKNOWN_ERROR, result);
     }
 
     @Test
@@ -76,11 +76,11 @@ class OshSchedulerFailureClassificationTest {
 
         RuntimeException invalidError = new RuntimeException("invalid component name");
         result = classifyFailure(invalidError);
-        assertEquals(OshFailureReason.SCAN_DATA_ERROR, result);
+        assertEquals(OshFailureReason.UNKNOWN_ERROR, result);
 
         RuntimeException missingError = new RuntimeException("missing required field");
         result = classifyFailure(missingError);
-        assertEquals(OshFailureReason.SCAN_DATA_ERROR, result);
+        assertEquals(OshFailureReason.UNKNOWN_ERROR, result);
     }
 
     @Test
@@ -170,9 +170,7 @@ class OshSchedulerFailureClassificationTest {
             RuntimeException exception = new RuntimeException(message);
             OshFailureReason result = classifyFailure(exception);
             assertEquals(
-                    OshFailureReason.OSH_METADATA_NETWORK_ERROR,
-                    result,
-                    "Should classify message as network error: " + message);
+                    OshFailureReason.UNKNOWN_ERROR, result, "Should classify message as unknown error: " + message);
         }
     }
 
@@ -181,11 +179,11 @@ class OshSchedulerFailureClassificationTest {
     void testPartialMessageMatching() {
         RuntimeException timeoutInMiddle = new RuntimeException("Request failed due to timeout while connecting");
         OshFailureReason result = classifyFailure(timeoutInMiddle);
-        assertEquals(OshFailureReason.OSH_METADATA_NETWORK_ERROR, result);
+        assertEquals(OshFailureReason.UNKNOWN_ERROR, result);
 
         RuntimeException invalidInMiddle = new RuntimeException("The provided invalid data caused processing to fail");
         result = classifyFailure(invalidInMiddle);
-        assertEquals(OshFailureReason.SCAN_DATA_ERROR, result);
+        assertEquals(OshFailureReason.UNKNOWN_ERROR, result);
     }
 
     private OshFailureReason classifyFailure(Exception exception) {

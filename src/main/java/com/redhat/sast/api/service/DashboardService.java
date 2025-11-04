@@ -12,26 +12,23 @@ import com.redhat.sast.api.repository.OshUncollectedScanRepository;
 import com.redhat.sast.api.v1.dto.response.DashboardSummaryDto;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service for generating dashboard summary statistics.
  */
 @ApplicationScoped
+@RequiredArgsConstructor
 @Slf4j
 public class DashboardService {
 
     private static final long CACHE_TTL_SECONDS = 30; // Cache for 30 seconds
+    private static final String STATUS_FIELD = "status";
 
-    @Inject
-    JobRepository jobRepository;
-
-    @Inject
-    JobBatchRepository jobBatchRepository;
-
-    @Inject
-    OshUncollectedScanRepository oshUncollectedScanRepository;
+    private final JobRepository jobRepository;
+    private final JobBatchRepository jobBatchRepository;
+    private final OshUncollectedScanRepository oshUncollectedScanRepository;
 
     private final AtomicReference<CachedSummary> cachedSummary = new AtomicReference<>();
 
@@ -72,16 +69,16 @@ public class DashboardService {
 
         // Job statistics
         dto.setTotalJobs(jobRepository.count());
-        dto.setPendingJobs(jobRepository.count("status", JobStatus.PENDING));
-        dto.setRunningJobs(jobRepository.count("status", JobStatus.RUNNING));
-        dto.setCompletedJobs(jobRepository.count("status", JobStatus.COMPLETED));
-        dto.setFailedJobs(jobRepository.count("status", JobStatus.FAILED));
-        dto.setCancelledJobs(jobRepository.count("status", JobStatus.CANCELLED));
+        dto.setPendingJobs(jobRepository.count(STATUS_FIELD, JobStatus.PENDING));
+        dto.setRunningJobs(jobRepository.count(STATUS_FIELD, JobStatus.RUNNING));
+        dto.setCompletedJobs(jobRepository.count(STATUS_FIELD, JobStatus.COMPLETED));
+        dto.setFailedJobs(jobRepository.count(STATUS_FIELD, JobStatus.FAILED));
+        dto.setCancelledJobs(jobRepository.count(STATUS_FIELD, JobStatus.CANCELLED));
 
         // Batch statistics
         dto.setTotalBatches(jobBatchRepository.count());
-        dto.setProcessingBatches(jobBatchRepository.count("status", BatchStatus.PROCESSING));
-        dto.setCompletedBatches(jobBatchRepository.count("status", BatchStatus.COMPLETED));
+        dto.setProcessingBatches(jobBatchRepository.count(STATUS_FIELD, BatchStatus.PROCESSING));
+        dto.setCompletedBatches(jobBatchRepository.count(STATUS_FIELD, BatchStatus.COMPLETED));
 
         // OSH scan statistics
         long collectedOshScans = countJobsWithOshScanId();

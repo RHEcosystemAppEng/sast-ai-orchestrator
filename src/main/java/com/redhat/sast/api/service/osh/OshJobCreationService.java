@@ -13,8 +13,8 @@ import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -34,23 +34,15 @@ import lombok.extern.slf4j.Slf4j;
  * - Retry cleanup happens within the same transaction as job creation
  */
 @ApplicationScoped
+@RequiredArgsConstructor
 @Slf4j
 public class OshJobCreationService {
 
-    @Inject
-    JobService jobService;
-
-    @Inject
-    JobRepository jobRepository;
-
-    @Inject
-    OshRetryService oshRetryService;
-
-    @Inject
-    OshConfiguration oshConfiguration;
-
-    @Inject
-    DashboardBroadcastService dashboardBroadcastService;
+    private final JobService jobService;
+    private final JobRepository jobRepository;
+    private final OshRetryService oshRetryService;
+    private final OshConfiguration oshConfiguration;
+    private final DashboardBroadcastService dashboardBroadcastService;
 
     /**
      * Creates a SAST-AI workflow job from an OSH scan result and triggers the pipeline.
@@ -95,17 +87,26 @@ public class OshJobCreationService {
                     packageNvr,
                     oshReportUrl);
 
-            try {
-                dashboardBroadcastService.broadcastOshScanCollected(job);
-            } catch (Exception e) {
-                LOGGER.warn("Failed to broadcast OSH scan collection for job ID {}: {}", job.getId(), e.getMessage());
-            }
+            safeBroadcastOshScanCollected(job);
 
             return Optional.of(job);
 
         } catch (Exception e) {
             LOGGER.error("Failed to create job from OSH scan {}: {}", scanId, e.getMessage(), e);
             return Optional.empty();
+        }
+    }
+
+    /**
+     * Safely broadcasts OSH scan collection, catching and logging any errors.
+     *
+     * @param job the newly created job from the collected OSH scan
+     */
+    private void safeBroadcastOshScanCollected(Job job) {
+        try {
+            dashboardBroadcastService.broadcastOshScanCollected(job);
+        } catch (Exception e) {
+            LOGGER.warn("Failed to broadcast OSH scan collection for job ID {}: {}", job.getId(), e.getMessage());
         }
     }
 

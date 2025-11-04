@@ -13,7 +13,7 @@ import com.redhat.sast.api.v1.dto.response.OshRetryInfoDto;
 import com.redhat.sast.api.v1.dto.response.OshScanWithJobDto;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
  * - Uncollected scans (retry queue)
  */
 @ApplicationScoped
+@RequiredArgsConstructor
 @Slf4j
 public class OshQueryService {
 
@@ -31,14 +32,9 @@ public class OshQueryService {
     private static final String STATUS_UNCOLLECTED = "UNCOLLECTED";
     private static final int DEFAULT_PAGE_SIZE = 20;
 
-    @Inject
-    JobRepository jobRepository;
-
-    @Inject
-    OshUncollectedScanRepository uncollectedScanRepository;
-
-    @Inject
-    OshConfiguration oshConfiguration;
+    private final JobRepository jobRepository;
+    private final OshUncollectedScanRepository uncollectedScanRepository;
+    private final OshConfiguration oshConfiguration;
 
     /**
      * Retrieves all OSH scans (both collected and uncollected) with pagination and filtering.

@@ -19,7 +19,7 @@ class OshJobCreationServiceTest {
 
     @BeforeEach
     void setUp() {
-        oshJobCreationService = new OshJobCreationService();
+        oshJobCreationService = new OshJobCreationService(null, null, null, null, null);
     }
 
     @Test

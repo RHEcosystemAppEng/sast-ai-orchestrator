@@ -3,13 +3,13 @@ package com.redhat.sast.api.v1.resource;
 import com.redhat.sast.api.service.DashboardService;
 import com.redhat.sast.api.v1.dto.response.DashboardSummaryDto;
 
-import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -19,11 +19,11 @@ import lombok.extern.slf4j.Slf4j;
 @Path("/dashboard")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@RequiredArgsConstructor
 @Slf4j
 public class DashboardResource {
 
-    @Inject
-    DashboardService dashboardService;
+    private final DashboardService dashboardService;
 
     /**
      * Get dashboard summary statistics.

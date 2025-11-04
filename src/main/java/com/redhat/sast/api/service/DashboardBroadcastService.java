@@ -10,7 +10,7 @@ import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 import com.redhat.sast.api.v1.resource.DashboardWebSocketResource;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -20,14 +20,12 @@ import lombok.extern.slf4j.Slf4j;
  * before broadcasting through the WebSocket endpoint.
  */
 @ApplicationScoped
+@RequiredArgsConstructor
 @Slf4j
 public class DashboardBroadcastService {
 
-    @Inject
-    DashboardWebSocketResource dashboardWebSocket;
-
-    @Inject
-    DashboardService dashboardService;
+    private final DashboardWebSocketResource dashboardWebSocket;
+    private final DashboardService dashboardService;
 
     /**
      * Broadcasts a job status change to all connected clients.

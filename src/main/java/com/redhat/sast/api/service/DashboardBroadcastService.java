@@ -7,7 +7,7 @@ import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobBatch;
 import com.redhat.sast.api.v1.dto.response.DashboardSummaryDto;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
-import com.redhat.sast.api.websocket.DashboardWebSocket;
+import com.redhat.sast.api.v1.resource.DashboardWebSocketResource;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 public class DashboardBroadcastService {
 
     @Inject
-    DashboardWebSocket dashboardWebSocket;
+    DashboardWebSocketResource dashboardWebSocket;
 
     @Inject
     DashboardService dashboardService;
@@ -37,7 +37,7 @@ public class DashboardBroadcastService {
     public void broadcastJobStatusChange(Job job) {
         try {
             JobResponseDto jobDto = JobMapper.INSTANCE.jobToJobResponseDto(job);
-            var message = new DashboardWebSocket.WebSocketMessage("job_status_change", jobDto);
+            var message = new DashboardWebSocketResource.WebSocketMessage("job_status_change", jobDto);
             dashboardWebSocket.broadcast(message);
 
             LOGGER.debug("Broadcasted job status change for job ID: {} (status: {})", job.getId(), job.getStatus());
@@ -56,7 +56,7 @@ public class DashboardBroadcastService {
      */
     public void broadcastBatchProgress(JobBatch jobBatch) {
         try {
-            var message = new DashboardWebSocket.WebSocketMessage("batch_progress", jobBatch);
+            var message = new DashboardWebSocketResource.WebSocketMessage("batch_progress", jobBatch);
             dashboardWebSocket.broadcast(message);
 
             LOGGER.debug(
@@ -80,7 +80,7 @@ public class DashboardBroadcastService {
             dashboardService.invalidateCache();
             DashboardSummaryDto summary = dashboardService.getSummary();
 
-            var message = new DashboardWebSocket.WebSocketMessage("summary_update", summary);
+            var message = new DashboardWebSocketResource.WebSocketMessage("summary_update", summary);
             dashboardWebSocket.broadcast(message);
 
             LOGGER.debug("Broadcasted dashboard summary update");
@@ -98,10 +98,10 @@ public class DashboardBroadcastService {
     public void broadcastOshScanCollected(Job job) {
         try {
             JobResponseDto jobDto = JobMapper.INSTANCE.jobToJobResponseDto(job);
-            var message = new DashboardWebSocket.WebSocketMessage("osh_scan_collected", Map.of("job", jobDto));
+            var message = new DashboardWebSocketResource.WebSocketMessage("osh_scan_collected", Map.of("job", jobDto));
             dashboardWebSocket.broadcast(message);
 
-            LOGGER.info(
+            LOGGER.debug(
                     "Broadcasted OSH scan collection success for job ID: {} (OSH scan ID: {})",
                     job.getId(),
                     job.getOshScanId());
@@ -122,12 +122,12 @@ public class DashboardBroadcastService {
      */
     public void broadcastOshScanFailed(String oshScanId, String failureReason, Integer retryAttempts) {
         try {
-            var message = new DashboardWebSocket.WebSocketMessage(
+            var message = new DashboardWebSocketResource.WebSocketMessage(
                     "osh_scan_failed",
                     Map.of("oshScanId", oshScanId, "failureReason", failureReason, "retryAttempts", retryAttempts));
             dashboardWebSocket.broadcast(message);
 
-            LOGGER.info(
+            LOGGER.debug(
                     "Broadcasted OSH scan failure for scan ID: {} (reason: {}, attempts: {})",
                     oshScanId,
                     failureReason,

@@ -1,4 +1,4 @@
-package com.redhat.sast.api.websocket;
+package com.redhat.sast.api.v1.resource;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 @ServerEndpoint("/ws/dashboard")
 @ApplicationScoped
 @Slf4j
-public class DashboardWebSocket {
+public class DashboardWebSocketResource {
 
     private static final Map<String, Session> sessions = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());

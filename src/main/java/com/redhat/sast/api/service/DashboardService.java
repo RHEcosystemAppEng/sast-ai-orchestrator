@@ -1,5 +1,6 @@
 package com.redhat.sast.api.service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -122,7 +123,7 @@ public class DashboardService {
         }
 
         public long getAgeSeconds() {
-            return java.time.Duration.between(cachedAt, LocalDateTime.now()).getSeconds();
+            return Duration.between(cachedAt, LocalDateTime.now()).getSeconds();
         }
     }
 }

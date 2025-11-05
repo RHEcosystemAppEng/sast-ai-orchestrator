@@ -1,0 +1,113 @@
+package com.redhat.sast.api.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.yaml.snakeyaml.Yaml;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import lombok.extern.slf4j.Slf4j;
+
+@ApplicationScoped
+@Slf4j
+public class DvcService {
+
+    @ConfigProperty(name = "dvc.repo.url")
+    String dvcRepoUrl;
+
+    @ConfigProperty(name = "dvc.batch.yaml.path")
+    String batchYamlPath;
+
+    /**
+     * Get list of NVRs from DVC repository by version tag
+     * Fetches YAML file from DVC and extracts NVR list
+     *
+     * @param version DVC version tag (e.g., "1.0.0" or "v1.0.0")
+     * @return List of package NVR strings (empty list if no NVRs found)
+     * @throws Exception if DVC fetch fails or parsing fails
+     * @throws IllegalArgumentException if version is null or empty
+     */
+    public List<String> getNvrListByVersion(String version) throws Exception {
+        // Validate version parameter
+        if (version == null || version.isBlank()) {
+            throw new IllegalArgumentException("DVC version cannot be null or empty");
+        }
+
+        LOGGER.info("Fetching NVR list from DVC repository: version={}", version);
+        LOGGER.debug("Fetching YAML from DVC: path={}", batchYamlPath);
+
+        String yamlContent = fetchFromDvc(batchYamlPath, version);
+        LOGGER.debug("Raw YAML content from DVC ({} bytes)", yamlContent.length());
+
+        // Parse YAML to extract NVRs
+        Yaml yaml = new Yaml();
+        Object data = yaml.load(yamlContent);
+
+        List<String> nvrList = new ArrayList<>();
+
+        if (data instanceof java.util.Map) {
+            // YAML has a map structure, find list of strings
+            java.util.Map<String, Object> map = (java.util.Map<String, Object>) data;
+            for (Object value : map.values()) {
+                if (value instanceof List) {
+                    List<?> list = (List<?>) value;
+                    if (!list.isEmpty() && list.get(0) instanceof String) {
+                        nvrList = (List<String>) list;
+                        break;
+                    }
+                }
+            }
+        } else if (data instanceof List) {
+            // YAML is just a list of NVRs
+            nvrList = (List<String>) data;
+        }
+
+        if (nvrList.isEmpty()) {
+            LOGGER.warn("No NVRs found in YAML for DVC version {}", version);
+            return nvrList;
+        }
+
+        LOGGER.info("Successfully retrieved {} NVRs from YAML (DVC version {})", nvrList.size(), version);
+        LOGGER.debug("NVR list: {}", nvrList);
+        return nvrList;
+    }
+
+    /**
+     * Fetches raw file content from DVC repository using DVC CLI
+     *
+     * @param filePath Path to file in DVC repo
+     * @param version DVC version tag
+     * @return File content as String
+     * @throws Exception if DVC command fails
+     */
+    private String fetchFromDvc(String filePath, String version) throws Exception {
+        LOGGER.debug("Executing DVC get command: repo={}, path={}, version={}", dvcRepoUrl, filePath, version);
+
+        java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("dvc-fetch-", ".tmp");
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder(
+                    "dvc", "get", dvcRepoUrl, filePath, "--rev", version, "-o", tempFile.toString(), "--force");
+
+            Process process = processBuilder.start();
+
+            // Read stderr for error messages
+            String error = new String(process.getErrorStream().readAllBytes());
+
+            int exitCode = process.waitFor();
+
+            if (exitCode != 0) {
+                LOGGER.error("DVC command failed with exit code {}: {}", exitCode, error);
+                throw new Exception("Failed to fetch data from DVC: " + error);
+            }
+
+            // Read content from temp file - the nvrs content
+            String output = java.nio.file.Files.readString(tempFile);
+            LOGGER.debug("Successfully fetched {} bytes from DVC", output.length());
+            return output;
+        } finally {
+            // Clean up temp file
+            java.nio.file.Files.deleteIfExists(tempFile);
+        }
+    }
+}

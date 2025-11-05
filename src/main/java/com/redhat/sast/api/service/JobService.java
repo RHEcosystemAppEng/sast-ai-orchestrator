@@ -134,7 +134,7 @@ public class JobService {
     }
 
     @Transactional
-    public Job createJobEntity(JobCreationDto jobCreationDto) {
+    public Job createJobEntity(@Nonnull final JobCreationDto jobCreationDto) {
         Job job = getJobFromDto(jobCreationDto);
         jobRepository.persist(job);
 
@@ -166,15 +166,47 @@ public class JobService {
         job.setKnownFalsePositivesUrl(
                 nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
 
-        // Set input source - always Google Sheet for now
-        job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
-        job.setGSheetUrl(jobCreationDto.getInputSourceUrl());
+        // Handle different input source types based on DTO content
+        configureInputSource(job, jobCreationDto);
 
         // Set submittedBy with default value "unknown" if not provided
         job.setSubmittedBy(jobCreationDto.getSubmittedBy() != null ? jobCreationDto.getSubmittedBy() : "unknown");
 
         job.setStatus(JobStatus.PENDING);
         return job;
+    }
+
+    /**
+     * Configures the job's input source type and related fields based on the JobCreationDto content.
+     * Handles OSH scan jobs (URL-based) and Google Sheet jobs.
+     */
+    private void configureInputSource(Job job, JobCreationDto jobCreationDto) {
+        String oshScanId = jobCreationDto.getOshScanId();
+        String inputSourceUrl = jobCreationDto.getInputSourceUrl();
+
+        // OSH scan with URL
+        if (oshScanId != null
+                && !oshScanId.trim().isEmpty()
+                && inputSourceUrl != null
+                && !inputSourceUrl.trim().isEmpty()) {
+            job.setInputSourceType(InputSourceType.OSH_SCAN);
+            job.setOshScanId(oshScanId);
+            job.setGSheetUrl(inputSourceUrl); // Store OSH URL in gSheetUrl field
+            LOGGER.debug("Configured job as OSH_SCAN with URL: {} (scan ID: {})", inputSourceUrl, oshScanId);
+            return;
+        }
+
+        // Google Sheets or SARIF
+        if (inputSourceUrl != null && !inputSourceUrl.trim().isEmpty()) {
+            job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
+            job.setGSheetUrl(inputSourceUrl);
+            LOGGER.debug("Configured job as GOOGLE_SHEET with URL: {}", inputSourceUrl);
+            return;
+        }
+
+        throw new IllegalArgumentException(
+                "Job creation requires either (oshScanId + inputSourceUrl) for OSH scans or inputSourceUrl for Google Sheets. "
+                        + "Package NVR: " + jobCreationDto.getPackageNvr());
     }
 
     public List<JobResponseDto> getAllJobs(String packageName, JobStatus status, int page, int size) {

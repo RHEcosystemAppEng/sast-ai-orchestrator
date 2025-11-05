@@ -17,7 +17,6 @@ public class JobCreationDto {
     private String packageNvr;
 
     @JsonProperty("inputSourceUrl")
-    @NotBlank(message = "Input source URL cannot be null or empty.")
     private String inputSourceUrl;
 
     @JsonProperty("useKnownFalsePositiveFile")
@@ -26,6 +25,15 @@ public class JobCreationDto {
     @JsonProperty("submittedBy")
     private String submittedBy;
 
+    @JsonProperty("oshScanId")
+    private String oshScanId;
+
+    /**
+     * Constructor for URL-based input sources (Google Sheets, SARIF, OSH URLs).
+     *
+     * @param packageNvr package NVR
+     * @param inputSourceUrl URL to the input source (Google Sheet, SARIF file, or OSH report)
+     */
     public JobCreationDto(String packageNvr, String inputSourceUrl) {
         this.packageNvr = packageNvr;
         this.inputSourceUrl = inputSourceUrl;

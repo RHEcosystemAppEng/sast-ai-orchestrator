@@ -26,7 +26,7 @@ public class NvrParser {
      * @return the package name (e.g., "systemd") or null if parsing fails
      */
     public String extractPackageName(String nvr) {
-        if (nvr == null || nvr.trim().isEmpty()) {
+        if (nvr == null || nvr.isBlank()) {
             return null;
         }
 
@@ -45,7 +45,7 @@ public class NvrParser {
      * @return the version (e.g., "257") or null if parsing fails
      */
     public String extractVersion(String nvr) {
-        if (nvr == null || nvr.trim().isEmpty()) {
+        if (nvr == null || nvr.isBlank()) {
             return null;
         }
 
@@ -63,7 +63,7 @@ public class NvrParser {
      * @return the release (e.g., "9.el10") or null if parsing fails
      */
     public String extractRelease(String nvr) {
-        if (nvr == null || nvr.trim().isEmpty()) {
+        if (nvr == null || nvr.isBlank()) {
             return null;
         }
 

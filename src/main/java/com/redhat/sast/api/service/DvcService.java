@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 import com.redhat.sast.api.exceptions.DvcException;
 
@@ -45,7 +47,8 @@ public class DvcService {
         LOGGER.debug("Raw YAML content from DVC ({} bytes)", yamlContent.length());
 
         // Parse YAML to extract NVRs
-        Yaml yaml = new Yaml();
+        LoaderOptions loaderOptions = new LoaderOptions();
+        Yaml yaml = new Yaml(new SafeConstructor(loaderOptions));
         Object data = yaml.load(yamlContent);
 
         List<String> nvrList = new ArrayList<>();
@@ -78,6 +81,47 @@ public class DvcService {
     }
 
     /**
+     * Validates DVC command inputs to prevent command injection - ALIGNED WITH some of DVCMETADATASERVICE validations
+     *
+     * @param filePath Path to file in DVC repo
+     * @param version DVC version tag
+     * @throws IllegalArgumentException if inputs contain unsafe characters
+     */
+    private void validateDvcInputs(String filePath, String version) {
+        // Validate filePath
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException("DVC filePath cannot be null or empty");
+        }
+
+        // Prevent directory traversal attacks
+        if (filePath.contains("..")) {
+            throw new IllegalArgumentException("DVC filePath cannot contain '..' (directory traversal)");
+        }
+
+        // Allow only safe characters in file path: alphanumeric, dash, underscore, dot, forward slash
+        if (!filePath.matches("^[a-zA-Z0-9._/-]+$")) {
+            throw new IllegalArgumentException("DVC filePath contains invalid characters: " + filePath);
+        }
+
+        // Validate version matches DvcMetadataService.validateDataVersion() for consistency
+        if (version == null || version.isBlank()) {
+            throw new IllegalArgumentException("DVC version cannot be null or empty");
+        }
+
+        // Prevent ReDoS by limiting input length
+        if (version.length() > 100) {
+            String displayVersion = version.substring(0, 50) + "...";
+            throw new IllegalArgumentException("DVC version too long (max 100 characters): " + displayVersion);
+        }
+
+        if (!version.matches(
+                "^(v?\\d+\\.\\d+\\.\\d+(?:-[a-zA-Z0-9]+)?(?:\\+[a-zA-Z0-9]+)?|[a-zA-Z][a-zA-Z0-9_-]{0,49}|\\d{4}-\\d{2}-\\d{2})$")) {
+            throw new IllegalArgumentException("Invalid DVC version format: '" + version
+                    + "' - expected semantic version (v1.0.0) or valid identifier");
+        }
+    }
+
+    /**
      * Fetches raw file content from DVC repository using DVC CLI
      *
      * @param filePath Path to file in DVC repo
@@ -86,6 +130,9 @@ public class DvcService {
      * @throws DvcException if DVC command fails or times out
      */
     private String fetchFromDvc(String filePath, String version) {
+        // Validate inputs to prevent command injection
+        validateDvcInputs(filePath, version);
+
         LOGGER.debug("Executing DVC get command: repo={}, path={}, version={}", dvcRepoUrl, filePath, version);
 
         java.nio.file.Path tempFile = null;

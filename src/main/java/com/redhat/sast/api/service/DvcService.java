@@ -92,7 +92,7 @@ public class DvcService {
             Process process = processBuilder.start();
 
             // Read stderr for error messages
-            String error = new String(process.getErrorStream().readAllBytes());
+            String error = new String(process.getErrorStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
 
             int exitCode = process.waitFor();
 
@@ -102,7 +102,7 @@ public class DvcService {
             }
 
             // Read content from temp file - the nvrs content
-            String output = java.nio.file.Files.readString(tempFile);
+            String output = java.nio.file.Files.readString(tempFile, java.nio.charset.StandardCharsets.UTF_8);
             LOGGER.debug("Successfully fetched {} bytes from DVC", output.length());
             return output;
         } finally {

@@ -1,10 +1,14 @@
 package com.redhat.sast.api.service;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.yaml.snakeyaml.Yaml;
+
+import com.redhat.sast.api.exceptions.DvcException;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
@@ -25,10 +29,10 @@ public class DvcService {
      *
      * @param version DVC version tag (e.g., "1.0.0" or "v1.0.0")
      * @return List of package NVR strings (empty list if no NVRs found)
-     * @throws Exception if DVC fetch fails or parsing fails
+     * @throws DvcException if DVC fetch fails or parsing fails
      * @throws IllegalArgumentException if version is null or empty
      */
-    public List<String> getNvrListByVersion(String version) throws Exception {
+    public List<String> getNvrListByVersion(String version) {
         // Validate version parameter
         if (version == null || version.isBlank()) {
             throw new IllegalArgumentException("DVC version cannot be null or empty");
@@ -79,35 +83,59 @@ public class DvcService {
      * @param filePath Path to file in DVC repo
      * @param version DVC version tag
      * @return File content as String
-     * @throws Exception if DVC command fails
+     * @throws DvcException if DVC command fails or times out
      */
-    private String fetchFromDvc(String filePath, String version) throws Exception {
+    private String fetchFromDvc(String filePath, String version) {
         LOGGER.debug("Executing DVC get command: repo={}, path={}, version={}", dvcRepoUrl, filePath, version);
 
-        java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("dvc-fetch-", ".tmp");
+        java.nio.file.Path tempFile = null;
+        Process process = null;
         try {
+            tempFile = java.nio.file.Files.createTempFile("dvc-fetch-", ".tmp");
+
             ProcessBuilder processBuilder = new ProcessBuilder(
                     "dvc", "get", dvcRepoUrl, filePath, "--rev", version, "-o", tempFile.toString(), "--force");
 
-            Process process = processBuilder.start();
+            process = processBuilder.start();
 
-            // Read stderr for error messages
+            // read stderr for error messages
             String error = new String(process.getErrorStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
 
-            int exitCode = process.waitFor();
+            boolean finished = process.waitFor(60, TimeUnit.SECONDS);
+            if (!finished) {
+                LOGGER.error("DVC command timed out after 60 seconds");
+                throw new DvcException("DVC command timed out after 60 seconds");
+            }
+
+            int exitCode = process.exitValue();
 
             if (exitCode != 0) {
                 LOGGER.error("DVC command failed with exit code {}: {}", exitCode, error);
-                throw new Exception("Failed to fetch data from DVC: " + error);
+                throw new DvcException("Failed to fetch data from DVC (exit code " + exitCode + "): " + error);
             }
 
-            // Read content from temp file - the nvrs content
+            // read content from temp file - the nvrs content
             String output = java.nio.file.Files.readString(tempFile, java.nio.charset.StandardCharsets.UTF_8);
             LOGGER.debug("Successfully fetched {} bytes from DVC", output.length());
             return output;
+        } catch (IOException e) {
+            throw new DvcException("I/O error during DVC fetch operation", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new DvcException("DVC fetch operation was interrupted", e);
         } finally {
-            // Clean up temp file
-            java.nio.file.Files.deleteIfExists(tempFile);
+            // force kill process if still running
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly();
+            }
+            // clean up temp file
+            if (tempFile != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(tempFile);
+                } catch (IOException e) {
+                    LOGGER.warn("Failed to delete temp file: {}", tempFile, e);
+                }
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ public class JobBatchTestDataBuilder {
             "https://docs.google.com/spreadsheets/d/1wrIcIhC7F9uVf8fm0IlvGTO-dSV9t_maLx36OoRI7S0/edit?usp=sharing";
     private String submittedBy = "test-user";
     private Boolean useKnownFalsePositiveFile = false;
+    private String aggregateResultsGSheet = null;
 
     public static JobBatchTestDataBuilder aBatch() {
         return new JobBatchTestDataBuilder();
@@ -28,9 +29,15 @@ public class JobBatchTestDataBuilder {
         return this;
     }
 
+    public JobBatchTestDataBuilder withAggregateResultsGSheet(String aggregateResultsGSheet) {
+        this.aggregateResultsGSheet = aggregateResultsGSheet;
+        return this;
+    }
+
     public JobBatchSubmissionDto build() {
         JobBatchSubmissionDto dto = new JobBatchSubmissionDto(batchGoogleSheetUrl, submittedBy);
         dto.setUseKnownFalsePositiveFile(useKnownFalsePositiveFile);
+        dto.setAggregateResultsGSheet(aggregateResultsGSheet);
         return dto;
     }
 

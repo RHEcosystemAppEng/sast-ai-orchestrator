@@ -35,11 +35,6 @@ public class DvcService {
      * @throws IllegalArgumentException if version is null or empty
      */
     public List<String> getNvrListByVersion(String version) {
-        // Validate version parameter
-        if (version == null || version.isBlank()) {
-            throw new IllegalArgumentException("DVC version cannot be null or empty");
-        }
-
         LOGGER.info("Fetching NVR list from DVC repository: version={}", version);
         LOGGER.debug("Fetching YAML from DVC: path={}", batchYamlPath);
 
@@ -59,15 +54,29 @@ public class DvcService {
             for (Object value : map.values()) {
                 if (value instanceof List) {
                     List<?> list = (List<?>) value;
-                    if (!list.isEmpty() && list.get(0) instanceof String) {
-                        nvrList = (List<String>) list;
+                    // Validate each item individually
+                    for (Object item : list) {
+                        if (item instanceof String) {
+                            nvrList.add((String) item);
+                        } else {
+                            LOGGER.warn("Skipping non-string item in NVR list: {}", item);
+                        }
+                    }
+                    if (!nvrList.isEmpty()) {
                         break;
                     }
                 }
             }
         } else if (data instanceof List) {
             // YAML is just a list of NVRs
-            nvrList = (List<String>) data;
+            List<?> list = (List<?>) data;
+            for (Object item : list) {
+                if (item instanceof String) {
+                    nvrList.add((String) item);
+                } else {
+                    LOGGER.warn("Skipping non-string item in NVR list: {}", item);
+                }
+            }
         }
 
         if (nvrList.isEmpty()) {

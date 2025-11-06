@@ -42,9 +42,15 @@ public class DvcService {
         LOGGER.debug("Raw YAML content from DVC ({} bytes)", yamlContent.length());
 
         // Parse YAML to extract NVRs
-        LoaderOptions loaderOptions = new LoaderOptions();
-        Yaml yaml = new Yaml(new SafeConstructor(loaderOptions));
-        Object data = yaml.load(yamlContent);
+        Object data;
+        try {
+            LoaderOptions loaderOptions = new LoaderOptions();
+            Yaml yaml = new Yaml(new SafeConstructor(loaderOptions));
+            data = yaml.load(yamlContent);
+        } catch (RuntimeException e) {
+            LOGGER.error("Failed to parse YAML content for version {}: {}", version, e.getMessage(), e);
+            throw new DvcException("Failed to parse YAML content for version " + version, e);
+        }
 
         List<String> nvrList = new ArrayList<>();
 

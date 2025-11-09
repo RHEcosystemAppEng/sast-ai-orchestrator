@@ -1,6 +1,6 @@
 package com.redhat.sast.api.v1.resource;
 
-import com.redhat.sast.api.service.DashboardService;
+import com.redhat.sast.api.service.StatisticService;
 import com.redhat.sast.api.v1.dto.response.DashboardSummaryDto;
 
 import jakarta.ws.rs.Consumes;
@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DashboardResource {
 
-    private final DashboardService dashboardService;
+    private final StatisticService statisticService;
 
     /**
      * Get dashboard summary statistics.
@@ -36,7 +36,7 @@ public class DashboardResource {
     @Path("/summary")
     public Response getDashboardSummary() {
         try {
-            DashboardSummaryDto summary = dashboardService.getSummary();
+            DashboardSummaryDto summary = statisticService.getSummary();
 
             LOGGER.debug("Dashboard summary requested");
             return Response.ok(summary).build();

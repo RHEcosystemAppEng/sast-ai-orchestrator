@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 @ServerEndpoint("/ws/dashboard")
 @ApplicationScoped
 @Slf4j
-public class DashboardWebSocketResource {
+public class WebSocketResource {
 
     private static final Map<String, Session> sessions = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
@@ -54,7 +54,7 @@ public class DashboardWebSocketResource {
         LOGGER.debug("Received message from {}: {}", session.getId(), message);
 
         if ("ping".equals(message)) {
-            sendToSession(session, new WebSocketMessage("pong", Map.of("timestamp", System.currentTimeMillis())));
+            sendTestReply(session, new WebSocketMessage("pong", Map.of("timestamp", System.currentTimeMillis())));
         }
     }
 
@@ -83,12 +83,12 @@ public class DashboardWebSocketResource {
         LOGGER.debug("Broadcasted {} to {} clients", message.type(), sessions.size());
     }
 
-    private void sendToSession(Session session, WebSocketMessage message) {
+    private void sendTestReply(Session session, WebSocketMessage message) {
         try {
             String json = objectMapper.writeValueAsString(message);
             session.getAsyncRemote().sendText(json);
         } catch (Exception e) {
-            LOGGER.error("Failed to send to session {}: {}", session.getId(), e.getMessage());
+            LOGGER.error("Failed to send to test reply {}: {}", session.getId(), e.getMessage());
         }
     }
 

@@ -11,11 +11,11 @@ import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.OshSchedulerCursor;
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.OshSchedulerCursorRepository;
-import com.redhat.sast.api.service.DashboardBroadcastService;
+import com.redhat.sast.api.service.EventBroadcastService;
 import com.redhat.sast.api.service.osh.OshClientService;
 import com.redhat.sast.api.service.osh.OshJobCreationService;
 import com.redhat.sast.api.service.osh.OshRetryService;
-import com.redhat.sast.api.v1.dto.osh.OshScan;
+import com.redhat.sast.api.v1.dto.osh.OshScanDto;
 
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -71,7 +71,7 @@ public class OshScheduler {
     OshRetryService oshRetryService;
 
     @Inject
-    DashboardBroadcastService dashboardBroadcastService;
+    EventBroadcastService eventBroadcastService;
 
     /**
      * Results record for processing statistics with phase information.
@@ -130,7 +130,7 @@ public class OshScheduler {
             int startScanId = getStartScanId();
             int batchSize = oshConfiguration.getBatchSize();
             LOGGER.debug("Polling OSH for scans starting from ID {} with batch size {}", startScanId, batchSize);
-            List<OshScan> scansToProcess = oshClientService.fetchOshScansForProcessing(startScanId, batchSize);
+            List<OshScanDto> scansToProcess = oshClientService.fetchOshScansForProcessing(startScanId, batchSize);
 
             if (scansToProcess.isEmpty()) {
                 LOGGER.debug(
@@ -140,8 +140,10 @@ public class OshScheduler {
                 return new ProcessingResults(0, 0, 0, PHASE_INCREMENTAL);
             }
             var finalResults = commonOshScanHandler(scansToProcess, this::singleScanProcessor, PHASE_INCREMENTAL);
-            int highestProcessedId =
-                    scansToProcess.stream().mapToInt(OshScan::getScanId).max().orElse(startScanId - 1);
+            int highestProcessedId = scansToProcess.stream()
+                    .mapToInt(OshScanDto::getScanId)
+                    .max()
+                    .orElse(startScanId - 1);
             int nextScanId = highestProcessedId + 1;
             updateCursorInNewTransaction(nextScanId);
             return finalResults;
@@ -151,7 +153,7 @@ public class OshScheduler {
         }
     }
 
-    private ProcessingResult singleScanProcessor(OshScan scan) {
+    private ProcessingResult singleScanProcessor(OshScanDto scan) {
         try {
             if (oshJobCreationService.canProcessScan(scan)) {
                 if (oshConfiguration.shouldMonitorPackage(scan.getPackageName())) {
@@ -171,8 +173,7 @@ public class OshScheduler {
             oshRetryService.recordFailedScan(scan, failureReason, e.getMessage());
 
             try {
-                dashboardBroadcastService.broadcastOshScanFailed(
-                        String.valueOf(scan.getScanId()), failureReason.name(), 1);
+                eventBroadcastService.broadcastOshScanFailed(String.valueOf(scan.getScanId()), failureReason.name(), 1);
             } catch (Exception ex) {
                 LOGGER.warn(
                         "Failed to broadcast OSH scan failure for scan ID {}: {}", scan.getScanId(), ex.getMessage());
@@ -199,7 +200,7 @@ public class OshScheduler {
 
     private ProcessingResult singleRetryScanProcessor(OshUncollectedScan uncollectedScan) {
         try {
-            OshScan scan = oshRetryService.reconstructScanFromJson(uncollectedScan.getScanDataJson());
+            OshScanDto scan = oshRetryService.reconstructScanFromJson(uncollectedScan.getScanDataJson());
             return processSingleRetryScan(uncollectedScan, scan);
         } catch (Exception e) {
             LOGGER.error(
@@ -213,7 +214,7 @@ public class OshScheduler {
         }
     }
 
-    private ProcessingResult processSingleRetryScan(OshUncollectedScan uncollectedScan, OshScan scan) {
+    private ProcessingResult processSingleRetryScan(OshUncollectedScan uncollectedScan, OshScanDto scan) {
         try {
             Optional<Job> createdJob = oshJobCreationService.createJobFromOshScan(scan);
             if (createdJob.isPresent()) {

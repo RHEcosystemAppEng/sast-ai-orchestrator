@@ -5,9 +5,9 @@ import java.util.Optional;
 import com.redhat.sast.api.config.OshConfiguration;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.repository.JobRepository;
-import com.redhat.sast.api.service.DashboardBroadcastService;
+import com.redhat.sast.api.service.EventBroadcastService;
 import com.redhat.sast.api.service.JobService;
-import com.redhat.sast.api.v1.dto.osh.OshScan;
+import com.redhat.sast.api.v1.dto.osh.OshScanDto;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 
@@ -42,7 +42,7 @@ public class OshJobCreationService {
     private final JobRepository jobRepository;
     private final OshRetryService oshRetryService;
     private final OshConfiguration oshConfiguration;
-    private final DashboardBroadcastService dashboardBroadcastService;
+    private final EventBroadcastService eventBroadcastService;
 
     /**
      * Creates a SAST-AI workflow job from an OSH scan result and triggers the pipeline.
@@ -58,7 +58,7 @@ public class OshJobCreationService {
      * @return Created Job if successful, empty if skipped or failed
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
-    public Optional<Job> createJobFromOshScan(@Nonnull OshScan scan) {
+    public Optional<Job> createJobFromOshScan(@Nonnull OshScanDto scan) {
         var scanId = scan.getScanId();
         try {
             if (isAlreadyProcessed(scanId)) {
@@ -104,7 +104,7 @@ public class OshJobCreationService {
      */
     private void safeBroadcastOshScanCollected(Job job) {
         try {
-            dashboardBroadcastService.broadcastOshScanCollected(job);
+            eventBroadcastService.broadcastOshScanCollected(job);
         } catch (Exception e) {
             LOGGER.warn("Failed to broadcast OSH scan collection for job ID {}: {}", job.getId(), e.getMessage());
         }
@@ -118,7 +118,7 @@ public class OshJobCreationService {
      * @param packageNvr package NVR for URL path
      * @return complete OSH report URL
      */
-    private String buildOshReportUrl(OshScan scan, String packageNvr) {
+    private String buildOshReportUrl(OshScanDto scan, String packageNvr) {
         String baseUrl = oshConfiguration.getBaseUrl();
         if (baseUrl.endsWith("/")) {
             baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
@@ -150,7 +150,7 @@ public class OshJobCreationService {
      * @param scan OSH scan response
      * @return NVR string extracted from OSH data
      */
-    private String buildNvrFromScan(@Nonnull final OshScan scan) {
+    private String buildNvrFromScan(@Nonnull final OshScanDto scan) {
         String component = scan.getComponent();
         String version = scan.getVersion();
 
@@ -189,7 +189,7 @@ public class OshJobCreationService {
     /**
      * Extracts the original label field from OSH rawData if available.
      */
-    private String extractOriginalLabel(OshScan scan) {
+    private String extractOriginalLabel(OshScanDto scan) {
         if (scan.getRawData() == null) {
             return null;
         }
@@ -224,7 +224,7 @@ public class OshJobCreationService {
      * @param scan OSH scan response
      * @return package NVR string
      */
-    public String extractPackageNvr(OshScan scan) {
+    public String extractPackageNvr(OshScanDto scan) {
         return buildNvrFromScan(scan);
     }
 
@@ -239,7 +239,7 @@ public class OshJobCreationService {
      * @param scan OSH scan response
      * @return true if scan can be processed, false otherwise
      */
-    public boolean canProcessScan(OshScan scan) {
+    public boolean canProcessScan(OshScanDto scan) {
         if (scan == null) {
             LOGGER.debug("Null scan cannot be processed");
             return false;

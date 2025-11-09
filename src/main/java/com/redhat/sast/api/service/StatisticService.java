@@ -21,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 @ApplicationScoped
 @RequiredArgsConstructor
 @Slf4j
-public class DashboardService {
+public class StatisticService {
 
     private static final long CACHE_TTL_SECONDS = 30; // Cache for 30 seconds
     private static final String STATUS_FIELD = "status";

@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class OshScanWithJobDto {
+public class OshScanStatusDto {
 
     @JsonProperty("oshScanId")
     private String oshScanId;

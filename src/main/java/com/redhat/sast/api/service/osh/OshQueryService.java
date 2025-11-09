@@ -10,7 +10,7 @@ import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.repository.OshUncollectedScanRepository;
 import com.redhat.sast.api.v1.dto.response.OshRetryInfoDto;
-import com.redhat.sast.api.v1.dto.response.OshScanWithJobDto;
+import com.redhat.sast.api.v1.dto.response.OshScanStatusDto;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.RequiredArgsConstructor;
@@ -44,19 +44,19 @@ public class OshQueryService {
      * @param status filter by status: "COLLECTED", "UNCOLLECTED", or null for all
      * @return list of OSH scans with associated job and retry information
      */
-    public List<OshScanWithJobDto> getAllScans(Integer page, Integer size, String status) {
-        List<OshScanWithJobDto> results = new ArrayList<>();
+    public List<OshScanStatusDto> getAllScans(Integer page, Integer size, String status) {
+        List<OshScanStatusDto> results = new ArrayList<>();
 
         boolean includeCollected = (status == null || STATUS_COLLECTED.equals(status));
         boolean includeUncollected = (status == null || STATUS_UNCOLLECTED.equals(status));
 
         if (includeCollected) {
-            List<OshScanWithJobDto> collectedScans = getCollectedScans();
+            List<OshScanStatusDto> collectedScans = getCollectedScans();
             results.addAll(collectedScans);
         }
 
         if (includeUncollected) {
-            List<OshScanWithJobDto> uncollectedScans = getUncollectedScans();
+            List<OshScanStatusDto> uncollectedScans = getUncollectedScans();
             results.addAll(uncollectedScans);
         }
 
@@ -66,7 +66,7 @@ public class OshQueryService {
     /**
      * Gets collected OSH scans (jobs with oshScanId).
      */
-    private List<OshScanWithJobDto> getCollectedScans() {
+    private List<OshScanStatusDto> getCollectedScans() {
         List<Job> jobsWithOshScanId = jobRepository
                 .getEntityManager()
                 .createQuery("SELECT j FROM Job j WHERE j.oshScanId IS NOT NULL ORDER BY j.createdAt DESC", Job.class)
@@ -78,7 +78,7 @@ public class OshQueryService {
     /**
      * Gets uncollected OSH scans (retry queue).
      */
-    private List<OshScanWithJobDto> getUncollectedScans() {
+    private List<OshScanStatusDto> getUncollectedScans() {
         List<OshUncollectedScan> uncollectedScans = uncollectedScanRepository
                 .getEntityManager()
                 .createQuery("SELECT u FROM OshUncollectedScan u ORDER BY u.createdAt DESC", OshUncollectedScan.class)
@@ -88,10 +88,10 @@ public class OshQueryService {
     }
 
     /**
-     * Converts a Job entity with oshScanId to OshScanWithJobDto.
+     * Converts a Job entity with oshScanId to OshScanStatusDto.
      */
-    private OshScanWithJobDto convertJobToScanDto(Job job) {
-        OshScanWithJobDto dto = new OshScanWithJobDto();
+    private OshScanStatusDto convertJobToScanDto(Job job) {
+        OshScanStatusDto dto = new OshScanStatusDto();
         dto.setOshScanId(job.getOshScanId());
         dto.setPackageName(job.getPackageName());
         dto.setPackageNvr(job.getPackageNvr());
@@ -103,10 +103,10 @@ public class OshQueryService {
     }
 
     /**
-     * Converts an OshUncollectedScan entity to OshScanWithJobDto.
+     * Converts an OshUncollectedScan entity to OshScanStatusDto.
      */
-    private OshScanWithJobDto convertUncollectedScanToDto(OshUncollectedScan uncollectedScan) {
-        OshScanWithJobDto dto = new OshScanWithJobDto();
+    private OshScanStatusDto convertUncollectedScanToDto(OshUncollectedScan uncollectedScan) {
+        OshScanStatusDto dto = new OshScanStatusDto();
         dto.setOshScanId(String.valueOf(uncollectedScan.getOshScanId()));
         dto.setPackageName(uncollectedScan.getPackageName());
         dto.setPackageNvr(uncollectedScan.getPackageNvr());
@@ -127,7 +127,7 @@ public class OshQueryService {
     /**
      * Applies pagination to the combined results list.
      */
-    private List<OshScanWithJobDto> applyPagination(List<OshScanWithJobDto> results, Integer page, Integer size) {
+    private List<OshScanStatusDto> applyPagination(List<OshScanStatusDto> results, Integer page, Integer size) {
         if (page == null || page < 0) {
             page = 0;
         }

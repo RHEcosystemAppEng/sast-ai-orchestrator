@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
  * DTO representing retry information for an OSH scan.
  *
  * Contains details about retry attempts, failure reasons, and timing.
- * Used as a nested object within OshScanWithJobDto.
+ * Used as a nested object within OshScanStatusDto.
  */
 @Data
 @NoArgsConstructor

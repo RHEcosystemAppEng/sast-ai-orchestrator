@@ -8,7 +8,7 @@ import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.service.osh.OshQueryService;
 import com.redhat.sast.api.service.osh.OshRetryService;
 import com.redhat.sast.api.startup.OshScheduler;
-import com.redhat.sast.api.v1.dto.response.OshScanWithJobDto;
+import com.redhat.sast.api.v1.dto.response.OshScanStatusDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshRetryQueueResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshRetryStatisticsResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshStatusResponseDto;
@@ -109,7 +109,7 @@ public class OshAdminResource {
                         .build();
             }
 
-            List<OshScanWithJobDto> scans = oshQueryService.getAllScans(page, size, status);
+            List<OshScanStatusDto> scans = oshQueryService.getAllScans(page, size, status);
 
             LOGGER.debug(
                     "OSH scans requested via admin endpoint (page: {}, size: {}, status: {})",

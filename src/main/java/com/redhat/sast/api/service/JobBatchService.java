@@ -41,7 +41,7 @@ public class JobBatchService {
     private final GoogleSheetsService googleSheetsService;
     private final CsvConverter csvConverter;
     private final PipelineParameterMapper parameterMapper;
-    private final DashboardBroadcastService dashboardBroadcastService;
+    private final EventBroadcastService eventBroadcastService;
 
     @ConfigProperty(name = "sast.ai.batch.job.polling.interval", defaultValue = "5000")
     long jobPollingIntervalMs;
@@ -426,7 +426,7 @@ public class JobBatchService {
      */
     private void safeBroadcastBatchProgress(JobBatch batch, Long batchId) {
         try {
-            dashboardBroadcastService.broadcastBatchProgress(batch);
+            eventBroadcastService.broadcastBatchProgress(batch);
         } catch (Exception e) {
             LOGGER.warn("Failed to broadcast batch progress for batch ID {}: {}", batchId, e.getMessage());
         }

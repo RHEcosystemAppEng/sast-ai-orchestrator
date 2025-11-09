@@ -33,6 +33,19 @@ public class StatisticService {
     private final AtomicReference<CachedSummary> cachedSummary = new AtomicReference<>();
 
     /**
+     * Internal record for cache entry with expiration.
+     */
+    private record CachedSummary(DashboardSummaryDto summary, LocalDateTime cachedAt) {
+        public boolean isExpired() {
+            return LocalDateTime.now().isAfter(cachedAt.plusSeconds(CACHE_TTL_SECONDS));
+        }
+
+        public long getAgeSeconds() {
+            return Duration.between(cachedAt, LocalDateTime.now()).getSeconds();
+        }
+    }
+
+    /**
      * Gets dashboard summary statistics with caching.
      *
      * @return aggregated dashboard statistics
@@ -98,26 +111,5 @@ public class StatisticService {
                 .getEntityManager()
                 .createQuery("SELECT COUNT(j) FROM Job j WHERE j.oshScanId IS NOT NULL", Long.class)
                 .getSingleResult();
-    }
-
-    /**
-     * Internal class for cache entry with expiration.
-     */
-    private static class CachedSummary {
-        private final DashboardSummaryDto summary;
-        private final LocalDateTime cachedAt;
-
-        public CachedSummary(DashboardSummaryDto summary, LocalDateTime cachedAt) {
-            this.summary = summary;
-            this.cachedAt = cachedAt;
-        }
-
-        public boolean isExpired() {
-            return LocalDateTime.now().isAfter(cachedAt.plusSeconds(CACHE_TTL_SECONDS));
-        }
-
-        public long getAgeSeconds() {
-            return Duration.between(cachedAt, LocalDateTime.now()).getSeconds();
-        }
     }
 }

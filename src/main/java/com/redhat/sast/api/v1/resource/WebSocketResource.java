@@ -37,7 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 public class WebSocketResource {
 
     private static final Map<String, Session> sessions = new ConcurrentHashMap<>();
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+    private static final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @OnOpen
     public void onOpen(Session session) {
@@ -63,7 +63,7 @@ public class WebSocketResource {
         }
     }
 
-    public void broadcast(WSMessage message) {
+    public static void broadcast(WSMessage message) {
         String json;
         try {
             json = objectMapper.writeValueAsString(message);

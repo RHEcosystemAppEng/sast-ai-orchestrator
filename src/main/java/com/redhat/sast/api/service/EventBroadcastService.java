@@ -1,30 +1,34 @@
 package com.redhat.sast.api.service;
 
-import java.util.Map;
-
-import com.redhat.sast.api.mapper.JobMapper;
+import com.redhat.sast.api.event.BatchProgressEvent;
+import com.redhat.sast.api.event.JobStatusChangedEvent;
+import com.redhat.sast.api.event.OshScanCollectedEvent;
+import com.redhat.sast.api.event.OshScanFailedEvent;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobBatch;
-import com.redhat.sast.api.v1.dto.WSMessage;
-import com.redhat.sast.api.v1.dto.response.JobResponseDto;
-import com.redhat.sast.api.v1.resource.WebSocketResource;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Service for broadcasting real-time updates to dashboard WebSocket clients.
+ * Service for broadcasting real-time updates using CDI events.
  *
- * Handles conversion of domain entities to DTOs and message formatting
- * before broadcasting through the WebSocket endpoint.
+ * Fires CDI events that are observed by interested listeners such as:
+ * - WebSocketResource for dashboard updates
+ * - Logging/metrics services
+ * - Downstream workflow triggers
  */
 @ApplicationScoped
 @RequiredArgsConstructor
 @Slf4j
 public class EventBroadcastService {
 
-    private final WebSocketResource webSocketResource;
+    private final Event<JobStatusChangedEvent> jobStatusChangedEvent;
+    private final Event<BatchProgressEvent> batchProgressEvent;
+    private final Event<OshScanCollectedEvent> oshScanCollectedEvent;
+    private final Event<OshScanFailedEvent> oshScanFailedEvent;
 
     /**
      * Broadcasts a job status change to all connected clients.
@@ -33,11 +37,9 @@ public class EventBroadcastService {
      */
     public void broadcastJobStatusChange(Job job) {
         try {
-            JobResponseDto jobDto = JobMapper.INSTANCE.jobToJobResponseDto(job);
-            var message = new WSMessage("job_status_change", jobDto);
-            webSocketResource.broadcast(message);
+            jobStatusChangedEvent.fire(new JobStatusChangedEvent(job));
         } catch (Exception e) {
-            LOGGER.error("Failed to broadcast job status change for job ID {}: {}", job.getId(), e.getMessage(), e);
+            LOGGER.error("Failed to fire job status change event for job ID {}: {}", job.getId(), e.getMessage(), e);
         }
     }
 
@@ -48,10 +50,10 @@ public class EventBroadcastService {
      */
     public void broadcastBatchProgress(JobBatch jobBatch) {
         try {
-            var message = new WSMessage("batch_progress", jobBatch);
-            webSocketResource.broadcast(message);
+            batchProgressEvent.fire(new BatchProgressEvent(jobBatch));
         } catch (Exception e) {
-            LOGGER.error("Failed to broadcast batch progress for batch ID {}: {}", jobBatch.getId(), e.getMessage(), e);
+            LOGGER.error(
+                    "Failed to fire batch progress event for batch ID {}: {}", jobBatch.getId(), e.getMessage(), e);
         }
     }
 
@@ -62,11 +64,9 @@ public class EventBroadcastService {
      */
     public void broadcastOshScanCollected(Job job) {
         try {
-            JobResponseDto jobDto = JobMapper.INSTANCE.jobToJobResponseDto(job);
-            var message = new WSMessage("osh_scan_collected", Map.of("job", jobDto));
-            webSocketResource.broadcast(message);
+            oshScanCollectedEvent.fire(new OshScanCollectedEvent(job));
         } catch (Exception e) {
-            LOGGER.error("Failed to broadcast OSH scan collection for job ID {}: {}", job.getId(), e.getMessage(), e);
+            LOGGER.error("Failed to fire OSH scan collected event for job ID {}: {}", job.getId(), e.getMessage(), e);
         }
     }
 
@@ -79,12 +79,9 @@ public class EventBroadcastService {
      */
     public void broadcastOshScanFailed(String oshScanId, String failureReason, Integer retryAttempts) {
         try {
-            var message = new WSMessage(
-                    "osh_scan_failed",
-                    Map.of("oshScanId", oshScanId, "failureReason", failureReason, "retryAttempts", retryAttempts));
-            webSocketResource.broadcast(message);
+            oshScanFailedEvent.fire(new OshScanFailedEvent(oshScanId, failureReason, retryAttempts));
         } catch (Exception e) {
-            LOGGER.error("Failed to broadcast OSH scan failure for scan ID {}: {}", oshScanId, e.getMessage(), e);
+            LOGGER.error("Failed to fire OSH scan failed event for scan ID {}: {}", oshScanId, e.getMessage(), e);
         }
     }
 }

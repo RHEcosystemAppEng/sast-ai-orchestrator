@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.redhat.sast.api.model.OshUncollectedScan;
-import com.redhat.sast.api.service.osh.OshQueryService;
+import com.redhat.sast.api.service.StatisticService;
 import com.redhat.sast.api.service.osh.OshRetryService;
 import com.redhat.sast.api.startup.OshScheduler;
 import com.redhat.sast.api.v1.dto.response.OshScanStatusDto;
@@ -53,7 +53,7 @@ public class OshAdminResource {
     OshScheduler oshScheduler;
 
     @Inject
-    OshQueryService oshQueryService;
+    StatisticService statisticService;
 
     /**
      * Get overall OSH integration status including retry queue and cursor information.
@@ -109,7 +109,7 @@ public class OshAdminResource {
                         .build();
             }
 
-            List<OshScanStatusDto> scans = oshQueryService.getAllScans(page, size, status);
+            List<OshScanStatusDto> scans = statisticService.getAllOshScans(page, size, status);
 
             return Response.ok(scans).build();
 

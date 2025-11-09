@@ -25,7 +25,6 @@ import lombok.extern.slf4j.Slf4j;
 public class EventBroadcastService {
 
     private final WebSocketResource webSocketResource;
-    private final StatisticService statisticService;
 
     /**
      * Broadcasts a job status change to all connected clients.
@@ -37,9 +36,6 @@ public class EventBroadcastService {
             JobResponseDto jobDto = JobMapper.INSTANCE.jobToJobResponseDto(job);
             var message = new WSMessage("job_status_change", jobDto);
             webSocketResource.broadcast(message);
-
-            statisticService.invalidateCache();
-
         } catch (Exception e) {
             LOGGER.error("Failed to broadcast job status change for job ID {}: {}", job.getId(), e.getMessage(), e);
         }
@@ -54,9 +50,6 @@ public class EventBroadcastService {
         try {
             var message = new WSMessage("batch_progress", jobBatch);
             webSocketResource.broadcast(message);
-
-            statisticService.invalidateCache();
-
         } catch (Exception e) {
             LOGGER.error("Failed to broadcast batch progress for batch ID {}: {}", jobBatch.getId(), e.getMessage(), e);
         }
@@ -72,9 +65,6 @@ public class EventBroadcastService {
             JobResponseDto jobDto = JobMapper.INSTANCE.jobToJobResponseDto(job);
             var message = new WSMessage("osh_scan_collected", Map.of("job", jobDto));
             webSocketResource.broadcast(message);
-
-            statisticService.invalidateCache();
-
         } catch (Exception e) {
             LOGGER.error("Failed to broadcast OSH scan collection for job ID {}: {}", job.getId(), e.getMessage(), e);
         }
@@ -93,9 +83,6 @@ public class EventBroadcastService {
                     "osh_scan_failed",
                     Map.of("oshScanId", oshScanId, "failureReason", failureReason, "retryAttempts", retryAttempts));
             webSocketResource.broadcast(message);
-
-            statisticService.invalidateCache();
-
         } catch (Exception e) {
             LOGGER.error("Failed to broadcast OSH scan failure for scan ID {}: {}", oshScanId, e.getMessage(), e);
         }

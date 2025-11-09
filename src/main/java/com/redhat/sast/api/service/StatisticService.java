@@ -1,8 +1,6 @@
 package com.redhat.sast.api.service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.concurrent.atomic.AtomicReference;
 
 import com.redhat.sast.api.enums.BatchStatus;
 import com.redhat.sast.api.enums.JobStatus;
@@ -23,55 +21,19 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class StatisticService {
 
-    private static final long CACHE_TTL_SECONDS = 30; // Cache for 30 seconds
     private static final String STATUS_FIELD = "status";
 
     private final JobRepository jobRepository;
     private final JobBatchRepository jobBatchRepository;
     private final OshUncollectedScanRepository oshUncollectedScanRepository;
 
-    private final AtomicReference<CachedSummary> cachedSummary = new AtomicReference<>();
-
     /**
-     * Internal record for cache entry with expiration.
-     */
-    private record CachedSummary(DashboardSummaryDto summary, LocalDateTime cachedAt) {
-        public boolean isExpired() {
-            return LocalDateTime.now().isAfter(cachedAt.plusSeconds(CACHE_TTL_SECONDS));
-        }
-
-        public long getAgeSeconds() {
-            return Duration.between(cachedAt, LocalDateTime.now()).getSeconds();
-        }
-    }
-
-    /**
-     * Gets dashboard summary statistics with caching.
+     * Gets dashboard summary statistics.
      *
      * @return aggregated dashboard statistics
      */
     public DashboardSummaryDto getSummary() {
-        CachedSummary cached = cachedSummary.get();
-
-        if (cached != null && !cached.isExpired()) {
-            LOGGER.debug("Returning cached dashboard summary (age: {} seconds)", cached.getAgeSeconds());
-            return cached.summary;
-        }
-
-        DashboardSummaryDto summary = calculateSummary();
-
-        cachedSummary.set(new CachedSummary(summary, LocalDateTime.now()));
-
-        LOGGER.debug("Calculated and cached new dashboard summary");
-        return summary;
-    }
-
-    /**
-     * Invalidates the cache, forcing next request to recalculate.
-     */
-    public void invalidateCache() {
-        cachedSummary.set(null);
-        LOGGER.debug("Dashboard summary cache invalidated");
+        return calculateSummary();
     }
 
     private DashboardSummaryDto calculateSummary() {

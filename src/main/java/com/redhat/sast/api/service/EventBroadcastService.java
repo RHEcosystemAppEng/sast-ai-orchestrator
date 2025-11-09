@@ -5,6 +5,7 @@ import java.util.Map;
 import com.redhat.sast.api.mapper.JobMapper;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobBatch;
+import com.redhat.sast.api.v1.dto.WSMessage;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 import com.redhat.sast.api.v1.resource.WebSocketResource;
 
@@ -34,7 +35,7 @@ public class EventBroadcastService {
     public void broadcastJobStatusChange(Job job) {
         try {
             JobResponseDto jobDto = JobMapper.INSTANCE.jobToJobResponseDto(job);
-            var message = new WebSocketResource.WebSocketMessage("job_status_change", jobDto);
+            var message = new WSMessage("job_status_change", jobDto);
             webSocketResource.broadcast(message);
 
             statisticService.invalidateCache();
@@ -51,7 +52,7 @@ public class EventBroadcastService {
      */
     public void broadcastBatchProgress(JobBatch jobBatch) {
         try {
-            var message = new WebSocketResource.WebSocketMessage("batch_progress", jobBatch);
+            var message = new WSMessage("batch_progress", jobBatch);
             webSocketResource.broadcast(message);
 
             statisticService.invalidateCache();
@@ -69,7 +70,7 @@ public class EventBroadcastService {
     public void broadcastOshScanCollected(Job job) {
         try {
             JobResponseDto jobDto = JobMapper.INSTANCE.jobToJobResponseDto(job);
-            var message = new WebSocketResource.WebSocketMessage("osh_scan_collected", Map.of("job", jobDto));
+            var message = new WSMessage("osh_scan_collected", Map.of("job", jobDto));
             webSocketResource.broadcast(message);
 
             statisticService.invalidateCache();
@@ -88,7 +89,7 @@ public class EventBroadcastService {
      */
     public void broadcastOshScanFailed(String oshScanId, String failureReason, Integer retryAttempts) {
         try {
-            var message = new WebSocketResource.WebSocketMessage(
+            var message = new WSMessage(
                     "osh_scan_failed",
                     Map.of("oshScanId", oshScanId, "failureReason", failureReason, "retryAttempts", retryAttempts));
             webSocketResource.broadcast(message);

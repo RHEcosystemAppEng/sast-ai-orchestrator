@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.redhat.sast.api.v1.dto.WSMessage;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.websocket.OnClose;
@@ -51,11 +52,11 @@ public class WebSocketResource {
     public void onMessage(String message, Session session) {
 
         if ("ping".equals(message)) {
-            sendTestReply(session, new WebSocketMessage("pong", Map.of("timestamp", System.currentTimeMillis())));
+            sendTestReply(session, new WSMessage("pong", Map.of("timestamp", System.currentTimeMillis())));
         }
     }
 
-    public void broadcast(WebSocketMessage message) {
+    public void broadcast(WSMessage message) {
         String json;
         try {
             json = objectMapper.writeValueAsString(message);
@@ -75,7 +76,7 @@ public class WebSocketResource {
         });
     }
 
-    private void sendTestReply(Session session, WebSocketMessage message) {
+    private void sendTestReply(Session session, WSMessage message) {
         try {
             String json = objectMapper.writeValueAsString(message);
             session.getAsyncRemote().sendText(json);
@@ -83,6 +84,4 @@ public class WebSocketResource {
             LOGGER.error("Failed to send to test reply {}: {}", session.getId(), e.getMessage());
         }
     }
-
-    public static record WebSocketMessage(String type, Object data) {}
 }

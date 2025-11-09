@@ -45,43 +45,50 @@ public class OshQueryService {
      * @return list of OSH scans with associated job and retry information
      */
     public List<OshScanStatusDto> getAllScans(Integer page, Integer size, String status) {
+        page = (page != null && page >= 0) ? page : 0;
+        size = (size != null && size > 0) ? size : DEFAULT_PAGE_SIZE;
+
         List<OshScanStatusDto> results = new ArrayList<>();
 
         boolean includeCollected = (status == null || STATUS_COLLECTED.equals(status));
         boolean includeUncollected = (status == null || STATUS_UNCOLLECTED.equals(status));
 
         if (includeCollected) {
-            List<OshScanStatusDto> collectedScans = getCollectedScans();
+            List<OshScanStatusDto> collectedScans = getCollectedScans(page, size);
             results.addAll(collectedScans);
         }
 
         if (includeUncollected) {
-            List<OshScanStatusDto> uncollectedScans = getUncollectedScans();
+            List<OshScanStatusDto> uncollectedScans = getUncollectedScans(page, size);
             results.addAll(uncollectedScans);
         }
 
-        return applyPagination(results, page, size);
+        return results;
     }
 
     /**
-     * Gets collected OSH scans (jobs with oshScanId).
+     * Gets collected OSH scans (jobs with oshScanId) with database-level pagination.
      */
-    private List<OshScanStatusDto> getCollectedScans() {
+    private List<OshScanStatusDto> getCollectedScans(int page, int size) {
         List<Job> jobsWithOshScanId = jobRepository
                 .getEntityManager()
                 .createQuery("SELECT j FROM Job j WHERE j.oshScanId IS NOT NULL ORDER BY j.createdAt DESC", Job.class)
+                .setFirstResult(page * size)
+                .setMaxResults(size)
                 .getResultList();
 
         return jobsWithOshScanId.stream().map(this::convertJobToScanDto).toList();
     }
 
     /**
-     * Gets uncollected OSH scans (retry queue).
+     * Gets uncollected OSH scans (retry queue) with database-level pagination.
      */
-    private List<OshScanStatusDto> getUncollectedScans() {
+    private List<OshScanStatusDto> getUncollectedScans(int page, int size) {
         List<OshUncollectedScan> uncollectedScans = uncollectedScanRepository
                 .getEntityManager()
                 .createQuery("SELECT u FROM OshUncollectedScan u ORDER BY u.createdAt DESC", OshUncollectedScan.class)
+                .setFirstResult(page * size)
+                .setMaxResults(size)
                 .getResultList();
 
         return uncollectedScans.stream().map(this::convertUncollectedScanToDto).toList();
@@ -122,25 +129,5 @@ public class OshQueryService {
 
         dto.setProcessedAt(uncollectedScan.getCreatedAt());
         return dto;
-    }
-
-    /**
-     * Applies pagination to the combined results list.
-     */
-    private List<OshScanStatusDto> applyPagination(List<OshScanStatusDto> results, Integer page, Integer size) {
-        if (page == null || page < 0) {
-            page = 0;
-        }
-        if (size == null || size <= 0) {
-            size = DEFAULT_PAGE_SIZE;
-        }
-
-        int startIndex = page * size;
-        if (startIndex >= results.size()) {
-            return List.of();
-        }
-
-        int endIndex = Math.min(startIndex + size, results.size());
-        return results.subList(startIndex, endIndex);
     }
 }

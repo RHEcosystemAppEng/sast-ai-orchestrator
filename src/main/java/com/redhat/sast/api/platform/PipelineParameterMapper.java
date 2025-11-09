@@ -86,9 +86,7 @@ public class PipelineParameterMapper {
 
         params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
 
-        params.add(createParam(
-                PARAM_AGGREGATE_RESULTS_G_SHEET,
-                job.getAggregateResultsGSheet() != null ? job.getAggregateResultsGSheet() : ""));
+        params.add(createParam(PARAM_AGGREGATE_RESULTS_G_SHEET, job.getAggregateResultsGSheet()));
     }
 
     /**

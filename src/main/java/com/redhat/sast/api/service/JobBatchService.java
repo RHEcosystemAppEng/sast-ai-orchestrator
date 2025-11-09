@@ -103,8 +103,7 @@ public class JobBatchService {
 
             jobDtos.forEach(dto -> {
                 dto.setSubmittedBy(submittedBy);
-                if (aggregateResultsGSheet != null
-                        && !aggregateResultsGSheet.trim().isEmpty()) {
+                if (aggregateResultsGSheet != null && !aggregateResultsGSheet.isBlank()) {
                     dto.setAggregateResultsGSheet(aggregateResultsGSheet);
                 }
             });

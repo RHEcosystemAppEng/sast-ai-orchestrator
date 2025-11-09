@@ -121,11 +121,7 @@ public class JobService {
         jobRepository.persist(job);
         LOGGER.debug("Updated job ID {} status from {} to {}", jobId, currentStatus, newStatus);
 
-        try {
-            eventBroadcastService.broadcastJobStatusChange(job);
-        } catch (Exception e) {
-            LOGGER.warn("Failed to broadcast job status change for job ID {}: {}", jobId, e.getMessage());
-        }
+        eventBroadcastService.broadcastJobStatusChange(job);
     }
 
     @Transactional

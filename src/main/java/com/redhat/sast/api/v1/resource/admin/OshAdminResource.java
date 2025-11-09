@@ -111,12 +111,6 @@ public class OshAdminResource {
 
             List<OshScanStatusDto> scans = oshQueryService.getAllScans(page, size, status);
 
-            LOGGER.debug(
-                    "OSH scans requested via admin endpoint (page: {}, size: {}, status: {})",
-                    page,
-                    size,
-                    status != null ? status : "all");
-
             return Response.ok(scans).build();
 
         } catch (jakarta.persistence.PersistenceException e) {

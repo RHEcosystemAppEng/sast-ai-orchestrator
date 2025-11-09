@@ -364,7 +364,7 @@ public class JobBatchService {
                 jobBatchRepository.persist(batch);
                 LOGGER.info("Updated batch {} final status: {}", batchId, status);
 
-                safeBroadcastBatchProgress(batch, batchId);
+                eventBroadcastService.broadcastBatchProgress(batch);
             }
         } catch (Exception e) {
             LOGGER.error("Failed to update batch status for batch {}", batchId, e);
@@ -414,21 +414,7 @@ public class JobBatchService {
             batch.setFailedJobs(failedJobs);
             jobBatchRepository.persist(batch);
 
-            safeBroadcastBatchProgress(batch, batchId);
-        }
-    }
-
-    /**
-     * Safely broadcasts batch progress, catching and logging any errors.
-     *
-     * @param batch the batch with updated progress
-     * @param batchId the batch ID for logging purposes
-     */
-    private void safeBroadcastBatchProgress(JobBatch batch, Long batchId) {
-        try {
             eventBroadcastService.broadcastBatchProgress(batch);
-        } catch (Exception e) {
-            LOGGER.warn("Failed to broadcast batch progress for batch ID {}: {}", batchId, e.getMessage());
         }
     }
 

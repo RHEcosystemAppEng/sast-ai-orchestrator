@@ -61,9 +61,6 @@ public class StatisticService {
         LOGGER.debug("Dashboard summary cache invalidated");
     }
 
-    /**
-     * Calculates dashboard summary by executing database queries.
-     */
     private DashboardSummaryDto calculateSummary() {
         DashboardSummaryDto dto = new DashboardSummaryDto();
 

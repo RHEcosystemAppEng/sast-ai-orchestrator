@@ -87,26 +87,13 @@ public class OshJobCreationService {
                     packageNvr,
                     oshReportUrl);
 
-            safeBroadcastOshScanCollected(job);
+            eventBroadcastService.broadcastOshScanCollected(job);
 
             return Optional.of(job);
 
         } catch (Exception e) {
             LOGGER.error("Failed to create job from OSH scan {}: {}", scanId, e.getMessage(), e);
             return Optional.empty();
-        }
-    }
-
-    /**
-     * Safely broadcasts OSH scan collection, catching and logging any errors.
-     *
-     * @param job the newly created job from the collected OSH scan
-     */
-    private void safeBroadcastOshScanCollected(Job job) {
-        try {
-            eventBroadcastService.broadcastOshScanCollected(job);
-        } catch (Exception e) {
-            LOGGER.warn("Failed to broadcast OSH scan collection for job ID {}: {}", job.getId(), e.getMessage());
         }
     }
 

@@ -34,13 +34,11 @@ public class WebSocketResource {
     @OnOpen
     public void onOpen(Session session) {
         sessions.put(session.getId(), session);
-        LOGGER.debug("Dashboard WebSocket connected: {} (total: {})", session.getId(), sessions.size());
     }
 
     @OnClose
     public void onClose(Session session) {
         sessions.remove(session.getId());
-        LOGGER.debug("Dashboard WebSocket disconnected: {} (remaining: {})", session.getId(), sessions.size());
     }
 
     @OnError
@@ -51,16 +49,12 @@ public class WebSocketResource {
 
     @OnMessage
     public void onMessage(String message, Session session) {
-        LOGGER.debug("Received message from {}: {}", session.getId(), message);
 
         if ("ping".equals(message)) {
             sendTestReply(session, new WebSocketMessage("pong", Map.of("timestamp", System.currentTimeMillis())));
         }
     }
 
-    /**
-     * Broadcast message to all connected dashboard clients.
-     */
     public void broadcast(WebSocketMessage message) {
         String json;
         try {
@@ -79,8 +73,6 @@ public class WebSocketResource {
                 }
             }
         });
-
-        LOGGER.debug("Broadcasted {} to {} clients", message.type(), sessions.size());
     }
 
     private void sendTestReply(Session session, WebSocketMessage message) {
@@ -90,10 +82,6 @@ public class WebSocketResource {
         } catch (Exception e) {
             LOGGER.error("Failed to send to test reply {}: {}", session.getId(), e.getMessage());
         }
-    }
-
-    public int getActiveConnectionCount() {
-        return sessions.size();
     }
 
     public static record WebSocketMessage(String type, Object data) {}

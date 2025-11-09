@@ -172,12 +172,7 @@ public class OshScheduler {
             OshFailureReason failureReason = classifyFailure(e);
             oshRetryService.recordFailedScan(scan, failureReason, e.getMessage());
 
-            try {
-                eventBroadcastService.broadcastOshScanFailed(String.valueOf(scan.getScanId()), failureReason.name(), 1);
-            } catch (Exception ex) {
-                LOGGER.warn(
-                        "Failed to broadcast OSH scan failure for scan ID {}: {}", scan.getScanId(), ex.getMessage());
-            }
+            eventBroadcastService.broadcastOshScanFailed(String.valueOf(scan.getScanId()), failureReason.name(), 1);
 
             return ProcessingResult.FAILED;
         }

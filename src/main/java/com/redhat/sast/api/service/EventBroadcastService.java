@@ -5,7 +5,6 @@ import java.util.Map;
 import com.redhat.sast.api.mapper.JobMapper;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobBatch;
-import com.redhat.sast.api.v1.dto.response.DashboardSummaryDto;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 import com.redhat.sast.api.v1.resource.WebSocketResource;
 
@@ -38,8 +37,6 @@ public class EventBroadcastService {
             var message = new WebSocketResource.WebSocketMessage("job_status_change", jobDto);
             webSocketResource.broadcast(message);
 
-            LOGGER.debug("Broadcasted job status change for job ID: {} (status: {})", job.getId(), job.getStatus());
-
             statisticService.invalidateCache();
 
         } catch (Exception e) {
@@ -57,34 +54,10 @@ public class EventBroadcastService {
             var message = new WebSocketResource.WebSocketMessage("batch_progress", jobBatch);
             webSocketResource.broadcast(message);
 
-            LOGGER.debug(
-                    "Broadcasted batch progress for batch ID: {} (completed: {}/{})",
-                    jobBatch.getId(),
-                    jobBatch.getCompletedJobs(),
-                    jobBatch.getTotalJobs());
-
             statisticService.invalidateCache();
 
         } catch (Exception e) {
             LOGGER.error("Failed to broadcast batch progress for batch ID {}: {}", jobBatch.getId(), e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Broadcasts dashboard summary update to all connected clients.
-     */
-    public void broadcastSummaryUpdate() {
-        try {
-            statisticService.invalidateCache();
-            DashboardSummaryDto summary = statisticService.getSummary();
-
-            var message = new WebSocketResource.WebSocketMessage("summary_update", summary);
-            webSocketResource.broadcast(message);
-
-            LOGGER.debug("Broadcasted dashboard summary update");
-
-        } catch (Exception e) {
-            LOGGER.error("Failed to broadcast dashboard summary update: {}", e.getMessage(), e);
         }
     }
 
@@ -98,11 +71,6 @@ public class EventBroadcastService {
             JobResponseDto jobDto = JobMapper.INSTANCE.jobToJobResponseDto(job);
             var message = new WebSocketResource.WebSocketMessage("osh_scan_collected", Map.of("job", jobDto));
             webSocketResource.broadcast(message);
-
-            LOGGER.debug(
-                    "Broadcasted OSH scan collection success for job ID: {} (OSH scan ID: {})",
-                    job.getId(),
-                    job.getOshScanId());
 
             statisticService.invalidateCache();
 
@@ -125,25 +93,10 @@ public class EventBroadcastService {
                     Map.of("oshScanId", oshScanId, "failureReason", failureReason, "retryAttempts", retryAttempts));
             webSocketResource.broadcast(message);
 
-            LOGGER.debug(
-                    "Broadcasted OSH scan failure for scan ID: {} (reason: {}, attempts: {})",
-                    oshScanId,
-                    failureReason,
-                    retryAttempts);
-
             statisticService.invalidateCache();
 
         } catch (Exception e) {
             LOGGER.error("Failed to broadcast OSH scan failure for scan ID {}: {}", oshScanId, e.getMessage(), e);
         }
-    }
-
-    /**
-     * Gets the current number of active WebSocket connections.
-     *
-     * @return number of active connections
-     */
-    public int getActiveConnectionCount() {
-        return webSocketResource.getActiveConnectionCount();
     }
 }

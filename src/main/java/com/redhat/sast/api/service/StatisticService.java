@@ -14,7 +14,6 @@ import com.redhat.sast.api.repository.JobBatchRepository;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.repository.OshUncollectedScanRepository;
 import com.redhat.sast.api.v1.dto.response.DashboardSummaryDto;
-import com.redhat.sast.api.v1.dto.response.OshRetryInfoDto;
 import com.redhat.sast.api.v1.dto.response.OshScanStatusDto;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -143,7 +142,7 @@ public class StatisticService {
         dto.setStatus(STATUS_UNCOLLECTED);
         dto.setAssociatedJob(null);
 
-        OshRetryInfoDto retryInfo = new OshRetryInfoDto();
+        OshScanStatusDto.OshRetryInfoDto retryInfo = new OshScanStatusDto.OshRetryInfoDto();
         retryInfo.setRetryAttempts(uncollectedScan.getAttemptCount());
         retryInfo.setMaxRetries(oshConfiguration.hasRetryLimit() ? oshConfiguration.getRetryMaxAttempts() : -1);
         retryInfo.setFailureReason(uncollectedScan.getFailureReason().name());

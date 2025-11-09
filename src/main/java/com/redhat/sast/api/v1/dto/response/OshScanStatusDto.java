@@ -59,4 +59,27 @@ public class OshScanStatusDto {
      */
     @JsonProperty("processedAt")
     private LocalDateTime processedAt;
+
+    /**
+     * DTO representing retry information for an OSH scan.
+     *
+     * Contains details about retry attempts, failure reasons, and timing.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OshRetryInfoDto {
+
+        @JsonProperty("retryAttempts")
+        private Integer retryAttempts;
+
+        @JsonProperty("maxRetries")
+        private Integer maxRetries;
+
+        @JsonProperty("failureReason")
+        private String failureReason;
+
+        @JsonProperty("lastAttemptAt")
+        private LocalDateTime lastAttemptAt;
+    }
 }

@@ -205,6 +205,12 @@ public class OshScheduler {
                     e);
             OshFailureReason failureReason = classifyFailure(e);
             oshRetryService.recordRetryAttempt(uncollectedScan.getId(), failureReason, e.getMessage());
+
+            eventBroadcastService.broadcastOshScanFailed(
+                    String.valueOf(uncollectedScan.getOshScanId()),
+                    failureReason.name(),
+                    uncollectedScan.getAttemptCount() + 1);
+
             return ProcessingResult.FAILED;
         }
     }
@@ -229,6 +235,10 @@ public class OshScheduler {
                     e);
             OshFailureReason failureReason = classifyFailure(e);
             oshRetryService.recordRetryAttempt(uncollectedScan.getId(), failureReason, e.getMessage());
+
+            eventBroadcastService.broadcastOshScanFailed(
+                    String.valueOf(scan.getScanId()), failureReason.name(), uncollectedScan.getAttemptCount() + 1);
+
             return ProcessingResult.FAILED;
         }
     }

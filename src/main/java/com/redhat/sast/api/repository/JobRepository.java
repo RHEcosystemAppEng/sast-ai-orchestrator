@@ -72,4 +72,15 @@ public class JobRepository implements PanacheRepository<Job> {
                 .page(Page.of(page, size))
                 .list();
     }
+
+    /**
+     * Counts jobs that have an associated OSH scan ID (collected scans).
+     *
+     * @return number of jobs with non-null oshScanId
+     */
+    public long countJobsWithOshScanId() {
+        return getEntityManager()
+                .createQuery("SELECT COUNT(j) FROM Job j WHERE j.oshScanId IS NOT NULL", Long.class)
+                .getSingleResult();
+    }
 }

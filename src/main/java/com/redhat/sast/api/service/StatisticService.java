@@ -65,7 +65,7 @@ public class StatisticService {
         dto.setCompletedBatches(jobBatchRepository.count(STATUS_FIELD, BatchStatus.COMPLETED));
 
         // OSH scan statistics
-        long collectedOshScans = countJobsWithOshScanId();
+        long collectedOshScans = jobRepository.countJobsWithOshScanId();
         long uncollectedOshScans = oshUncollectedScanRepository.count();
 
         dto.setCollectedOshScans(collectedOshScans);
@@ -75,16 +75,6 @@ public class StatisticService {
         dto.setTimestamp(LocalDateTime.now());
 
         return dto;
-    }
-
-    /**
-     * Counts jobs that have an associated OSH scan ID (collected scans).
-     */
-    private long countJobsWithOshScanId() {
-        return jobRepository
-                .getEntityManager()
-                .createQuery("SELECT COUNT(j) FROM Job j WHERE j.oshScanId IS NOT NULL", Long.class)
-                .getSingleResult();
     }
 
     /**

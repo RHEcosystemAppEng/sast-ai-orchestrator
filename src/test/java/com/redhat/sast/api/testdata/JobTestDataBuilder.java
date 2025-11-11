@@ -8,6 +8,7 @@ public class JobTestDataBuilder {
     private String inputSourceUrl =
             "https://docs.google.com/spreadsheets/d/1Emi-AtukrJ53rVKDsll3ZNdExykkZoX7HlLzZX1tHJ4/edit?usp=sharing";
     private Boolean useKnownFalsePositiveFile = false;
+    private String aggregateResultsGSheet = null;
 
     public static JobTestDataBuilder aJob() {
         return new JobTestDataBuilder();
@@ -28,9 +29,15 @@ public class JobTestDataBuilder {
         return this;
     }
 
+    public JobTestDataBuilder withAggregateResultsGSheet(String aggregateResultsGSheet) {
+        this.aggregateResultsGSheet = aggregateResultsGSheet;
+        return this;
+    }
+
     public JobCreationDto build() {
         JobCreationDto dto = new JobCreationDto(packageNvr, inputSourceUrl);
         dto.setUseKnownFalsePositiveFile(useKnownFalsePositiveFile);
+        dto.setAggregateResultsGSheet(aggregateResultsGSheet);
         return dto;
     }
 

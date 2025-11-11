@@ -28,6 +28,9 @@ public class JobCreationDto {
     @JsonProperty("oshScanId")
     private String oshScanId;
 
+    @JsonProperty("aggregateResultsGSheet")
+    private String aggregateResultsGSheet;
+
     /**
      * Constructor for URL-based input sources (Google Sheets, SARIF, OSH URLs).
      *

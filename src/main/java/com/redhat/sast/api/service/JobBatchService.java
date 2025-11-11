@@ -61,7 +61,8 @@ public class JobBatchService {
                 batch.getId(),
                 batch.getBatchGoogleSheetUrl(),
                 batch.getUseKnownFalsePositiveFile(),
-                batch.getSubmittedBy()));
+                batch.getSubmittedBy(),
+                batch.getAggregateResultsGSheet()));
 
         return response;
     }
@@ -73,6 +74,7 @@ public class JobBatchService {
         // Set submittedBy with default value "unknown" if not provided
         batch.setSubmittedBy(submissionDto.getSubmittedBy() != null ? submissionDto.getSubmittedBy() : "unknown");
         batch.setUseKnownFalsePositiveFile(submissionDto.getUseKnownFalsePositiveFile());
+        batch.setAggregateResultsGSheet(submissionDto.getAggregateResultsGSheet());
         batch.setStatus(BatchStatus.PROCESSING);
 
         jobBatchRepository.persist(batch);
@@ -90,7 +92,8 @@ public class JobBatchService {
             @Nonnull Long batchId,
             @Nonnull String batchGoogleSheetUrl,
             Boolean useKnownFalsePositiveFile,
-            String submittedBy) {
+            String submittedBy,
+            String aggregateResultsGSheet) {
         try {
             List<JobCreationDto> jobDtos = fetchAndParseJobsFromSheet(batchGoogleSheetUrl, useKnownFalsePositiveFile);
 
@@ -99,7 +102,12 @@ public class JobBatchService {
                 return;
             }
 
-            jobDtos.forEach(dto -> dto.setSubmittedBy(submittedBy));
+            jobDtos.forEach(dto -> {
+                dto.setSubmittedBy(submittedBy);
+                if (aggregateResultsGSheet != null && !aggregateResultsGSheet.isBlank()) {
+                    dto.setAggregateResultsGSheet(aggregateResultsGSheet);
+                }
+            });
 
             updateBatchTotalJobs(batchId, jobDtos.size());
             LOGGER.debug(

@@ -22,6 +22,9 @@ public class JobBatchSubmissionDto {
     @JsonProperty("useKnownFalsePositiveFile")
     private Boolean useKnownFalsePositiveFile;
 
+    @JsonProperty("aggregateResultsGSheet")
+    private String aggregateResultsGSheet;
+
     public JobBatchSubmissionDto(String batchGoogleSheetUrl, String submittedBy) {
         this.batchGoogleSheetUrl = batchGoogleSheetUrl;
         this.submittedBy = submittedBy;

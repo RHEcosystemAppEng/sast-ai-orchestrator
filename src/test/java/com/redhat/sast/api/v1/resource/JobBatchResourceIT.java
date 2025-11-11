@@ -179,4 +179,25 @@ class JobBatchResourceIT {
                         equalTo(
                                 "https://docs.google.com/spreadsheets/d/1wrIcIhC7F9uVf8fm0IlvGTO-dSV9t_maLx36OoRI7S0/edit?usp=sharing"));
     }
+
+    @Test
+    @DisplayName("Should submit a batch with aggregate results Google Sheet URL")
+    void shouldSubmitBatchWithAggregateResultsGSheet() {
+        JobBatchSubmissionDto batchRequest = JobBatchTestDataBuilder.aBatch()
+                .withBatchGoogleSheetUrl(
+                        "https://docs.google.com/spreadsheets/d/1GcJg8aHfpEGxrPbb2gYD-CadwoxAWEB91Er5q0RpOuE/edit?usp=sharing")
+                .withAggregateResultsGSheet(
+                        "https://docs.google.com/spreadsheets/d/1B71aAzMlFIZihQOiObXXyfzLV04lqEHriT1bYZMQrtQ/edit?usp=sharing")
+                .withSubmittedBy("aggregate-test-user")
+                .build();
+
+        given().contentType(ContentType.JSON)
+                .body(batchRequest)
+                .when()
+                .post("/api/v1/job-batches")
+                .then()
+                .statusCode(201)
+                .body("batchId", notNullValue())
+                .body("submittedBy", equalTo("aggregate-test-user"));
+    }
 }

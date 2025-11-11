@@ -169,8 +169,9 @@ public class JobService {
         // Handle different input source types based on DTO content
         configureInputSource(job, jobCreationDto);
 
-        // Set submittedBy with default value "unknown" if not provided
         job.setSubmittedBy(jobCreationDto.getSubmittedBy() != null ? jobCreationDto.getSubmittedBy() : "unknown");
+
+        job.setAggregateResultsGSheet(jobCreationDto.getAggregateResultsGSheet());
 
         job.setStatus(JobStatus.PENDING);
         return job;

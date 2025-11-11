@@ -51,16 +51,23 @@ public class DvcService {
         }
         Set<String> nvrSet = new HashSet<>();
 
-        if (object instanceof Map) {
-            // YAML has a map structure, find list of strings
-            Map<String, List<String>> map = (Map<String, List<String>>) object;
-            for (List<String> stringList : map.values()) {
-                nvrSet.addAll(stringList);
+        try {
+            if (object instanceof Map) {
+                // YAML has a map structure, find list of strings
+                Map<String, List<String>> map = (Map<String, List<String>>) object;
+                for (List<String> stringList : map.values()) {
+                    nvrSet.addAll(stringList);
+                }
+            } else if (object instanceof List) {
+                // YAML is just a list of NVRs
+                List<String> list = (List<String>) object;
+                nvrSet.addAll(list);
             }
-        } else if (object instanceof List) {
-            // YAML is just a list of NVRs
-            List<String> list = (List<String>) object;
-            nvrSet.addAll(list);
+        } catch (RuntimeException e) {
+            throw new DvcException(
+                    "Unexpected data type while parsing YAML for version " + version
+                            + " (expected Map<String, List<String>> or List<String>)",
+                    e);
         }
         if (nvrSet.isEmpty()) {
             LOGGER.warn("No NVRs found in YAML for DVC version {}", version);

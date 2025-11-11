@@ -86,7 +86,9 @@ ENV LANGUAGE='en_US:en'
 USER 0
 RUN microdnf install -y python3 python3-pip git && \
     pip3 install --no-cache-dir dvc dvc-s3 && \
-    microdnf clean all
+    microdnf clean all && \
+    chown 185:185 /usr/local/bin/dvc && \
+    chmod 700 /usr/local/bin/dvc
 USER 185
 
 # We make four distinct layers so if there are application changes the library layers can be re-used

@@ -77,7 +77,10 @@ public class EventBroadcastService {
         try {
             var message = new WSMessage(
                     "osh_scan_failed",
-                    Map.of("oshScanId", oshScanId, "failureReason", failureReason, "retryAttempts", retryAttempts));
+                    Map.of(
+                            "oshScanId", oshScanId,
+                            "failureReason", failureReason,
+                            "retryAttempts", retryAttempts));
             WebSocketResource.broadcast(message);
         } catch (Exception e) {
             LOGGER.error("Failed to broadcast OSH scan failure for scan ID {}: {}", oshScanId, e.getMessage(), e);

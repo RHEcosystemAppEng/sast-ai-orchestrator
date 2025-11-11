@@ -174,4 +174,18 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
         }
         return count(OSH_SCAN_ID_FIELD, oshScanId) > 0;
     }
+
+    /**
+     * Finds all uncollected scans with pagination.
+     * Results are ordered by creation time descending (newest first).
+     *
+     * @param page page number (0-indexed)
+     * @param size page size
+     * @return list of uncollected scans
+     */
+    public List<OshUncollectedScan> findAllWithPagination(int page, int size) {
+        return find("ORDER BY createdAt DESC")
+                .page(io.quarkus.panache.common.Page.of(page, size))
+                .list();
+    }
 }

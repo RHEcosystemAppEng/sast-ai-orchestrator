@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
  */
 @Data
 @NoArgsConstructor
-public class OshScan {
+public class OshScanDto {
 
     /**
      * OSH scan ID - sequential integer (e.g., 1001, 1002, 1003...)
@@ -95,7 +95,7 @@ public class OshScan {
      * @param scanId the OSH scan ID
      * @param state the scan state (CLOSED, OPEN, FAILED)
      */
-    public OshScan(Integer scanId, String state) {
+    public OshScanDto(Integer scanId, String state) {
         this.scanId = scanId;
         this.state = state;
     }

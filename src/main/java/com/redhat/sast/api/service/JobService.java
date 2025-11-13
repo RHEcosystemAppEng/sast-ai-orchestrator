@@ -37,6 +37,7 @@ public class JobService {
     private final ManagedExecutor managedExecutor;
     private final NvrResolutionService nvrResolutionService;
     private final PipelineParameterMapper parameterMapper;
+    private final EventBroadcastService eventBroadcastService;
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
         final Job job = createJobEntity(jobCreationDto);
@@ -118,6 +119,8 @@ public class JobService {
 
         jobRepository.persist(job);
         LOGGER.debug("Updated job ID {} status from {} to {}", jobId, currentStatus, newStatus);
+
+        eventBroadcastService.broadcastJobStatusChange(job);
     }
 
     @Transactional
@@ -168,8 +171,9 @@ public class JobService {
         // Handle different input source types based on DTO content
         configureInputSource(job, jobCreationDto);
 
-        // Set submittedBy with default value "unknown" if not provided
         job.setSubmittedBy(jobCreationDto.getSubmittedBy() != null ? jobCreationDto.getSubmittedBy() : "unknown");
+
+        job.setAggregateResultsGSheet(jobCreationDto.getAggregateResultsGSheet());
 
         job.setStatus(JobStatus.PENDING);
         return job;

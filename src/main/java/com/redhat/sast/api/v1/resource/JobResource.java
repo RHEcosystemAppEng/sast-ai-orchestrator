@@ -5,7 +5,9 @@ import java.util.Locale;
 
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.service.JobService;
+import com.redhat.sast.api.service.StatisticService;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
+import com.redhat.sast.api.v1.dto.response.JobActivityDataPointDto;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 
 import jakarta.inject.Inject;
@@ -21,6 +23,9 @@ public class JobResource {
 
     @Inject
     JobService jobService;
+
+    @Inject
+    StatisticService statisticService;
 
     @POST
     @Consumes(MediaType.MULTIPART_FORM_DATA)
@@ -116,6 +121,19 @@ public class JobResource {
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("Error cancelling job: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/activity/24h")
+    public Response getJobActivity24h() {
+        try {
+            List<JobActivityDataPointDto> activity = statisticService.getJobActivity24h();
+            return Response.ok(activity).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Error retrieving job activity: " + e.getMessage())
                     .build();
         }
     }

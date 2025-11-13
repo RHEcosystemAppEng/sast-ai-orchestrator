@@ -14,6 +14,7 @@ import com.redhat.sast.api.repository.JobBatchRepository;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.repository.OshUncollectedScanRepository;
 import com.redhat.sast.api.v1.dto.response.DashboardSummaryDto;
+import com.redhat.sast.api.v1.dto.response.JobActivityDataPointDto;
 import com.redhat.sast.api.v1.dto.response.OshScanStatusDto;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -151,5 +152,33 @@ public class StatisticService {
 
         dto.setProcessedAt(uncollectedScan.getCreatedAt());
         return dto;
+    }
+
+    /**
+     * Gets job activity statistics for the last 24 hours.
+     * Returns hourly data points showing job counts by status.
+     *
+     * @return list of 24 hourly data points with job counts
+     */
+    public List<JobActivityDataPointDto> getJobActivity24h() {
+        List<JobActivityDataPointDto> dataPoints = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (int i = 23; i >= 0; i--) {
+            LocalDateTime hourStart =
+                    now.minusHours(i).withMinute(0).withSecond(0).withNano(0);
+            LocalDateTime hourEnd = hourStart.plusHours(1);
+
+            JobActivityDataPointDto dataPoint = new JobActivityDataPointDto();
+            dataPoint.setTimestamp(hourStart.toString());
+            dataPoint.setRunning(jobRepository.countByStatusInTimeWindow(JobStatus.RUNNING, hourStart, hourEnd));
+            dataPoint.setPending(jobRepository.countByStatusInTimeWindow(JobStatus.PENDING, hourStart, hourEnd));
+            dataPoint.setCompleted(jobRepository.countByStatusInTimeWindow(JobStatus.COMPLETED, hourStart, hourEnd));
+            dataPoint.setFailed(jobRepository.countByStatusInTimeWindow(JobStatus.FAILED, hourStart, hourEnd));
+
+            dataPoints.add(dataPoint);
+        }
+
+        return dataPoints;
     }
 }

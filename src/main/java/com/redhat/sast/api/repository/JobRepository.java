@@ -83,4 +83,15 @@ public class JobRepository implements PanacheRepository<Job> {
                 .createQuery("SELECT COUNT(j) FROM Job j WHERE j.oshScanId IS NOT NULL", Long.class)
                 .getSingleResult();
     }
+
+    /**
+     * @param status the job status to count
+     * @param startTime the start of the time window
+     * @param endTime the end of the time window
+     * @return count of jobs with the given status in the time window
+     */
+    public long countByStatusInTimeWindow(
+            JobStatus status, java.time.LocalDateTime startTime, java.time.LocalDateTime endTime) {
+        return count("status = ?1 AND createdAt >= ?2 AND createdAt < ?3", status, startTime, endTime);
+    }
 }

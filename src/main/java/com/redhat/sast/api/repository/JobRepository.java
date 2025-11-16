@@ -8,6 +8,7 @@ import com.redhat.sast.api.model.Job;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import io.quarkus.panache.common.Page;
+import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
@@ -26,16 +27,17 @@ public class JobRepository implements PanacheRepository<Job> {
     }
 
     public List<Job> findJobsWithPagination(String packageName, JobStatus status, Page page) {
+        Sort sort = Sort.by("createdAt").descending();
         if (packageName != null && status != null) {
-            return find("packageName = ?1 and status = ?2", packageName, status)
+            return find("packageName = ?1 and status = ?2", sort, packageName, status)
                     .page(page)
                     .list();
         } else if (packageName != null) {
-            return find("packageName = ?1", packageName).page(page).list();
+            return find("packageName = ?1", sort, packageName).page(page).list();
         } else if (status != null) {
-            return find("status = ?1", status).page(page).list();
+            return find("status = ?1", sort, status).page(page).list();
         } else {
-            return findAll().page(page).list();
+            return findAll(sort).page(page).list();
         }
     }
 

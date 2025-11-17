@@ -76,7 +76,7 @@ public class OshClientService {
         return oshScanList;
     }
 
-    private Optional<OshScanDto> fetchOshScanData(int oshScanId) {
+    public Optional<OshScanDto> fetchOshScanData(int oshScanId) {
         try (var httpResp = oshClient.fetchScanDetailsRaw(oshScanId)) {
             switch (httpResp.getStatus()) {
                 case 200 -> {

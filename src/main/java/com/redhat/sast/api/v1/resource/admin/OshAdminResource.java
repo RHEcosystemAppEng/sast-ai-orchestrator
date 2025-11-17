@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.service.StatisticService;
+import com.redhat.sast.api.service.osh.OshClientService;
 import com.redhat.sast.api.service.osh.OshRetryService;
 import com.redhat.sast.api.startup.OshScheduler;
 import com.redhat.sast.api.v1.dto.response.OshScanStatusDto;
@@ -54,6 +55,9 @@ public class OshAdminResource {
 
     @Inject
     StatisticService statisticService;
+
+    @Inject
+    OshClientService oshClientService;
 
     /**
      * Get overall OSH integration status including retry queue and cursor information.
@@ -296,6 +300,42 @@ public class OshAdminResource {
             LOGGER.error("Failed to trigger manual poll: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("Error triggering manual poll: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    /**
+     * Test endpoint to collect a specific OSH scan by ID.
+     *
+     * @param scanId OSH scan ID to collect
+     * @return scan data if found
+     */
+    @POST
+    @Path("/test/collect-scan/{scanId}")
+    public Response testCollectScan(@PathParam("scanId") Integer scanId) {
+        try {
+            if (scanId == null || scanId <= 0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Invalid scan ID")
+                        .build();
+            }
+
+            LOGGER.info("Test collection triggered for OSH scan ID: {}", scanId);
+            var scanData = oshClientService.fetchOshScanData(scanId);
+
+            if (scanData.isPresent()) {
+                LOGGER.info("Successfully collected scan data for ID {}: {}", scanId, scanData.get());
+                return Response.ok(scanData.get()).build();
+            } else {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity("Scan not found or could not be collected: " + scanId)
+                        .build();
+            }
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to collect scan {}: {}", scanId, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Error collecting scan: " + e.getMessage())
                     .build();
         }
     }

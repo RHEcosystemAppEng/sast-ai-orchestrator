@@ -84,12 +84,219 @@
         {
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  jm.mlops_job_id AS metric,\n  jm.accuracy,\n  jm.precision,\n  jm.recall,\n  jm.f1_score,\n  j.package_name\nFROM mlops_job_metrics jm\nJOIN mlops_job j ON jm.mlops_job_id = j.id\nWHERE j.mlops_batch_id = $batch_id\nORDER BY jm.created_at DESC;",
+          "rawSql": "SELECT\n  j.package_name,\n  jm.accuracy,\n  jm.precision,\n  jm.recall,\n  jm.f1_score\nFROM mlops_job_metrics jm\nJOIN mlops_job j ON jm.mlops_job_id = j.id\nWHERE j.mlops_batch_id = $batch_id\n  AND (ARRAY_LENGTH(ARRAY[${packages:singlequote}], 1) IS NULL OR j.package_name IN (${packages:singlequote}))\nORDER BY j.package_name\nLIMIT 5;",
           "refId": "A"
         }
       ],
-      "title": "Job-Level Metrics Distribution (Select Batch ID Below)",
+      "title": "Job-Level Metrics Distribution",
       "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "P413637974B2AAB20"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Accuracy"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.70
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.85
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Precision"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.70
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.85
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Recall"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.70
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.85
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "F1 Score"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.70
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.85
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 2,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Job ID"
+          }
+        ]
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  j.id AS \"Job ID\",\n  j.package_name AS \"Package Name\",\n  j.package_nvr AS \"Package NVR\",\n  j.status AS \"Status\",\n  jm.accuracy AS \"Accuracy\",\n  jm.precision AS \"Precision\",\n  jm.recall AS \"Recall\",\n  jm.f1_score AS \"F1 Score\",\n  jm.cm_tp AS \"TP\",\n  jm.cm_fp AS \"FP\",\n  jm.cm_tn AS \"TN\",\n  jm.cm_fn AS \"FN\",\n  j.tekton_url AS \"Tekton URL\",\n  j.created_at AS \"Created\",\n  j.completed_at AS \"Completed\"\nFROM mlops_job j\nLEFT JOIN mlops_job_metrics jm ON j.id = jm.mlops_job_id\nWHERE j.mlops_batch_id = $batch_id\nORDER BY j.created_at DESC;",
+          "refId": "A"
+        }
+      ],
+      "title": "Detailed Job Metrics",
+      "type": "table"
     },
     {
       "datasource": {
@@ -204,6 +411,66 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Result"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "true positive": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "false positive": {
+                        "color": "red",
+                        "index": 1
+                      },
+                      "true negative": {
+                        "color": "blue",
+                        "index": 2
+                      },
+                      "false negative": {
+                        "color": "orange",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Relevancy"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-GrYlRd"
+                }
+              }
+            ]
           }
         ]
       },
@@ -211,9 +478,9 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 10
+        "y": 22
       },
-      "id": 2,
+      "id": 3,
       "options": {
         "footer": {
           "fields": "",
@@ -222,104 +489,19 @@
           ],
           "show": false
         },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": false,
-            "displayName": "Job ID"
-          }
-        ]
+        "showHeader": true
       },
       "pluginVersion": "9.0.0",
       "targets": [
         {
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  j.id AS \"Job ID\",\n  j.package_name AS \"Package Name\",\n  j.package_nvr AS \"Package NVR\",\n  j.status AS \"Status\",\n  jm.accuracy AS \"Accuracy\",\n  jm.precision AS \"Precision\",\n  jm.recall AS \"Recall\",\n  jm.f1_score AS \"F1 Score\",\n  jm.cm_tp AS \"TP\",\n  jm.cm_fp AS \"FP\",\n  jm.cm_tn AS \"TN\",\n  jm.cm_fn AS \"FN\",\n  j.tekton_url AS \"Tekton URL\",\n  j.created_at AS \"Created\",\n  j.completed_at AS \"Completed\"\nFROM mlops_job j\nLEFT JOIN mlops_job_metrics jm ON j.id = jm.mlops_job_id\nWHERE j.mlops_batch_id = $batch_id\nORDER BY j.created_at DESC;",
+          "rawSql": "SELECT\n  id.issue_id AS \"Issue ID\",\n  id.issue_name AS \"Issue Name\",\n  LOWER(TRIM(id.investigation_result)) AS \"Result\",\n  id.error_description AS \"Error\",\n  id.hint AS \"Hint\",\n  id.answer_relevancy AS \"Relevancy\",\n  id.justifications AS \"Justification\",\n  id.recommendations AS \"Recommendation\"\nFROM mlops_issue_details id\nJOIN mlops_job j ON j.id = id.mlops_job_id\nWHERE j.mlops_batch_id = $batch_id\n  AND ('$selected_package' = '' OR j.package_name = '$selected_package')\nORDER BY id.issue_id;",
           "refId": "A"
         }
       ],
-      "title": "Detailed Job Metrics",
+      "title": "Issue-Level Details (Select Package Above)",
       "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "P413637974B2AAB20"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 22
-      },
-      "id": 3,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single"
-        }
-      },
-      "targets": [
-        {
-          "format": "time_series",
-          "rawQuery": true,
-          "rawSql": "SELECT\n  j.completed_at AS time,\n  COUNT(*) AS \"Jobs Completed\"\nFROM mlops_job j\nWHERE j.mlops_batch_id = $batch_id\n  AND j.completed_at IS NOT NULL\n  AND $__timeFilter(j.completed_at)\nGROUP BY time\nORDER BY time;",
-          "refId": "A"
-        }
-      ],
-      "title": "Job Completion Timeline",
-      "type": "timeseries"
     }
   ],
   "refresh": "",
@@ -357,6 +539,54 @@
           }
         ],
         "query": "SELECT id FROM mlops_batch ORDER BY id DESC;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": [],
+          "value": []
+        },
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "P413637974B2AAB20"
+        },
+        "definition": "SELECT DISTINCT package_name FROM mlops_job WHERE mlops_batch_id = $batch_id ORDER BY package_name;",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Packages (max 5)",
+        "multi": true,
+        "name": "packages",
+        "options": [],
+        "query": "SELECT DISTINCT package_name FROM mlops_job WHERE mlops_batch_id = $batch_id ORDER BY package_name;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "P413637974B2AAB20"
+        },
+        "definition": "SELECT DISTINCT package_name FROM mlops_job WHERE mlops_batch_id = $batch_id ORDER BY package_name;",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Package for Details",
+        "multi": false,
+        "name": "selected_package",
+        "options": [],
+        "query": "SELECT DISTINCT package_name FROM mlops_job WHERE mlops_batch_id = $batch_id ORDER BY package_name;",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,

@@ -10,7 +10,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "af3woqo2g8gzkd"
+        "uid": "P413637974B2AAB20"
       },
       "fieldConfig": {
         "defaults": {
@@ -94,7 +94,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "af3woqo2g8gzkd"
+        "uid": "P413637974B2AAB20"
       },
       "fieldConfig": {
         "defaults": {
@@ -245,7 +245,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "af3woqo2g8gzkd"
+        "uid": "P413637974B2AAB20"
       },
       "fieldConfig": {
         "defaults": {
@@ -335,13 +335,13 @@
     "list": [
       {
         "current": {
-          "selected": false,
-          "text": "",
-          "value": ""
+          "selected": true,
+          "text": "6",
+          "value": "6"
         },
         "datasource": {
           "type": "grafana-postgresql-datasource",
-          "uid": "af3woqo2g8gzkd"
+          "uid": "P413637974B2AAB20"
         },
         "definition": "SELECT id FROM mlops_batch ORDER BY submitted_at DESC;",
         "hide": 0,
@@ -349,7 +349,13 @@
         "label": "Batch ID",
         "multi": false,
         "name": "batch_id",
-        "options": [],
+        "options": [
+          {
+            "selected": true,
+            "text": "6",
+            "value": "6"
+          }
+        ],
         "query": "SELECT id FROM mlops_batch ORDER BY id DESC;",
         "refresh": 1,
         "regex": "",

@@ -10,12 +10,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(
-        name = "mlops_job",
-        indexes = {
-            @Index(name = "idx_mlops_job_id", columnList = "id"),
-            @Index(name = "idx_mlops_job_osh_scan_id", columnList = "osh_scan_id", unique = true)
-        })
+@Table(name = "mlops_job")
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = {"mlOpsBatch"})

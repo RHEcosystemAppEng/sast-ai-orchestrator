@@ -9,58 +9,38 @@ import com.redhat.sast.api.v1.dto.response.MlOpsBatchResponseDto;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 @Path("/mlops-batch")
-@Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
-public class MlOpsBatchResource {
+public class MlOpsBatchResource
+        extends BaseBatchResource<MlOpsBatchSubmissionDto, MlOpsBatchResponseDto, MlOpsBatchService> {
 
     @Inject
     MlOpsBatchService mlOpsBatchService;
 
-    @POST
-    public Response submitBatch(@Valid MlOpsBatchSubmissionDto submissionDto) {
-        try {
-            MlOpsBatchResponseDto response = mlOpsBatchService.submitBatch(submissionDto);
-            return Response.status(Response.Status.CREATED).entity(response).build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Error submitting MLOps batch: " + e.getMessage())
-                    .build();
-        }
+    @Override
+    protected MlOpsBatchService getService() {
+        return mlOpsBatchService;
     }
 
-    @GET
-    public Response getAllBatches(
-            @QueryParam("page") @DefaultValue("0") int page, @QueryParam("size") @DefaultValue("20") int size) {
-        try {
-            List<MlOpsBatchResponseDto> batches = mlOpsBatchService.getAllBatches(page, size);
-            return Response.ok(batches).build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Error retrieving MLOps batches: " + e.getMessage())
-                    .build();
-        }
+    @Override
+    protected String getBatchTypeName() {
+        return "MLOps batch";
     }
 
-    @GET
-    @Path("/{batchId}")
-    public Response getBatchById(@PathParam("batchId") Long batchId) {
-        try {
-            MlOpsBatchResponseDto batch = mlOpsBatchService.getBatchById(batchId);
-            if (batch == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity("MLOps batch not found with ID: " + batchId)
-                        .build();
-            }
-            return Response.ok(batch).build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Error retrieving MLOps batch: " + e.getMessage())
-                    .build();
-        }
+    @Override
+    protected MlOpsBatchResponseDto submitBatchToService(@Valid MlOpsBatchSubmissionDto submissionDto) {
+        return mlOpsBatchService.submitBatch(submissionDto);
+    }
+
+    @Override
+    protected List<MlOpsBatchResponseDto> getAllBatchesFromService(int page, int size) {
+        return mlOpsBatchService.getAllBatches(page, size);
+    }
+
+    @Override
+    protected MlOpsBatchResponseDto getBatchByIdFromService(Long batchId) {
+        return mlOpsBatchService.getBatchById(batchId);
     }
 
     @GET

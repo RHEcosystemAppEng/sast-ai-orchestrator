@@ -39,6 +39,7 @@ public class MlOpsBatchService {
     private final PipelineParameterMapper parameterMapper;
     private final PlatformService platformService;
     private final ManagedExecutor managedExecutor;
+    private final BatchOperationsHelper batchOperationsHelper;
 
     @ConfigProperty(name = "mlops.batch.max.parallel.jobs", defaultValue = "3")
     int maxParallelJobs;
@@ -295,43 +296,10 @@ public class MlOpsBatchService {
 
     /**
      * Waits for a job to complete (either successfully or with failure).
-     * Checks job status in a transactional context.
+     * Delegates to BatchOperationsHelper for common polling logic.
      */
     private boolean waitForJobCompletion(Long jobId) {
-        final int maxWaitTimeMs = 3600000; // 1 hour
-        final int pollIntervalMs = 5000; // 5 seconds
-        int elapsedTime = 0;
-
-        while (elapsedTime < maxWaitTimeMs) {
-            try {
-                Thread.sleep(pollIntervalMs);
-                elapsedTime += pollIntervalMs;
-
-                // Check job status in a new transaction
-                JobStatus status = checkJobStatusInNewTransaction(jobId);
-                if (status == null) {
-                    LOGGER.error("Job {} not found during completion wait", jobId);
-                    return false;
-                }
-
-                if (status == JobStatus.COMPLETED) {
-                    return true;
-                } else if (status == JobStatus.FAILED || status == JobStatus.CANCELLED) {
-                    return false;
-                }
-
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                LOGGER.error("Job completion wait interrupted for job {}", jobId);
-                return false;
-            } catch (Exception e) {
-                LOGGER.error("Error checking job {} status: {}", jobId, e.getMessage(), e);
-                // Continue polling despite error
-            }
-        }
-
-        LOGGER.warn("Job {} timed out after {} ms", jobId, maxWaitTimeMs);
-        return false;
+        return batchOperationsHelper.waitForJobCompletion(jobId, this::checkJobStatusInNewTransaction);
     }
 
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
@@ -388,6 +356,7 @@ public class MlOpsBatchService {
 
     /**
      * Updates final batch status based on job completion counts.
+     * Uses BatchOperationsHelper to determine the appropriate final status.
      */
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public void updateFinalBatchStatus(Long batchId) {
@@ -401,14 +370,7 @@ public class MlOpsBatchService {
         int completedJobs = batch.getCompletedJobs() != null ? batch.getCompletedJobs() : 0;
         int failedJobs = batch.getFailedJobs() != null ? batch.getFailedJobs() : 0;
 
-        BatchStatus finalStatus;
-        if (completedJobs == totalJobs) {
-            finalStatus = BatchStatus.COMPLETED;
-        } else if (completedJobs + failedJobs == totalJobs) {
-            finalStatus = BatchStatus.COMPLETED_WITH_ERRORS;
-        } else {
-            finalStatus = BatchStatus.FAILED;
-        }
+        BatchStatus finalStatus = batchOperationsHelper.determineFinalBatchStatus(totalJobs, completedJobs, failedJobs);
 
         batch.setStatus(finalStatus);
         mlOpsBatchRepository.persist(batch);

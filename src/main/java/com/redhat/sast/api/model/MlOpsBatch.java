@@ -12,9 +12,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(
-        name = "mlops_batch",
-        indexes = {@Index(name = "idx_mlops_batch_id", columnList = "id")})
+@Table(name = "mlops_batch")
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = {"jobs"})

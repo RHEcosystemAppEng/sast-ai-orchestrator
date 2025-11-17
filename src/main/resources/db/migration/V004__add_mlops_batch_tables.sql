@@ -65,7 +65,7 @@ CREATE INDEX IF NOT EXISTS idx_mlops_job_id ON mlops_job(id);
 CREATE INDEX IF NOT EXISTS idx_mlops_job_mlops_batch_id ON mlops_job(mlops_batch_id);
 CREATE INDEX IF NOT EXISTS idx_mlops_job_status ON mlops_job(status);
 CREATE INDEX IF NOT EXISTS idx_mlops_job_created_at ON mlops_job(created_at);
-CREATE INDEX IF NOT EXISTS idx_mlops_job_osh_scan_id ON mlops_job(osh_scan_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mlops_job_osh_scan_id ON mlops_job(osh_scan_id);
 CREATE INDEX IF NOT EXISTS idx_mlops_job_metrics_id ON mlops_job_metrics(id);
 CREATE INDEX IF NOT EXISTS idx_mlops_job_metrics_mlops_job_id ON mlops_job_metrics(mlops_job_id);
 CREATE INDEX IF NOT EXISTS idx_mlops_job_metrics_package_name ON mlops_job_metrics(package_name);

@@ -5,7 +5,7 @@
 To start PostgreSQL and Grafana with all dashboards configured:
 
 ```bash
-make -f Makefile.grafana start
+make -f grafana-setup/Makefile start
 ```
 
 Access Grafana at **http://localhost:3000**
@@ -15,16 +15,16 @@ Access Grafana at **http://localhost:3000**
 ## Available Commands
 
 ```bash
-make -f Makefile.grafana help          # Show all available commands
-make -f Makefile.grafana start         # Start PostgreSQL and Grafana
-make -f Makefile.grafana stop          # Stop all containers
-make -f Makefile.grafana restart       # Restart all containers
-make -f Makefile.grafana logs          # View all container logs
-make -f Makefile.grafana clean         # Stop and remove everything
-make -f Makefile.grafana db-migrate    # Apply database migrations
-make -f Makefile.grafana db-status     # Check database status
-make -f Makefile.grafana postgres-logs # View PostgreSQL logs only
-make -f Makefile.grafana grafana-logs  # View Grafana logs only
+make -f grafana-setup/Makefile help          # Show all available commands
+make -f grafana-setup/Makefile start         # Start PostgreSQL and Grafana
+make -f grafana-setup/Makefile stop          # Stop all containers
+make -f grafana-setup/Makefile restart       # Restart all containers
+make -f grafana-setup/Makefile logs          # View all container logs
+make -f grafana-setup/Makefile clean         # Stop and remove everything
+make -f grafana-setup/Makefile db-migrate    # Apply database migrations
+make -f grafana-setup/Makefile db-status     # Check database status
+make -f grafana-setup/Makefile postgres-logs # View PostgreSQL logs only
+make -f grafana-setup/Makefile grafana-logs  # View Grafana logs only
 ```
 
 ## Dashboards
@@ -38,7 +38,7 @@ After starting, the following dashboards will be available:
 
 The `make start` command automatically:
 - ✓ Starts PostgreSQL container (postgres:14)
-- ✓ Starts Grafana container (grafana:9.5.0)
+- ✓ Starts Grafana container (grafana:11.0.0)
 - ✓ Applies all database migrations
 - ✓ Configures PostgreSQL datasource with correct UID
 - ✓ Provisions both dashboards
@@ -47,8 +47,6 @@ The `make start` command automatically:
 ## Prerequisites
 
 - Podman installed and running (`podman machine start`)
-- PostgreSQL running locally on port 5432
-- Database `sast-ai` with MLOps tables created
 
 ## Troubleshooting
 

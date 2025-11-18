@@ -17,7 +17,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.sast.api.platform.osh.OshRestClient;
 import com.redhat.sast.api.util.url.NvrParser;
-import com.redhat.sast.api.v1.dto.osh.OshScan;
+import com.redhat.sast.api.v1.dto.osh.OshScanDto;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -58,8 +58,8 @@ public class OshClientService {
      * @param batchSize number of sequential IDs to check
      * @return list of completed scans found in the ID range
      */
-    public List<OshScan> fetchOshScansForProcessing(int startId, int batchSize) {
-        List<OshScan> oshScanList = new ArrayList<>();
+    public List<OshScanDto> fetchOshScansForProcessing(int startId, int batchSize) {
+        List<OshScanDto> oshScanList = new ArrayList<>();
 
         int end = startId + batchSize;
         LOGGER.debug("Discovering OSH scans from ID {} to {} (exclusive)", startId, end);
@@ -76,7 +76,7 @@ public class OshClientService {
         return oshScanList;
     }
 
-    private Optional<OshScan> fetchOshScanData(int oshScanId) {
+    public Optional<OshScanDto> fetchOshScanData(int oshScanId) {
         try (var httpResp = oshClient.fetchScanDetailsRaw(oshScanId)) {
             switch (httpResp.getStatus()) {
                 case 200 -> {
@@ -92,7 +92,7 @@ public class OshClientService {
         return Optional.empty();
     }
 
-    private Optional<OshScan> parseHttpResponse(String content, int scanId) {
+    private Optional<OshScanDto> parseHttpResponse(String content, int scanId) {
         try {
             if (content == null || content.isBlank()) {
                 return Optional.empty();
@@ -106,12 +106,12 @@ public class OshClientService {
         return parseHtmlResponse(content, scanId);
     }
 
-    private Optional<OshScan> parseJsonResponse(JsonNode json, int scanId) {
+    private Optional<OshScanDto> parseJsonResponse(JsonNode json, int scanId) {
         if (json == null || json.isNull() || (!json.isObject() && !json.isArray())) {
             LOGGER.warn("Invalid JSON structure for scan {}: not an object or array", scanId);
             return Optional.empty();
         }
-        OshScan response = new OshScan();
+        OshScanDto response = new OshScanDto();
         response.setScanId(scanId);
 
         Map<String, Object> rawData = new HashMap<>();
@@ -143,7 +143,7 @@ public class OshClientService {
         return Optional.of(response);
     }
 
-    private Optional<OshScan> parseHtmlResponse(String html, int scanId) {
+    private Optional<OshScanDto> parseHtmlResponse(String html, int scanId) {
         try {
             Document doc = Jsoup.parse(html);
             // Look for table rows with scan details
@@ -154,7 +154,7 @@ public class OshClientService {
                 return Optional.empty();
             }
 
-            OshScan response = new OshScan();
+            OshScanDto response = new OshScanDto();
             response.setScanId(scanId);
 
             Map<String, Object> rawData = new HashMap<>();
@@ -198,7 +198,7 @@ public class OshClientService {
         }
     }
 
-    private void parseComponentFromLabel(String label, OshScan response) {
+    private void parseComponentFromLabel(String label, OshScanDto response) {
         if (label == null || label.isBlank()) {
             return;
         }

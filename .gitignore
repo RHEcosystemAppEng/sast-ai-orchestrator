@@ -52,3 +52,8 @@ charts/*.tar.gz
 
 # Cursor
 .cursorrules
+
+# Claude Code
+CLAUDE.md
+agent-configs-orchestrator/
+orchestrator-ai-assistant-rules/

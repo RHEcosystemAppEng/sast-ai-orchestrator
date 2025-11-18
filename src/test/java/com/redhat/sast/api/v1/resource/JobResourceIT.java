@@ -214,4 +214,25 @@ class JobResourceIT {
                 .body("jobId", notNullValue())
                 .body("status", equalTo("PENDING"));
     }
+
+    @Test
+    @DisplayName("Should create simple job with aggregate results Google Sheet URL")
+    void shouldCreateSimpleJobWithAggregateResultsGSheet() {
+        JobCreationDto jobRequest = JobTestDataBuilder.aJob()
+                .withPackageNvr("usbutils-017-2.el10")
+                .withInputSourceUrl(
+                        "https://docs.google.com/spreadsheets/d/1y2V7SSa-FHXuDTRNX5pd3YQ1grHLPt4CvtGBvifBvT8/edit?usp=sharing")
+                .withAggregateResultsGSheet(
+                        "https://docs.google.com/spreadsheets/d/1B71aAzMlFIZihQOiObXXyfzLV04lqEHriT1bYZMQrtQ/edit?usp=sharing")
+                .build();
+
+        given().contentType(ContentType.JSON)
+                .body(jobRequest)
+                .when()
+                .post("/api/v1/jobs/simple")
+                .then()
+                .statusCode(201)
+                .body("jobId", notNullValue())
+                .body("status", equalTo("PENDING"));
+    }
 }

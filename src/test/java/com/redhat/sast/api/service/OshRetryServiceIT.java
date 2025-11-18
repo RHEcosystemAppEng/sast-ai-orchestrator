@@ -17,7 +17,7 @@ import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.OshUncollectedScanRepository;
 import com.redhat.sast.api.service.osh.OshRetryService;
 import com.redhat.sast.api.service.osh.OshRetryService.RetryQueueStatistics;
-import com.redhat.sast.api.v1.dto.osh.OshScan;
+import com.redhat.sast.api.v1.dto.osh.OshScanDto;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -59,7 +59,7 @@ class OshRetryServiceIT {
     @Test
     @DisplayName("Should record failed scan with correct details")
     void recordFailedScan_storesCompleteRetryInformation() {
-        OshScan scan = createTestScan(1001, "test-package");
+        OshScanDto scan = createTestScan(1001, "test-package");
 
         oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Network timeout occurred");
 
@@ -80,7 +80,7 @@ class OshRetryServiceIT {
     @Transactional
     @DisplayName("Should record failed scan with 3 retry attempts")
     void recordFailedScan_capturesRetryInfoCorrectly() {
-        OshScan scan = createTestScan(1001, "test-package");
+        OshScanDto scan = createTestScan(1001, "test-package");
 
         oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Network timeout occurred");
 
@@ -124,7 +124,7 @@ class OshRetryServiceIT {
     @Test
     @DisplayName("Should handle scan with null ID gracefully")
     void recordFailedScan_handleNullIdGracefully() {
-        OshScan scan = createTestScan(null, "test-package");
+        OshScanDto scan = createTestScan(null, "test-package");
 
         assertDoesNotThrow(
                 () -> oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Error"));
@@ -138,7 +138,7 @@ class OshRetryServiceIT {
         List<OshUncollectedScan> initialResult = oshRetryService.fetchRetryableScans();
         assertTrue(initialResult.isEmpty());
 
-        OshScan scan = createTestScan(2001, "failed-package");
+        OshScanDto scan = createTestScan(2001, "failed-package");
         oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_API_ERROR, "API error");
 
         oshConfiguration.setRetryBackoffDuration("PT0.001S");
@@ -150,7 +150,7 @@ class OshRetryServiceIT {
     @Test
     @DisplayName("Should mark retry successful and remove from queue")
     void markRetrySuccessful_removesFromRetryQueue() {
-        OshScan scan = createTestScan(3001, "success-package");
+        OshScanDto scan = createTestScan(3001, "success-package");
         oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Download error");
 
         assertTrue(oshRetryService.findRetryInfo(3001).isPresent());
@@ -165,7 +165,7 @@ class OshRetryServiceIT {
     void testReconstructScanFromJson() throws Exception {
         String validJson = "{\"scanId\":12345,\"state\":\"CLOSED\",\"component\":\"systemd\",\"version\":\"252\"}";
 
-        OshScan result = oshRetryService.reconstructScanFromJson(validJson);
+        OshScanDto result = oshRetryService.reconstructScanFromJson(validJson);
 
         assertNotNull(result);
         assertEquals(12345, result.getScanId());
@@ -203,7 +203,7 @@ class OshRetryServiceIT {
     @Test
     @DisplayName("Should find retry info for existing scan ID")
     void testFindRetryInfo_existing() {
-        OshScan scan = createTestScan(12345, "test-package");
+        OshScanDto scan = createTestScan(12345, "test-package");
         oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_API_ERROR, "Error");
 
         Optional<OshUncollectedScan> result = oshRetryService.findRetryInfo(12345);
@@ -228,9 +228,9 @@ class OshRetryServiceIT {
         oshConfiguration.setRetryMaxAttempts(3);
         oshConfiguration.setRetryBackoffDuration("PT0.001S");
 
-        OshScan scan1 = createTestScan(1001, "package1");
-        OshScan scan2 = createTestScan(1002, "package2");
-        OshScan scan3 = createTestScan(1003, "package3");
+        OshScanDto scan1 = createTestScan(1001, "package1");
+        OshScanDto scan2 = createTestScan(1002, "package2");
+        OshScanDto scan3 = createTestScan(1003, "package3");
 
         oshRetryService.recordFailedScan(scan1, OshFailureReason.OSH_API_ERROR, "Error 1");
         oshRetryService.recordFailedScan(scan2, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Error 2");
@@ -269,9 +269,9 @@ class OshRetryServiceIT {
     void testGetRetryQueueSnapshot() {
         oshConfiguration.setRetryMaxAttempts(3);
 
-        OshScan scan1 = createTestScan(1001, "package1");
-        OshScan scan2 = createTestScan(1002, "package2");
-        OshScan scan3 = createTestScan(1003, "package3");
+        OshScanDto scan1 = createTestScan(1001, "package1");
+        OshScanDto scan2 = createTestScan(1002, "package2");
+        OshScanDto scan3 = createTestScan(1003, "package3");
 
         oshRetryService.recordFailedScan(scan1, OshFailureReason.OSH_API_ERROR, "Error 1");
         oshRetryService.recordFailedScan(scan2, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Error 2");
@@ -310,9 +310,9 @@ class OshRetryServiceIT {
         oshConfiguration.setRetryMaxAttempts(3);
         oshConfiguration.setRetryBackoffDuration("PT0.001S");
 
-        OshScan scan1 = createTestScan(1001, "package1");
-        OshScan scan2 = createTestScan(1002, "package2");
-        OshScan scan3 = createTestScan(1003, "package3");
+        OshScanDto scan1 = createTestScan(1001, "package1");
+        OshScanDto scan2 = createTestScan(1002, "package2");
+        OshScanDto scan3 = createTestScan(1003, "package3");
 
         oshRetryService.recordFailedScan(scan1, OshFailureReason.OSH_API_ERROR, "Error 1");
         oshRetryService.recordFailedScan(scan2, OshFailureReason.OSH_METADATA_NETWORK_ERROR, "Error 2");
@@ -355,7 +355,7 @@ class OshRetryServiceIT {
         oshConfiguration.setRetryMaxAttempts(0);
         oshConfiguration.setRetryBackoffDuration("PT0.001S"); // Very short backoff for testing
 
-        OshScan scan = createTestScan(4001, "no-retry-package");
+        OshScanDto scan = createTestScan(4001, "no-retry-package");
         oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_API_ERROR, "Initial failure");
 
         Optional<OshUncollectedScan> uncollected = oshRetryService.findRetryInfo(4001);
@@ -381,7 +381,7 @@ class OshRetryServiceIT {
         oshConfiguration.setRetryMaxAttempts(-1);
         oshConfiguration.setRetryBackoffDuration("PT0.001S");
 
-        OshScan scan = createTestScan(5001, "unlimited-retry-package");
+        OshScanDto scan = createTestScan(5001, "unlimited-retry-package");
         oshRetryService.recordFailedScan(scan, OshFailureReason.OSH_API_ERROR, "Initial failure");
 
         Optional<OshUncollectedScan> uncollected = oshRetryService.findRetryInfo(5001);
@@ -405,8 +405,8 @@ class OshRetryServiceIT {
     }
 
     // Helper methods
-    private OshScan createTestScan(Integer scanId, String packageName) {
-        OshScan scan = new OshScan();
+    private OshScanDto createTestScan(Integer scanId, String packageName) {
+        OshScanDto scan = new OshScanDto();
         scan.setScanId(scanId);
         scan.setState("CLOSED");
         scan.setComponent(packageName);

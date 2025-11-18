@@ -291,7 +291,7 @@
         {
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  j.id AS \"Job ID\",\n  j.package_name AS \"Package Name\",\n  j.package_nvr AS \"Package NVR\",\n  j.status AS \"Status\",\n  jm.accuracy AS \"Accuracy\",\n  jm.precision AS \"Precision\",\n  jm.recall AS \"Recall\",\n  jm.f1_score AS \"F1 Score\",\n  jm.cm_tp AS \"TP\",\n  jm.cm_fp AS \"FP\",\n  jm.cm_tn AS \"TN\",\n  jm.cm_fn AS \"FN\",\n  j.tekton_url AS \"Tekton URL\",\n  j.created_at AS \"Created\",\n  j.completed_at AS \"Completed\"\nFROM mlops_job j\nLEFT JOIN mlops_job_metrics jm ON j.id = jm.mlops_job_id\nWHERE j.mlops_batch_id = $batch_id\nORDER BY j.created_at DESC;",
+          "rawSql": "SELECT\n  j.id AS \"Job ID\",\n  j.package_name AS \"Package Name\",\n  j.package_nvr AS \"Package NVR\",\n  j.status AS \"Status\",\n  jm.accuracy AS \"Accuracy\",\n  jm.precision AS \"Precision\",\n  jm.recall AS \"Recall\",\n  jm.f1_score AS \"F1 Score\",\n  jm.cm_tp AS \"Correct Non-Issue\",\n  jm.cm_fp AS \"Missed Real Issue\",\n  jm.cm_tn AS \"Correct Real Issue\",\n  jm.cm_fn AS \"Missed Non-Issue\",\n  j.tekton_url AS \"Tekton URL\",\n  j.created_at AS \"Created\",\n  j.completed_at AS \"Completed\"\nFROM mlops_job j\nLEFT JOIN mlops_job_metrics jm ON j.id = jm.mlops_job_id\nWHERE j.mlops_batch_id = $batch_id\nORDER BY j.created_at DESC;",
           "refId": "A"
         }
       ],
@@ -415,7 +415,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Result"
+              "options": "Prediction"
             },
             "properties": [
               {
@@ -428,21 +428,13 @@
                   {
                     "type": "value",
                     "options": {
-                      "true positive": {
-                        "color": "green",
+                      "Non-Issue": {
+                        "color": "red",
                         "index": 0
                       },
-                      "false positive": {
-                        "color": "red",
+                      "Issue": {
+                        "color": "green",
                         "index": 1
-                      },
-                      "true negative": {
-                        "color": "blue",
-                        "index": 2
-                      },
-                      "false negative": {
-                        "color": "orange",
-                        "index": 3
                       }
                     }
                   }
@@ -453,22 +445,30 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Relevancy"
+              "options": "Ground Truth"
             },
             "properties": [
-              {
-                "id": "unit",
-                "value": "percentunit"
-              },
               {
                 "id": "custom.displayMode",
                 "value": "color-background"
               },
               {
-                "id": "color",
-                "value": {
-                  "mode": "continuous-GrYlRd"
-                }
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Non-Issue": {
+                        "color": "red",
+                        "index": 0
+                      },
+                      "Issue": {
+                        "color": "green",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
               }
             ]
           }
@@ -485,9 +485,9 @@
         "footer": {
           "fields": "",
           "reducer": [
-            "sum"
+            "count"
           ],
-          "show": false
+          "show": true
         },
         "showHeader": true
       },
@@ -496,7 +496,7 @@
         {
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  id.issue_id AS \"Issue ID\",\n  id.issue_name AS \"Issue Name\",\n  LOWER(TRIM(id.investigation_result)) AS \"Result\",\n  id.error_description AS \"Error\",\n  id.hint AS \"Hint\",\n  id.answer_relevancy AS \"Relevancy\",\n  id.justifications AS \"Justification\",\n  id.recommendations AS \"Recommendation\"\nFROM mlops_issue_details id\nJOIN mlops_job j ON j.id = id.mlops_job_id\nWHERE j.mlops_batch_id = $batch_id\n  AND ('$selected_package' = '' OR j.package_name = '$selected_package')\nORDER BY id.issue_id;",
+          "rawSql": "SELECT\n  gt.issue_number AS \"Issue ID\",\n  gt.finding AS \"Finding\",\n  gt.ai_prediction AS \"Prediction\",\n  CASE \n    WHEN gt.is_false_positive = true THEN 'Non-Issue'\n    WHEN gt.is_false_positive = false THEN 'Issue'\n  END AS \"Ground Truth\",\n  gt.comment AS \"Comment\",\n  gt.hint AS \"Hint\"\nFROM ground_truth gt\nWHERE gt.package_nvr LIKE '$selected_package%'\nORDER BY gt.package_nvr, gt.issue_number;",
           "refId": "A"
         }
       ],

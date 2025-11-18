@@ -71,12 +71,13 @@ start:
 	@echo ""
 	@echo "Step 5/5: Loading data..."
 	@BATCH_COUNT=$$(podman exec sast-ai-postgres psql -U quarkus -d sast-ai -t -c "SELECT COUNT(*) FROM mlops_batch;" 2>/dev/null | xargs); \
-	if [ "$$BATCH_COUNT" = "0" ] || [ -z "$$BATCH_COUNT" ]; then \
-		echo "   Waiting for data to load..."; \
+	GT_COUNT=$$(podman exec sast-ai-postgres psql -U quarkus -d sast-ai -t -c "SELECT COUNT(*) FROM ground_truth;" 2>/dev/null | xargs); \
+	if [ "$$BATCH_COUNT" = "0" ] || [ -z "$$BATCH_COUNT" ] || [ "$$GT_COUNT" = "0" ] || [ -z "$$GT_COUNT" ]; then \
+		echo "   Waiting for data to finish loading..."; \
 		cat grafana-setup/sample-data.sql | podman exec -i sast-ai-postgres psql -U quarkus -d sast-ai > /dev/null 2>&1; \
-		echo "  ✓ Finished data loaded (1 batch with 23 jobs)"; \
+		echo "  ✓ Data loaded (1 batch with 23 jobs, 629 ground truth issues)"; \
 	else \
-		echo "  ✓ Data already exists ($$BATCH_COUNT batches found)"; \
+		echo "  ✓ Data already exists ($$BATCH_COUNT batches, $$GT_COUNT ground truth issues)"; \
 	fi
 	@echo ""
 	@echo "========================================="
@@ -130,7 +131,7 @@ clean:
 db-migrate:
 	@echo "  Applying database migrations..."
 	@podman exec sast-ai-postgres psql -U quarkus -d sast-ai -c "SELECT 1;" > /dev/null 2>&1 || { echo "  ⚠️  PostgreSQL not ready, skipping migrations"; exit 0; }
-	@for migration in V001__initial_schema.sql V002__add_dvc_metadata_fields.sql V003__add_data_artifacts_id_column.sql V1_1_0__Add_OSH_Retry_Tables.sql V1_2_0__Add_Aggregate_Results_G_Sheet.sql V006__create_mlops_tables.sql V007__create_mlops_issue_details.sql V005__create_mlops_batch_metrics_view.sql; do \
+	@for migration in V001__initial_schema.sql V002__add_dvc_metadata_fields.sql V003__add_data_artifacts_id_column.sql V1_1_0__Add_OSH_Retry_Tables.sql V1_2_0__Add_Aggregate_Results_G_Sheet.sql V006__create_mlops_tables.sql V007__create_mlops_issue_details.sql V005__create_mlops_batch_metrics_view.sql V008__create_ground_truth_table.sql; do \
 		if [ -f "src/main/resources/db/migration/$$migration" ]; then \
 			podman cp "src/main/resources/db/migration/$$migration" sast-ai-postgres:/tmp/ 2>/dev/null; \
 			podman exec sast-ai-postgres psql -U quarkus -d sast-ai -f "/tmp/$$migration" > /dev/null 2>&1 || true; \

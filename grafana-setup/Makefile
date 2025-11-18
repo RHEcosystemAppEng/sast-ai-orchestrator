@@ -66,8 +66,18 @@ start:
 	  http://localhost:3000/api/datasources/uid/P413637974B2AAB20 > /dev/null 2>&1 || true
 	@echo "  ✓ Datasource configured"
 	@echo ""
-	@echo "Step 4/4: Applying database migrations..."
+	@echo "Step 4/5: Applying database migrations..."
 	@$(MAKE) -f grafana-setup/Makefile db-migrate
+	@echo ""
+	@echo "Step 5/5: Loading sample data if needed..."
+	@BATCH_COUNT=$$(podman exec sast-ai-postgres psql -U quarkus -d sast-ai -t -c "SELECT COUNT(*) FROM mlops_batch;" 2>/dev/null | xargs); \
+	if [ "$$BATCH_COUNT" = "0" ] || [ -z "$$BATCH_COUNT" ]; then \
+		echo "  No data found, loading sample data..."; \
+		cat grafana-setup/sample-data.sql | podman exec -i sast-ai-postgres psql -U quarkus -d sast-ai > /dev/null 2>&1; \
+		echo "  ✓ Sample data loaded (1 batch with 23 jobs)"; \
+	else \
+		echo "  ✓ Data already exists ($$BATCH_COUNT batches found)"; \
+	fi
 	@echo ""
 	@echo "========================================="
 	@echo "✓ All services started successfully!"

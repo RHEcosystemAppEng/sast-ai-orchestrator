@@ -1,7 +1,7 @@
 package com.redhat.sast.api.model;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -35,15 +35,15 @@ public class PricingModel {
     private String currency = "USD";
 
     @Column(name = "effective_from", nullable = false)
-    private LocalDateTime effectiveFrom;
+    private Instant effectiveFrom;
 
     @Column(name = "effective_to")
-    private LocalDateTime effectiveTo;
+    private Instant effectiveTo;
 
     @PrePersist
     public void prePersist() {
         if (this.effectiveFrom == null) {
-            this.effectiveFrom = LocalDateTime.now();
+            this.effectiveFrom = Instant.now();
         }
     }
 }

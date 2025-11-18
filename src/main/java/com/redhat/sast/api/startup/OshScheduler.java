@@ -1,6 +1,6 @@
 package com.redhat.sast.api.startup;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -365,7 +365,7 @@ public class OshScheduler {
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void updateCursorInNewTransaction(int newCursorPosition) {
         try {
-            cursorRepository.updateCursor(String.valueOf(newCursorPosition), LocalDateTime.now());
+            cursorRepository.updateCursor(String.valueOf(newCursorPosition), Instant.now());
             LOGGER.debug("Updated OSH cursor to position {}", newCursorPosition);
         } catch (Exception e) {
             LOGGER.error("Failed to update OSH cursor to position {}, will retry next cycle", newCursorPosition, e);

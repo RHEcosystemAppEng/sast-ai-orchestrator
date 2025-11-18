@@ -1,6 +1,6 @@
 package com.redhat.sast.api.model;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import jakarta.persistence.*;
@@ -30,7 +30,7 @@ public class JobBatchDataFlow {
     private String transformationType;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // Shared primary key relationship with JobBatch (1:1)
     @OneToOne(fetch = FetchType.LAZY)
@@ -40,6 +40,6 @@ public class JobBatchDataFlow {
 
     @PrePersist
     public void prePersist() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
     }
 }

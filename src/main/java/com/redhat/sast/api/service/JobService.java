@@ -1,6 +1,6 @@
 package com.redhat.sast.api.service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -109,9 +109,9 @@ public class JobService {
         job.setStatus(newStatus);
 
         switch (newStatus) {
-            case RUNNING -> job.setStartedAt(LocalDateTime.now());
-            case CANCELLED -> job.setCancelledAt(LocalDateTime.now());
-            case COMPLETED, FAILED -> job.setCompletedAt(LocalDateTime.now());
+            case RUNNING -> job.setStartedAt(Instant.now());
+            case CANCELLED -> job.setCancelledAt(Instant.now());
+            case COMPLETED, FAILED -> job.setCompletedAt(Instant.now());
             case PENDING, SCHEDULED -> {
                 // No timestamp updates needed for these states
             }
@@ -308,7 +308,7 @@ public class JobService {
         job.setDvcDataVersion(dvcDataVersion);
         job.setDvcCommitHash(dvcCommitHash);
         job.setDvcPipelineStage(dvcPipelineStage);
-        job.setLastUpdatedAt(LocalDateTime.now());
+        job.setLastUpdatedAt(Instant.now());
 
         jobRepository.persist(job);
 

@@ -1,6 +1,6 @@
 package com.redhat.sast.api.v1.dto.response;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -53,5 +53,5 @@ public class DashboardSummaryDto {
     private Long uncollectedOshScans;
 
     @JsonProperty("timestamp")
-    private LocalDateTime timestamp;
+    private Instant timestamp;
 }

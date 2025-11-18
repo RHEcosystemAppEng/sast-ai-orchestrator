@@ -1,6 +1,6 @@
 package com.redhat.sast.api.v1.dto.response.admin;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import lombok.Data;
 
@@ -49,24 +49,24 @@ public class OshRetryStatisticsResponseDto {
     /**
      * Oldest scan in retry queue.
      */
-    private LocalDateTime oldestScan;
+    private Instant oldestScan;
 
     /**
      * Most recent scan added to retry queue.
      */
-    private LocalDateTime newestScan;
+    private Instant newestScan;
 
     /**
      * Timestamp when these statistics were generated.
      */
-    private LocalDateTime timestamp;
+    private Instant timestamp;
 
     /**
      * Configuration summary for context.
      */
     private String configurationSummary;
 
-    public OshRetryStatisticsResponseDto(String queueStatus, LocalDateTime timestamp) {
+    public OshRetryStatisticsResponseDto(String queueStatus, Instant timestamp) {
         this.queueStatus = queueStatus;
         this.timestamp = timestamp;
         this.totalInQueue = 0;
@@ -77,6 +77,6 @@ public class OshRetryStatisticsResponseDto {
     }
 
     public OshRetryStatisticsResponseDto() {
-        this(null, LocalDateTime.now());
+        this(null, Instant.now());
     }
 }

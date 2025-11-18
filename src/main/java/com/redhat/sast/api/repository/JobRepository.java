@@ -1,5 +1,6 @@
 package com.redhat.sast.api.repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -92,8 +93,7 @@ public class JobRepository implements PanacheRepository<Job> {
      * @param endTime the end of the time window
      * @return count of jobs with the given status in the time window
      */
-    public long countByStatusInTimeWindow(
-            JobStatus status, java.time.LocalDateTime startTime, java.time.LocalDateTime endTime) {
+    public long countByStatusInTimeWindow(JobStatus status, Instant startTime, Instant endTime) {
         return count("status = ?1 AND createdAt >= ?2 AND createdAt < ?3", status, startTime, endTime);
     }
 }

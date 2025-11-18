@@ -1,6 +1,6 @@
 package com.redhat.sast.api.v1.dto.response;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.redhat.sast.api.enums.JobStatus;
@@ -39,16 +39,16 @@ public class JobResponseDto {
     protected JobStatus status;
 
     @JsonProperty("createdAt")
-    protected LocalDateTime createdAt;
+    protected Instant createdAt;
 
     @JsonProperty("startedAt")
-    protected LocalDateTime startedAt;
+    protected Instant startedAt;
 
     @JsonProperty("completedAt")
-    protected LocalDateTime completedAt;
+    protected Instant completedAt;
 
     @JsonProperty("cancelledAt")
-    protected LocalDateTime cancelledAt;
+    protected Instant cancelledAt;
 
     @JsonProperty("tektonUrl")
     protected String tektonUrl;

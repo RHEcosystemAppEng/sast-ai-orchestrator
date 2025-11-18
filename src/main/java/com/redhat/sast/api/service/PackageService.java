@@ -1,6 +1,6 @@
 package com.redhat.sast.api.service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,10 +52,8 @@ public class PackageService {
         summary.setRunningAnalyses((int) runningCount);
 
         // Find last analysis date
-        LocalDateTime lastAnalysis = jobs.stream()
-                .map(Job::getCreatedAt)
-                .max(LocalDateTime::compareTo)
-                .orElse(null);
+        Instant lastAnalysis =
+                jobs.stream().map(Job::getCreatedAt).max(Instant::compareTo).orElse(null);
         summary.setLastAnalysisDate(lastAnalysis);
 
         return summary;

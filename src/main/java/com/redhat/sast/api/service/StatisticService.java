@@ -1,6 +1,6 @@
 package com.redhat.sast.api.service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -72,7 +72,7 @@ public class StatisticService {
         dto.setUncollectedOshScans(uncollectedOshScans);
         dto.setTotalOshScans(collectedOshScans + uncollectedOshScans);
 
-        dto.setTimestamp(LocalDateTime.now());
+        dto.setTimestamp(Instant.now());
 
         return dto;
     }
@@ -162,12 +162,11 @@ public class StatisticService {
      */
     public List<JobActivityDataPointDto> getJobActivity24h() {
         List<JobActivityDataPointDto> dataPoints = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
 
         for (int i = 23; i >= 0; i--) {
-            LocalDateTime hourStart =
-                    now.minusHours(i).withMinute(0).withSecond(0).withNano(0);
-            LocalDateTime hourEnd = hourStart.plusHours(1);
+            Instant hourStart = now.minusSeconds(i * 3600).truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+            Instant hourEnd = hourStart.plusSeconds(3600);
 
             JobActivityDataPointDto dataPoint = new JobActivityDataPointDto();
             dataPoint.setTimestamp(hourStart.toString());

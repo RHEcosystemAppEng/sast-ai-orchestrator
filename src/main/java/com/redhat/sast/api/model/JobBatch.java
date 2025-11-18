@@ -1,6 +1,6 @@
 package com.redhat.sast.api.model;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,7 +32,7 @@ public class JobBatch {
     private String submittedBy;
 
     @Column(name = "submitted_at", nullable = false)
-    private LocalDateTime submittedAt;
+    private Instant submittedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -48,7 +48,7 @@ public class JobBatch {
     private Integer failedJobs;
 
     @Column(name = "last_updated_at")
-    private LocalDateTime lastUpdatedAt;
+    private Instant lastUpdatedAt;
 
     @Column(name = "use_known_false_positive_file")
     private Boolean useKnownFalsePositiveFile;
@@ -68,8 +68,8 @@ public class JobBatch {
 
     @PrePersist
     public void prePersist() {
-        this.submittedAt = LocalDateTime.now();
-        this.lastUpdatedAt = LocalDateTime.now();
+        this.submittedAt = Instant.now();
+        this.lastUpdatedAt = Instant.now();
         this.status = BatchStatus.PROCESSING;
         this.totalJobs = 0;
         this.completedJobs = 0;
@@ -78,7 +78,7 @@ public class JobBatch {
 
     @PreUpdate
     public void preUpdate() {
-        this.lastUpdatedAt = LocalDateTime.now();
+        this.lastUpdatedAt = Instant.now();
     }
 
     public List<Job> getJobs() {

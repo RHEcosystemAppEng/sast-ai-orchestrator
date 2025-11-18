@@ -1,6 +1,6 @@
 package com.redhat.sast.api.v1.dto.response;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -20,7 +20,7 @@ public class PackageSummaryDto {
     private Integer totalAnalyses;
 
     @JsonProperty("lastAnalysisDate")
-    private LocalDateTime lastAnalysisDate;
+    private Instant lastAnalysisDate;
 
     @JsonProperty("completedAnalyses")
     private Integer completedAnalyses;

@@ -1,14 +1,15 @@
 apiVersion: 1
 
 datasources:
-  - name: SAST-AI-PostgreSQL
-    type: grafana-postgresql-datasource
+  - uid: P413637974B2AAB20
+    name: SAST-AI-PostgreSQL
+    type: postgres
     access: proxy
     # Configuration for different environments:
-    # - Local Docker: postgres:5432
+    # - Containers: sast-ai-postgres:5432 (when both in containers)
     # - Port-forward: host.docker.internal:5432 (Mac's PostgreSQL)
     # - Kubernetes: sast-ai-orchestrator-postgresql.sast-ai-mlops.svc.cluster.local:5432
-    url: host.docker.internal:5432
+    url: sast-ai-postgres:5432
     database: sast-ai
     user: quarkus
     # Password should be configured via Grafana UI or provisioning secret

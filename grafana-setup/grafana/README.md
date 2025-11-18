@@ -35,38 +35,58 @@ grafana/
 
 ## Quick Start
 
-### Option 1: Local Development with Docker Compose
+### Automated Setup (Recommended)
 
-1. **Start the services**:
+Run the automated setup script that handles everything:
+
+```bash
+./scripts/setup_grafana.sh
+```
+
+This script will:
+- ✓ Check prerequisites (podman, PostgreSQL)
+- ✓ Apply all database migrations
+- ✓ Start Grafana container
+- ✓ Configure PostgreSQL datasource with correct UID
+- ✓ Import all dashboards
+- ✓ Verify the setup
+
+**Access Grafana**: http://localhost:3000
+- Username: `admin`
+- Password: `admin`
+
+### Manual Setup
+
+If you prefer to set up manually:
+
+1. **Start Grafana**:
    ```bash
-   docker-compose up -d
+   podman run -d \
+     --name sast-ai-grafana \
+     -e GF_SECURITY_ADMIN_USER=admin \
+     -e GF_SECURITY_ADMIN_PASSWORD=admin \
+     -p 3000:3000 \
+     grafana/grafana:9.5.0
    ```
 
-2. **Apply database migrations**:
+2. **Apply database migrations** (to your PostgreSQL):
    ```bash
-   docker cp src/main/resources/db/migration/V004__create_mlops_tables.sql sast-ai-postgres:/tmp/
-   docker cp src/main/resources/db/migration/V005__create_mlops_batch_metrics_view.sql sast-ai-postgres:/tmp/
-   docker exec sast-ai-postgres psql -U quarkus -d sast-ai -f /tmp/V004__create_mlops_tables.sql
-   docker exec sast-ai-postgres psql -U quarkus -d sast-ai -f /tmp/V005__create_mlops_batch_metrics_view.sql
+   psql -h localhost -p 5432 -U quarkus -d sast-ai -f src/main/resources/db/migration/V006__create_mlops_tables.sql
+   psql -h localhost -p 5432 -U quarkus -d sast-ai -f src/main/resources/db/migration/V007__create_mlops_issue_details.sql
+   psql -h localhost -p 5432 -U quarkus -d sast-ai -f src/main/resources/db/migration/V005__create_mlops_batch_metrics_view.sql
    ```
 
-3. **Load sample data** (optional):
-   ```bash
-   docker cp grafana/sample-data.sql sast-ai-postgres:/tmp/
-   docker exec sast-ai-postgres psql -U quarkus -d sast-ai -f /tmp/sample-data.sql
-   ```
-
-4. **Configure Grafana datasource**:
+3. **Configure Grafana datasource**:
    ```bash
    ./grafana/setup-datasource.sh
    ```
 
-5. **Import dashboards**:
+4. **Import dashboards**:
    ```bash
    ./grafana/import-dashboards.sh
    ```
 
-6. **Access Grafana**: http://localhost:3000
+5. **Access Grafana**: http://localhost:3000
    - Username: `admin`
    - Password: `admin`
 

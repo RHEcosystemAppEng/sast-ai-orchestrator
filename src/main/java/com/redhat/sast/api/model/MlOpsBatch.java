@@ -12,19 +12,28 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "job_batch")
+@Table(name = "mlops_batch")
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"jobs", "jobBatchExecutionContext", "jobBatchRunDefinition"})
-public class JobBatch {
+@EqualsAndHashCode(exclude = {"jobs"})
+public class MlOpsBatch {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "batch_google_sheet_url", nullable = false)
-    private String batchGoogleSheetUrl;
+    @Column(name = "testing_data_nvrs_version", nullable = false, length = 100)
+    private String testingDataNvrsVersion;
+
+    @Column(name = "prompts_version", nullable = false, length = 100)
+    private String promptsVersion;
+
+    @Column(name = "known_non_issues_version", nullable = false, length = 100)
+    private String knownNonIssuesVersion;
+
+    @Column(name = "container_image", nullable = false, length = 500)
+    private String containerImage;
 
     @Column(name = "submitted_by")
     private String submittedBy;
@@ -48,21 +57,8 @@ public class JobBatch {
     @Column(name = "last_updated_at")
     private LocalDateTime lastUpdatedAt;
 
-    @Column(name = "use_known_false_positive_file")
-    private Boolean useKnownFalsePositiveFile;
-
-    @Column(name = "aggregate_results_g_sheet")
-    private String aggregateResultsGSheet;
-
-    @OneToMany(mappedBy = "jobBatch", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Job> jobs;
-
-    @OneToOne(mappedBy = "jobBatch", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private JobBatchExecutionContext jobBatchExecutionContext;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "job_batch_run_definition_id")
-    private JobBatchRunDefinition jobBatchRunDefinition;
+    @OneToMany(mappedBy = "mlOpsBatch", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<MlOpsJob> jobs;
 
     @PrePersist
     public void prePersist() {
@@ -79,14 +75,14 @@ public class JobBatch {
         this.lastUpdatedAt = LocalDateTime.now();
     }
 
-    public List<Job> getJobs() {
+    public List<MlOpsJob> getJobs() {
         if (jobs == null) {
             jobs = new ArrayList<>();
         }
         return jobs;
     }
 
-    public void setJobs(List<Job> jobs) {
+    public void setJobs(List<MlOpsJob> jobs) {
         this.jobs = jobs != null ? new ArrayList<>(jobs) : new ArrayList<>();
     }
 }

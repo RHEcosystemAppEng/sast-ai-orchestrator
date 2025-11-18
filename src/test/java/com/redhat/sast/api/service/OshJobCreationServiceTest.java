@@ -96,7 +96,7 @@ class OshJobCreationServiceTest {
         scanWithNoLabel.setRawData(rawDataWithoutLabel);
 
         assertTrue(oshJobCreationService.canProcessScan(scanWithNoLabel));
-        assertNull(scanWithNoLabel.getRawData().get("Label"));
+        assertNull(scanWithNoLabel.getRawData().get("label"));
     }
 
     @Test
@@ -149,7 +149,8 @@ class OshJobCreationServiceTest {
         scan.setVersion(version);
 
         Map<String, Object> rawData = new HashMap<>();
-        rawData.put("Label", label);
+        // HTML parser stores keys in lowercase
+        rawData.put("label", label);
         scan.setRawData(rawData);
 
         return scan;

@@ -181,7 +181,7 @@ public class OshJobCreationService {
             return null;
         }
 
-        Object label = scan.getRawData().get("Label");
+        Object label = scan.getRawData().get("label");
         if (label != null) {
             return label.toString();
         }

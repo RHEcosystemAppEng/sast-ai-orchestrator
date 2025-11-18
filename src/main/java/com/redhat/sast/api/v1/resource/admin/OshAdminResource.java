@@ -7,9 +7,11 @@ import java.util.Optional;
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.service.StatisticService;
 import com.redhat.sast.api.service.osh.OshClientService;
+import com.redhat.sast.api.service.osh.OshJobCreationService;
 import com.redhat.sast.api.service.osh.OshRetryService;
 import com.redhat.sast.api.startup.OshScheduler;
 import com.redhat.sast.api.v1.dto.response.OshScanStatusDto;
+import com.redhat.sast.api.v1.dto.response.admin.OshManualCollectionResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshRetryQueueResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshRetryStatisticsResponseDto;
 import com.redhat.sast.api.v1.dto.response.admin.OshStatusResponseDto;
@@ -58,6 +60,9 @@ public class OshAdminResource {
 
     @Inject
     OshClientService oshClientService;
+
+    @Inject
+    OshJobCreationService oshJobCreationService;
 
     /**
      * Get overall OSH integration status including retry queue and cursor information.
@@ -305,10 +310,15 @@ public class OshAdminResource {
     }
 
     /**
-     * Test endpoint to collect a specific OSH scan by ID.
+     * Test endpoint to collect a specific OSH scan by ID and create a workflow job.
+     *
+     * This endpoint:
+     * 1. Fetches scan metadata from OSH API
+     * 2. Validates the scan can be processed
+     * 3. Creates a SAST-AI workflow job if eligible
      *
      * @param scanId OSH scan ID to collect
-     * @return scan data if found
+     * @return job creation result with scan and job data
      */
     @POST
     @Path("/test/collect-scan/{scanId}")
@@ -320,20 +330,42 @@ public class OshAdminResource {
                         .build();
             }
 
-            LOGGER.info("Test collection triggered for OSH scan ID: {}", scanId);
-            var scanData = oshClientService.fetchOshScanData(scanId);
+            LOGGER.info("Manual collection triggered for OSH scan ID: {}", scanId);
+            var scanDataOpt = oshClientService.fetchOshScanData(scanId);
 
-            if (scanData.isPresent()) {
-                LOGGER.info("Successfully collected scan data for ID {}: {}", scanId, scanData.get());
-                return Response.ok(scanData.get()).build();
-            } else {
+            if (scanDataOpt.isEmpty()) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity("Scan not found or could not be collected: " + scanId)
                         .build();
             }
 
+            var scanData = scanDataOpt.get();
+            LOGGER.info("Successfully collected scan data for ID {}: {}", scanId, scanData);
+
+            if (!oshJobCreationService.canProcessScan(scanData)) {
+                return Response.ok(new OshManualCollectionResponseDto(
+                                scanData,
+                                null,
+                                false,
+                                "Scan cannot be processed (not in CLOSED state or missing required data)"))
+                        .build();
+            }
+
+            var jobOpt = oshJobCreationService.createJobFromOshScan(scanData);
+
+            if (jobOpt.isPresent()) {
+                var job = jobOpt.get();
+                LOGGER.info("Successfully created job {} for OSH scan {}", job.getId(), scanId);
+                return Response.ok(new OshManualCollectionResponseDto(scanData, job, true, "Job created successfully"))
+                        .build();
+            } else {
+                return Response.ok(new OshManualCollectionResponseDto(
+                                scanData, null, false, "Scan already processed or JSON data not available"))
+                        .build();
+            }
+
         } catch (Exception e) {
-            LOGGER.error("Failed to collect scan {}: {}", scanId, e.getMessage(), e);
+            LOGGER.error("Failed to collect/process scan {}: {}", scanId, e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("Error collecting scan: " + e.getMessage())
                     .build();

@@ -89,7 +89,7 @@ public class OshJobCreationService {
      * @return Created Job, or null if already processed
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
-    Job createJobEntityInTransaction(@Nonnull OshScanDto scan) {
+    public Job createJobEntityInTransaction(@Nonnull OshScanDto scan) {
         var scanId = scan.getScanId();
 
         if (isAlreadyProcessed(scanId)) {

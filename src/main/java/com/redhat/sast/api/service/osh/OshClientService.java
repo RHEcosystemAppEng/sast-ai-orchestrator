@@ -72,7 +72,7 @@ public class OshClientService {
             scanId++;
         }
 
-        LOGGER.info("Discovered {} finished scans in range {}-{} (exclusive)", oshScanList.size(), startId, end);
+        LOGGER.debug("Discovered {} finished scans in range {}-{} (exclusive)", oshScanList.size(), startId, end);
         return oshScanList;
     }
 

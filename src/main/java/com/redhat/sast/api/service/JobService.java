@@ -194,8 +194,11 @@ public class JobService {
                 && !inputSourceUrl.trim().isEmpty()) {
             job.setInputSourceType(InputSourceType.OSH_SCAN);
             job.setOshScanId(oshScanId);
-            job.setPackageSourceCodeUrl(inputSourceUrl);
-            LOGGER.debug("Configured job as OSH_SCAN with URL: {} (scan ID: {})", inputSourceUrl, oshScanId);
+            LOGGER.debug(
+                    "Configured job as OSH_SCAN - oshScanId: {}, OSH report URL: {}, package source URL: {}",
+                    oshScanId,
+                    inputSourceUrl,
+                    job.getPackageSourceCodeUrl());
             return;
         }
 

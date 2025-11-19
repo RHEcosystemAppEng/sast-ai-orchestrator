@@ -1,16 +1,19 @@
 package com.redhat.sast.api.service.osh;
 
+import java.util.List;
 import java.util.Optional;
 
 import com.redhat.sast.api.config.OshConfiguration;
 import com.redhat.sast.api.model.Job;
+import com.redhat.sast.api.platform.PipelineParameterMapper;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.service.EventBroadcastService;
 import com.redhat.sast.api.service.JobService;
+import com.redhat.sast.api.service.PlatformService;
 import com.redhat.sast.api.v1.dto.osh.OshScanDto;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
-import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 
+import io.fabric8.tekton.v1.Param;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -43,6 +46,8 @@ public class OshJobCreationService {
     private final OshRetryService oshRetryService;
     private final OshConfiguration oshConfiguration;
     private final EventBroadcastService eventBroadcastService;
+    private final PlatformService platformService;
+    private final PipelineParameterMapper pipelineParameterMapper;
 
     /**
      * Creates a SAST-AI workflow job from an OSH scan result and triggers the pipeline.
@@ -51,49 +56,86 @@ public class OshJobCreationService {
      * 1. Check if scan already processed
      * 2. Build OSH report URL from scan metadata
      * 3. Build package NVR from scan metadata
-     * 4. Create job via JobService with OSH URL
-     * 5. Trigger AI workflow pipeline asynchronously
+     * 4. Create job via JobService with OSH URL (in transaction)
+     * 5. Trigger AI workflow pipeline asynchronously (after transaction commits)
      *
      * @param scan OSH scan response containing scan metadata
      * @return Created Job if successful, empty if skipped or failed
      */
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
     public Optional<Job> createJobFromOshScan(@Nonnull OshScanDto scan) {
         var scanId = scan.getScanId();
         try {
-            if (isAlreadyProcessed(scanId)) {
-                LOGGER.debug("OSH scan {} already processed, skipping", scanId);
+            Job job = createJobEntityInTransaction(scan);
+            if (job == null) {
                 return Optional.empty();
             }
-            var packageNvr = buildNvrFromScan(scan);
-            var oshReportUrl = buildOshReportUrl(scan, packageNvr);
 
-            var dto = new JobCreationDto(packageNvr, oshReportUrl);
-            dto.setOshScanId(String.valueOf(scanId));
-            dto.setSubmittedBy("OSH_SCHEDULER");
-
-            JobResponseDto response = jobService.createJob(dto);
-            Job job = jobService.getJobEntityById(response.getJobId());
-
-            oshRetryService.markRetrySuccessful(scanId);
-            LOGGER.debug(
-                    "Removed OSH scan {} from retry queue after successful job creation and pipeline trigger initiation",
-                    scanId);
-
-            LOGGER.info(
-                    "OSH job creation and pipeline trigger successful: scan {} -> job {} (package: {}, URL: {})",
-                    scanId,
-                    job.getId(),
-                    packageNvr,
-                    oshReportUrl);
-
-            eventBroadcastService.broadcastOshScanCollected(job);
+            startPipelineForJob(job);
 
             return Optional.of(job);
 
         } catch (Exception e) {
             LOGGER.error("Failed to create job from OSH scan {}: {}", scanId, e.getMessage(), e);
             return Optional.empty();
+        }
+    }
+
+    /**
+     * Creates the job entity in a new transaction.
+     * This method commits the transaction when it returns, ensuring all database
+     * operations are complete before the pipeline starts.
+     *
+     * @param scan OSH scan response
+     * @return Created Job, or null if already processed
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    Job createJobEntityInTransaction(@Nonnull OshScanDto scan) {
+        var scanId = scan.getScanId();
+
+        if (isAlreadyProcessed(scanId)) {
+            LOGGER.debug("OSH scan {} already processed, skipping", scanId);
+            return null;
+        }
+
+        var packageNvr = buildNvrFromScan(scan);
+        var oshReportUrl = buildOshReportUrl(scan, packageNvr);
+
+        var dto = new JobCreationDto(packageNvr, oshReportUrl);
+        dto.setOshScanId(String.valueOf(scanId));
+        dto.setSubmittedBy("OSH_SCHEDULER");
+
+        Job job = jobService.createJobEntity(dto);
+
+        oshRetryService.markRetrySuccessful(scanId);
+        LOGGER.debug("Removed OSH scan {} from retry queue after successful job creation", scanId);
+
+        LOGGER.info(
+                "OSH job created successfully: scan {} -> job {} (package: {}, URL: {})",
+                scanId,
+                job.getId(),
+                packageNvr,
+                oshReportUrl);
+
+        eventBroadcastService.broadcastOshScanCollected(job);
+
+        return job;
+    }
+
+    /**
+     * Starts the Tekton pipeline for a job.
+     *
+     * @param job The job to start pipeline for
+     */
+    private void startPipelineForJob(@Nonnull Job job) {
+        try {
+            List<Param> pipelineParams = pipelineParameterMapper.extractPipelineParams(job);
+            String llmSecretName =
+                    (job.getJobSettings() != null) ? job.getJobSettings().getSecretName() : "sast-ai-default-llm-creds";
+
+            platformService.startSastAIWorkflow(job.getId(), pipelineParams, llmSecretName);
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to start pipeline for job {}: {}", job.getId(), e.getMessage(), e);
         }
     }
 

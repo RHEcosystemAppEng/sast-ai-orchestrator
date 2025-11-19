@@ -194,7 +194,7 @@ public class JobService {
                 && !inputSourceUrl.trim().isEmpty()) {
             job.setInputSourceType(InputSourceType.OSH_SCAN);
             job.setOshScanId(oshScanId);
-            job.setGSheetUrl(inputSourceUrl); // Store OSH URL in gSheetUrl field
+            job.setPackageSourceCodeUrl(inputSourceUrl);
             LOGGER.debug("Configured job as OSH_SCAN with URL: {} (scan ID: {})", inputSourceUrl, oshScanId);
             return;
         }

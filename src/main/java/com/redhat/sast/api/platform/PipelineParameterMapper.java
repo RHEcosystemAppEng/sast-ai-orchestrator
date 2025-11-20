@@ -6,7 +6,9 @@ import java.util.List;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.model.Job;
+import com.redhat.sast.api.model.MlOpsJob;
 
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -30,6 +32,8 @@ public class PipelineParameterMapper {
     private static final String PARAM_REPO_REMOTE_URL = "REPO_REMOTE_URL";
     private static final String PARAM_FALSE_POSITIVES_URL = "FALSE_POSITIVES_URL";
     private static final String PARAM_INPUT_REPORT_FILE_PATH = "INPUT_REPORT_FILE_PATH";
+    private static final String PARAM_INPUT_REPORT_CONTENT = "INPUT_REPORT_CONTENT";
+    private static final String PARAM_INPUT_SOURCE_TYPE = "INPUT_SOURCE_TYPE";
     private static final String PARAM_PROJECT_NAME = "PROJECT_NAME";
     private static final String PARAM_PROJECT_VERSION = "PROJECT_VERSION";
     private static final String PARAM_LLM_URL = "LLM_URL";
@@ -39,6 +43,11 @@ public class PipelineParameterMapper {
     private static final String PARAM_EMBEDDINGS_LLM_MODEL_NAME = "EMBEDDINGS_LLM_MODEL_NAME";
     private static final String PARAM_EMBEDDINGS_LLM_API_KEY = "EMBEDDINGS_LLM_API_KEY";
     private static final String PARAM_USE_KNOWN_FALSE_POSITIVE_FILE = "USE_KNOWN_FALSE_POSITIVE_FILE";
+    private static final String PARAM_AGGREGATE_RESULTS_G_SHEET = "AGGREGATE_RESULTS_G_SHEET";
+    // MLOps-specific parameter names
+    private static final String PARAM_CONTAINER_IMAGE = "CONTAINER_IMAGE";
+    private static final String PARAM_PROMPTS_VERSION = "PROMPTS_VERSION";
+    private static final String PARAM_KNOWN_NON_ISSUES_VERSION = "KNOWN_NON_ISSUES_VERSION";
 
     @Inject
     TektonClient tektonClient;
@@ -75,11 +84,46 @@ public class PipelineParameterMapper {
                 Boolean.TRUE.equals(useKnownFalsePositiveFile) ? job.getKnownFalsePositivesUrl() : "";
         params.add(createParam(PARAM_FALSE_POSITIVES_URL, falsePositivesUrl));
 
-        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+        addInputSourceParameters(params, job);
+
         params.add(createParam(PARAM_PROJECT_NAME, job.getProjectName()));
         params.add(createParam(PARAM_PROJECT_VERSION, job.getProjectVersion()));
 
         params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
+
+        params.add(createParam(PARAM_AGGREGATE_RESULTS_G_SHEET, job.getAggregateResultsGSheet()));
+    }
+
+    /**
+     * Adds input source parameters based on the job's input source type.
+     * For OSH scans: passes OSH URL
+     * For Google Sheets: passes Google Sheet URL
+     */
+    private void addInputSourceParameters(List<Param> params, Job job) {
+        InputSourceType inputSourceType = job.getInputSourceType();
+
+        if (inputSourceType == null) {
+            LOGGER.warn("Job {} has null input source type, defaulting to GOOGLE_SHEET", job.getId());
+            inputSourceType = InputSourceType.GOOGLE_SHEET;
+        }
+
+        params.add(createParam(PARAM_INPUT_SOURCE_TYPE, inputSourceType.toString()));
+
+        switch (inputSourceType) {
+            case OSH_SCAN, GOOGLE_SHEET, SARIF -> {
+                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+                params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
+                LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
+            }
+            default -> {
+                LOGGER.warn(
+                        "Unknown input source type {} for job {}, using GOOGLE_SHEET fallback",
+                        inputSourceType,
+                        job.getId());
+                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+                params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
+            }
+        }
     }
 
     /**
@@ -233,5 +277,64 @@ public class PipelineParameterMapper {
             return job.getJobSettings().getUseKnownFalsePositiveFile();
         }
         return true;
+    }
+
+    /**
+     * Extracts and converts MLOpsJob data to pipeline parameters for MLOps workflows.
+     * Includes INPUT_REPORT_FILE_PATH for ground truth sheets stored in MinIO.
+     *
+     * @param mlOpsJob the MLOps job containing data to be converted
+     * @param promptsVersion the DVC version for prompts configuration
+     * @param knownNonIssuesVersion the DVC version for known non-issues
+     * @param containerImage the container image to use for the workflow
+     * @return list of pipeline parameters
+     */
+    public List<Param> extractMlOpsPipelineParams(
+            @Nonnull MlOpsJob mlOpsJob,
+            @Nonnull String promptsVersion,
+            @Nonnull String knownNonIssuesVersion,
+            @Nonnull String containerImage) {
+        List<Param> params = new ArrayList<>();
+
+        // Basic job parameters
+        params.add(createParam(PARAM_REPO_REMOTE_URL, mlOpsJob.getPackageSourceCodeUrl()));
+        params.add(createParam(PARAM_FALSE_POSITIVES_URL, mlOpsJob.getKnownFalsePositivesUrl()));
+        params.add(createParam(PARAM_PROJECT_NAME, mlOpsJob.getProjectName()));
+        params.add(createParam(PARAM_PROJECT_VERSION, mlOpsJob.getProjectVersion()));
+        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, "true"));
+
+        // Input report file path - ground truth sheet for this NVR
+        String groundTruthUrl = String.format(
+                "http://minio-api-minio.apps.appeng.clusters.se-apps.redhat.com/test/ground_truth_sheets/%s.xlsx",
+                mlOpsJob.getPackageNvr());
+        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, groundTruthUrl));
+        params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
+
+        // MLOps-specific parameters
+        params.add(createParam(PARAM_CONTAINER_IMAGE, containerImage));
+        params.add(createParam(PARAM_PROMPTS_VERSION, promptsVersion));
+        params.add(createParam(PARAM_KNOWN_NON_ISSUES_VERSION, knownNonIssuesVersion));
+
+        // Add default LLM parameters (can be enhanced later to support custom secrets)
+        String llmSecretName = "sast-ai-default-llm-creds";
+        LlmSecretValues llmSecretValues = getLlmSecretValues(llmSecretName);
+
+        params.add(createParam(PARAM_LLM_URL, llmSecretValues.llmUrl()));
+        params.add(createParam(PARAM_LLM_MODEL_NAME, llmSecretValues.llmModelName()));
+        params.add(createParam(PARAM_LLM_API_KEY, llmSecretValues.llmApiKey()));
+        params.add(createParam(PARAM_EMBEDDINGS_LLM_URL, llmSecretValues.embeddingsUrl()));
+        params.add(createParam(PARAM_EMBEDDINGS_LLM_MODEL_NAME, llmSecretValues.embeddingsModelName()));
+        params.add(createParam(PARAM_EMBEDDINGS_LLM_API_KEY, llmSecretValues.embeddingsApiKey()));
+
+        LOGGER.debug(
+                "Generated MLOps pipeline parameters for job {} (NVR: {}) with prompts={}, knownNonIssues={}, image={}, groundTruth={}",
+                mlOpsJob.getId(),
+                mlOpsJob.getPackageNvr(),
+                promptsVersion,
+                knownNonIssuesVersion,
+                containerImage,
+                groundTruthUrl);
+
+        return params;
     }
 }

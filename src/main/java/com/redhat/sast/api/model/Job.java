@@ -13,7 +13,10 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "job",
-        indexes = {@Index(name = "idx_job_id", columnList = "id")})
+        indexes = {
+            @Index(name = "idx_job_id", columnList = "id"),
+            @Index(name = "idx_job_osh_scan_id", columnList = "osh_scan_id", unique = true)
+        })
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = {"jobBatch", "jobSettings", "jobTokenUsage", "jobMetrics"})
@@ -58,6 +61,9 @@ public class Job {
     @Column(name = "google_sheet_url")
     private String gSheetUrl;
 
+    @Column(name = "aggregate_results_g_sheet")
+    private String aggregateResultsGSheet;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     protected JobStatus status;
@@ -82,6 +88,15 @@ public class Job {
 
     @Column(name = "submitted_by")
     private String submittedBy;
+
+    @Column(name = "dvc_data_version")
+    private String dvcDataVersion;
+
+    @Column(name = "dvc_pipeline_stage")
+    private String dvcPipelineStage;
+
+    @Column(name = "dvc_commit_hash")
+    private String dvcCommitHash;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_batch_id")

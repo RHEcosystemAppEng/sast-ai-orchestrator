@@ -45,7 +45,6 @@ public class TestProfile implements QuarkusTestProfile {
 
     @Override
     public Set<Class<?>> getEnabledAlternatives() {
-        // Using profile-based mocking
         return Set.of();
     }
 }

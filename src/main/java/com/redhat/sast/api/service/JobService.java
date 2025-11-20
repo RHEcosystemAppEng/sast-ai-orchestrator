@@ -37,7 +37,7 @@ public class JobService {
     private final ManagedExecutor managedExecutor;
     private final NvrResolutionService nvrResolutionService;
     private final PipelineParameterMapper parameterMapper;
-    private final UrlValidationService urlValidationService;
+    private final EventBroadcastService eventBroadcastService;
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
         final Job job = createJobEntity(jobCreationDto);
@@ -119,6 +119,8 @@ public class JobService {
 
         jobRepository.persist(job);
         LOGGER.debug("Updated job ID {} status from {} to {}", jobId, currentStatus, newStatus);
+
+        eventBroadcastService.broadcastJobStatusChange(job);
     }
 
     @Transactional
@@ -134,7 +136,7 @@ public class JobService {
     }
 
     @Transactional
-    public Job createJobEntity(JobCreationDto jobCreationDto) {
+    public Job createJobEntity(@Nonnull final JobCreationDto jobCreationDto) {
         Job job = getJobFromDto(jobCreationDto);
         jobRepository.persist(job);
 
@@ -144,7 +146,7 @@ public class JobService {
         settings.setJob(job);
         settings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
 
-        boolean shouldUseFile = shouldUseFalsePositiveFile(job, jobCreationDto);
+        boolean shouldUseFile = shouldUseFalsePositiveFile(jobCreationDto);
 
         settings.setUseKnownFalsePositiveFile(shouldUseFile);
         jobSettingsRepository.persist(settings);
@@ -166,15 +168,51 @@ public class JobService {
         job.setKnownFalsePositivesUrl(
                 nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
 
-        // Set input source - always Google Sheet for now
-        job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
-        job.setGSheetUrl(jobCreationDto.getInputSourceUrl());
+        // Handle different input source types based on DTO content
+        configureInputSource(job, jobCreationDto);
 
-        // Set submittedBy with default value "unknown" if not provided
         job.setSubmittedBy(jobCreationDto.getSubmittedBy() != null ? jobCreationDto.getSubmittedBy() : "unknown");
+
+        job.setAggregateResultsGSheet(jobCreationDto.getAggregateResultsGSheet());
 
         job.setStatus(JobStatus.PENDING);
         return job;
+    }
+
+    /**
+     * Configures the job's input source type and related fields based on the JobCreationDto content.
+     * Handles OSH scan jobs (URL-based) and Google Sheet jobs.
+     */
+    private void configureInputSource(Job job, JobCreationDto jobCreationDto) {
+        String oshScanId = jobCreationDto.getOshScanId();
+        String inputSourceUrl = jobCreationDto.getInputSourceUrl();
+
+        // OSH scan with URL
+        if (oshScanId != null
+                && !oshScanId.trim().isEmpty()
+                && inputSourceUrl != null
+                && !inputSourceUrl.trim().isEmpty()) {
+            job.setInputSourceType(InputSourceType.OSH_SCAN);
+            job.setOshScanId(oshScanId);
+            LOGGER.debug(
+                    "Configured job as OSH_SCAN - oshScanId: {}, OSH report URL: {}, package source URL: {}",
+                    oshScanId,
+                    inputSourceUrl,
+                    job.getPackageSourceCodeUrl());
+            return;
+        }
+
+        // Google Sheets or SARIF
+        if (inputSourceUrl != null && !inputSourceUrl.trim().isEmpty()) {
+            job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
+            job.setGSheetUrl(inputSourceUrl);
+            LOGGER.debug("Configured job as GOOGLE_SHEET with URL: {}", inputSourceUrl);
+            return;
+        }
+
+        throw new IllegalArgumentException(
+                "Job creation requires either (oshScanId + inputSourceUrl) for OSH scans or inputSourceUrl for Google Sheets. "
+                        + "Package NVR: " + jobCreationDto.getPackageNvr());
     }
 
     public List<JobResponseDto> getAllJobs(String packageName, JobStatus status, int page, int size) {
@@ -219,23 +257,14 @@ public class JobService {
         }
     }
 
-    private boolean shouldUseFalsePositiveFile(Job job, JobCreationDto jobCreationDto) {
+    private boolean shouldUseFalsePositiveFile(JobCreationDto jobCreationDto) {
         Boolean useFromDto = jobCreationDto.getUseKnownFalsePositiveFile();
-        boolean defaultToUse = useFromDto != null ? useFromDto : true;
 
-        if (!defaultToUse || job.getKnownFalsePositivesUrl() == null) {
-            return defaultToUse;
+        if (useFromDto != null) {
+            return useFromDto;
         }
 
-        if (urlValidationService.isUrlAccessible(job.getKnownFalsePositivesUrl())) {
-            return true;
-        }
-
-        LOGGER.info(
-                "Known false positives file not found for package '{}' at URL: {}. Setting useKnownFalsePositiveFile to false.",
-                job.getPackageNvr(),
-                job.getKnownFalsePositivesUrl());
-        return false;
+        return true;
     }
 
     private JobResponseDto convertToResponseDto(Job job) {
@@ -255,5 +284,32 @@ public class JobService {
     @Transactional
     public void persistJob(@Nonnull Job job) {
         jobRepository.persist(job);
+    }
+
+    /**
+     * Updates DVC metadata fields for a job
+     */
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW)
+    public void updateJobDvcMetadata(
+            @Nonnull Long jobId, String dvcDataVersion, String dvcCommitHash, String dvcPipelineStage) {
+        final Job job = jobRepository.findById(jobId);
+        if (job == null) {
+            LOGGER.warn("Job with ID {} not found when trying to update DVC metadata", jobId);
+            throw new IllegalArgumentException("Job not found with ID: " + jobId);
+        }
+
+        job.setDvcDataVersion(dvcDataVersion);
+        job.setDvcCommitHash(dvcCommitHash);
+        job.setDvcPipelineStage(dvcPipelineStage);
+        job.setLastUpdatedAt(LocalDateTime.now());
+
+        jobRepository.persist(job);
+
+        LOGGER.debug(
+                "Updated DVC metadata for job ID {}: version={}, commit={}, stage={}",
+                jobId,
+                dvcDataVersion,
+                dvcCommitHash,
+                dvcPipelineStage);
     }
 }

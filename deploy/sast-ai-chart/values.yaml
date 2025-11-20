@@ -17,9 +17,12 @@ app:
     # Quarkus configuration (overridden per environment)
     QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: update
     QUARKUS_KUBERNETES_CLIENT_TRUST_CERTS: false
+    QUARKUS_HIBERNATE_ORM_LOG_SQL: false
     # Google Service Account configuration
     GOOGLE_SERVICE_ACCOUNT_SECRET_PATH: /etc/secrets/google-service-account-secret/service_account.json
-  
+    # OSH Package filtering configuration
+    OSH_PACKAGES: "systemd,glibc"
+
   # Liveness and readiness probes (shared)
   livenessProbe:
     httpGet:
@@ -54,6 +57,7 @@ service:
 ## OpenShift Route configuration (base settings)
 route:
   enabled: true
+  host: ""  # If empty, OpenShift will generate a hostname
   path: "/"
   tls:
     enabled: true
@@ -70,8 +74,18 @@ postgresql:
     app.kubernetes.io/instance: "{{ .Release.Name }}"
     app.kubernetes.io/version: "{{ .Chart.AppVersion }}"
     app.kubernetes.io/managed-by: "{{ .Release.Service }}"
-  # OpenShift compatibility
   primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: ""
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
     # OpenShift compatibility
     podSecurityContext:
       enabled: false
@@ -174,6 +188,10 @@ configMap:
       
       # Logging configuration
       quarkus.log.category."org.jboss.logging".level=${QUARKUS_LOG_LEVEL}
+
+      # Package filtering - comma-separated list of packages to monitor
+      # Example: systemd,glibc
+      osh.packages=${OSH_PACKAGES:}
 
 ## Horizontal Pod Autoscaler (disabled by default)
 hpa:

@@ -3,10 +3,13 @@ package com.redhat.sast.api.v1;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.redhat.sast.api.v1.resource.DashboardResource;
 import com.redhat.sast.api.v1.resource.HealthResource;
 import com.redhat.sast.api.v1.resource.JobBatchResource;
 import com.redhat.sast.api.v1.resource.JobResource;
+import com.redhat.sast.api.v1.resource.MlOpsBatchResource;
 import com.redhat.sast.api.v1.resource.PackageResource;
+import com.redhat.sast.api.v1.resource.admin.OshAdminResource;
 
 import jakarta.ws.rs.ApplicationPath;
 import jakarta.ws.rs.core.Application;
@@ -23,6 +26,9 @@ public class V1ApiApplication extends Application {
         resources.add(JobResource.class);
         resources.add(PackageResource.class);
         resources.add(HealthResource.class);
+        resources.add(DashboardResource.class);
+        resources.add(OshAdminResource.class);
+        resources.add(MlOpsBatchResource.class);
 
         // Add any v1-specific providers (exception mappers, etc.)
         // resources.add(V1ExceptionMapper.class);

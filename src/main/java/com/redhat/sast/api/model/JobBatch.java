@@ -12,9 +12,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(
-        name = "job_batch",
-        indexes = {@Index(name = "idx_job_batch_id", columnList = "id")})
+@Table(name = "job_batch")
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = {"jobs", "jobBatchExecutionContext", "jobBatchRunDefinition"})
@@ -52,6 +50,9 @@ public class JobBatch {
 
     @Column(name = "use_known_false_positive_file")
     private Boolean useKnownFalsePositiveFile;
+
+    @Column(name = "aggregate_results_g_sheet")
+    private String aggregateResultsGSheet;
 
     @OneToMany(mappedBy = "jobBatch", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Job> jobs;

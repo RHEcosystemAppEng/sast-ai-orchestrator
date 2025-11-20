@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
 import com.redhat.sast.api.enums.BatchStatus;
@@ -41,12 +40,8 @@ public class JobBatchService {
     private final GoogleSheetsService googleSheetsService;
     private final CsvConverter csvConverter;
     private final PipelineParameterMapper parameterMapper;
-
-    @ConfigProperty(name = "sast.ai.batch.job.polling.interval", defaultValue = "5000")
-    long jobPollingIntervalMs;
-
-    @ConfigProperty(name = "sast.ai.batch.job.timeout", defaultValue = "3600000")
-    long jobTimeoutMs;
+    private final EventBroadcastService eventBroadcastService;
+    private final BatchOperationsHelper batchOperationsHelper;
 
     /**
      * Submits a batch job for processing.
@@ -60,7 +55,8 @@ public class JobBatchService {
                 batch.getId(),
                 batch.getBatchGoogleSheetUrl(),
                 batch.getUseKnownFalsePositiveFile(),
-                batch.getSubmittedBy()));
+                batch.getSubmittedBy(),
+                batch.getAggregateResultsGSheet()));
 
         return response;
     }
@@ -72,6 +68,7 @@ public class JobBatchService {
         // Set submittedBy with default value "unknown" if not provided
         batch.setSubmittedBy(submissionDto.getSubmittedBy() != null ? submissionDto.getSubmittedBy() : "unknown");
         batch.setUseKnownFalsePositiveFile(submissionDto.getUseKnownFalsePositiveFile());
+        batch.setAggregateResultsGSheet(submissionDto.getAggregateResultsGSheet());
         batch.setStatus(BatchStatus.PROCESSING);
 
         jobBatchRepository.persist(batch);
@@ -89,7 +86,8 @@ public class JobBatchService {
             @Nonnull Long batchId,
             @Nonnull String batchGoogleSheetUrl,
             Boolean useKnownFalsePositiveFile,
-            String submittedBy) {
+            String submittedBy,
+            String aggregateResultsGSheet) {
         try {
             List<JobCreationDto> jobDtos = fetchAndParseJobsFromSheet(batchGoogleSheetUrl, useKnownFalsePositiveFile);
 
@@ -98,7 +96,12 @@ public class JobBatchService {
                 return;
             }
 
-            jobDtos.forEach(dto -> dto.setSubmittedBy(submittedBy));
+            jobDtos.forEach(dto -> {
+                dto.setSubmittedBy(submittedBy);
+                if (aggregateResultsGSheet != null && !aggregateResultsGSheet.isBlank()) {
+                    dto.setAggregateResultsGSheet(aggregateResultsGSheet);
+                }
+            });
 
             updateBatchTotalJobs(batchId, jobDtos.size());
             LOGGER.debug(
@@ -156,53 +159,13 @@ public class JobBatchService {
 
     /**
      * Waits for a job to complete by polling its status.
+     * Delegates to BatchOperationsHelper for common polling logic.
      *
      * @param jobId the ID of the job to wait for
      * @return true if job completed successfully, false if failed/cancelled/timeout
      */
     private boolean waitForJobCompletion(@Nonnull Long jobId) {
-        long startTime = System.currentTimeMillis();
-        long timeoutTime = startTime + jobTimeoutMs;
-
-        while (System.currentTimeMillis() < timeoutTime) {
-            try {
-                JobStatus status = getJobStatusInNewTransaction(jobId);
-                if (status == null) {
-                    LOGGER.warn("Job {} not found during polling", jobId);
-                    return false;
-                }
-
-                LOGGER.debug("Polling job {} status: {}", jobId, status);
-
-                switch (status) {
-                    case COMPLETED:
-                        LOGGER.debug("Job {} completed successfully", jobId);
-                        return true;
-                    case FAILED, CANCELLED:
-                        LOGGER.warn("Job {} finished with status: {}", jobId, status);
-                        return false;
-                    case PENDING, SCHEDULED, RUNNING:
-                        // Job is still processing, continue polling
-                        break;
-                    default:
-                        LOGGER.warn("Job {} has unexpected status: {}", jobId, status);
-                        break;
-                }
-
-                Thread.sleep(jobPollingIntervalMs);
-
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                LOGGER.error("Job polling interrupted for job {}", jobId, e);
-                return false;
-            } catch (Exception e) {
-                LOGGER.error("Error polling job {} status", jobId, e);
-                return false;
-            }
-        }
-
-        LOGGER.error("Job {} timed out after {}ms", jobId, jobTimeoutMs);
-        return false;
+        return batchOperationsHelper.waitForJobCompletion(jobId, this::getJobStatusInNewTransaction);
     }
 
     /**
@@ -314,11 +277,10 @@ public class JobBatchService {
 
     /**
      * Sets the final status of the batch once all jobs have been processed.
+     * Uses BatchOperationsHelper to determine the appropriate final status.
      */
     private void finalizeBatch(Long batchId, int total, int completed, int failed) {
-        BatchStatus finalStatus = (failed == total)
-                ? BatchStatus.FAILED
-                : (failed > 0) ? BatchStatus.COMPLETED_WITH_ERRORS : BatchStatus.COMPLETED;
+        BatchStatus finalStatus = batchOperationsHelper.determineFinalBatchStatus(total, completed, failed);
         updateBatchStatusInNewTransaction(batchId, finalStatus, total, completed, failed);
         LOGGER.info(
                 "Batch {} processing finalized. Status: {}, Total: {}, Completed: {}, Failed: {}",
@@ -362,6 +324,8 @@ public class JobBatchService {
                 batch.setFailedJobs(failedJobs);
                 jobBatchRepository.persist(batch);
                 LOGGER.info("Updated batch {} final status: {}", batchId, status);
+
+                eventBroadcastService.broadcastBatchProgress(batch);
             }
         } catch (Exception e) {
             LOGGER.error("Failed to update batch status for batch {}", batchId, e);
@@ -410,6 +374,8 @@ public class JobBatchService {
             batch.setCompletedJobs(completedJobs);
             batch.setFailedJobs(failedJobs);
             jobBatchRepository.persist(batch);
+
+            eventBroadcastService.broadcastBatchProgress(batch);
         }
     }
 

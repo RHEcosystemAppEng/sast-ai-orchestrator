@@ -1,6 +1,7 @@
 package com.redhat.sast.api.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
@@ -38,9 +39,48 @@ public class JobRepository implements PanacheRepository<Job> {
         }
     }
 
+    /**
+     * Finds a job by OSH scan ID for idempotency checking.
+     * Used to prevent duplicate job creation from the same OSH scan.
+     *
+     * @param oshScanId the OSH scan ID to search for
+     * @return Optional containing the Job if found, empty otherwise
+     */
+    public Optional<Job> findByOshScanId(String oshScanId) {
+        if (oshScanId == null || oshScanId.isBlank()) {
+            return Optional.empty();
+        }
+        return find("oshScanId", oshScanId).firstResultOptional();
+    }
+
     public List<String> findDistinctPackageNames() {
         return getEntityManager()
                 .createQuery("SELECT DISTINCT j.packageName FROM Job j WHERE j.packageName IS NOT NULL", String.class)
                 .getResultList();
+    }
+
+    /**
+     * Finds jobs that have an associated OSH scan ID with pagination.
+     * Results are ordered by creation time descending (newest first).
+     *
+     * @param page page number (0-indexed)
+     * @param size page size
+     * @return list of jobs with OSH scan IDs
+     */
+    public List<Job> findJobsWithOshScanId(int page, int size) {
+        return find("oshScanId IS NOT NULL ORDER BY createdAt DESC")
+                .page(Page.of(page, size))
+                .list();
+    }
+
+    /**
+     * Counts jobs that have an associated OSH scan ID (collected scans).
+     *
+     * @return number of jobs with non-null oshScanId
+     */
+    public long countJobsWithOshScanId() {
+        return getEntityManager()
+                .createQuery("SELECT COUNT(j) FROM Job j WHERE j.oshScanId IS NOT NULL", Long.class)
+                .getSingleResult();
     }
 }

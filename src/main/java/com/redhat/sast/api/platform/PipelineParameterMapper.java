@@ -280,6 +280,17 @@ public class PipelineParameterMapper {
     }
 
     /**
+     * Gets the USE_KNOWN_FALSE_POSITIVE_FILE value from MlOpsJob with fallback to true
+     */
+    private Boolean getUseKnownFalsePositiveFileValueFromMlOpsJob(MlOpsJob mlOpsJob) {
+        if (mlOpsJob.getMlOpsJobSettings() != null
+                && mlOpsJob.getMlOpsJobSettings().getUseKnownFalsePositiveFile() != null) {
+            return mlOpsJob.getMlOpsJobSettings().getUseKnownFalsePositiveFile();
+        }
+        return true;
+    }
+
+    /**
      * Extracts and converts MLOpsJob data to pipeline parameters for MLOps workflows.
      * Includes INPUT_REPORT_FILE_PATH for ground truth sheets stored in MinIO.
      *
@@ -298,10 +309,15 @@ public class PipelineParameterMapper {
 
         // Basic job parameters
         params.add(createParam(PARAM_REPO_REMOTE_URL, mlOpsJob.getPackageSourceCodeUrl()));
-        params.add(createParam(PARAM_FALSE_POSITIVES_URL, mlOpsJob.getKnownFalsePositivesUrl()));
+
+        Boolean useKnownFalsePositiveFile = getUseKnownFalsePositiveFileValueFromMlOpsJob(mlOpsJob);
+        String falsePositivesUrl =
+                Boolean.TRUE.equals(useKnownFalsePositiveFile) ? mlOpsJob.getKnownFalsePositivesUrl() : "";
+        params.add(createParam(PARAM_FALSE_POSITIVES_URL, falsePositivesUrl));
+
         params.add(createParam(PARAM_PROJECT_NAME, mlOpsJob.getProjectName()));
         params.add(createParam(PARAM_PROJECT_VERSION, mlOpsJob.getProjectVersion()));
-        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, "true"));
+        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
 
         // Input report file path - ground truth sheet for this NVR
         String groundTruthUrl = String.format(

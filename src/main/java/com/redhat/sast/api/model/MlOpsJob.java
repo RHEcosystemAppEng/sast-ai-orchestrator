@@ -80,6 +80,9 @@ public class MlOpsJob {
     @OneToOne(mappedBy = "mlOpsJob", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private MlOpsJobMetrics mlOpsJobMetrics;
 
+    @OneToOne(mappedBy = "mlOpsJob", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private MlOpsJobSettings mlOpsJobSettings;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();

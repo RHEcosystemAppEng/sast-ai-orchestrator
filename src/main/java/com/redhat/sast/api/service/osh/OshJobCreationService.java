@@ -141,7 +141,7 @@ public class OshJobCreationService {
 
     /**
      * Builds the OSH report URL for a given scan.
-     * URL format: {baseUrl}/osh/task/{scanId}/log/{packageNvr}/scan-results-all.js
+     * URL format: {baseUrl}/osh/task/{scanId}/log/{packageNvr}/scan-results-imp.js
      *
      * @param scan OSH scan containing scan ID
      * @param packageNvr package NVR for URL path
@@ -153,7 +153,7 @@ public class OshJobCreationService {
             baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
         }
 
-        String url = String.format("%s/osh/task/%d/log/%s/scan-results-all.js", baseUrl, scan.getScanId(), packageNvr);
+        String url = String.format("%s/osh/task/%d/log/%s/scan-results-imp.js", baseUrl, scan.getScanId(), packageNvr);
 
         LOGGER.debug("Built OSH report URL for scan {}: {}", scan.getScanId(), url);
         return url;

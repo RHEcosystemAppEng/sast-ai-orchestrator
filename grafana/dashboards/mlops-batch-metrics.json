@@ -20,7 +20,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "af3woqo2g8gzkd"
+        "uid": "c3340f63-6cc1-4a9e-9cd2-72876665193b"
       },
       "fieldConfig": {
         "defaults": {
@@ -50,7 +50,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 6,
         "w": 6,
         "x": 0,
         "y": 0
@@ -100,7 +100,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "af3woqo2g8gzkd"
+        "uid": "c3340f63-6cc1-4a9e-9cd2-72876665193b"
       },
       "fieldConfig": {
         "defaults": {
@@ -130,7 +130,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 6,
         "w": 6,
         "x": 6,
         "y": 0
@@ -164,7 +164,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "af3woqo2g8gzkd"
+        "uid": "c3340f63-6cc1-4a9e-9cd2-72876665193b"
       },
       "fieldConfig": {
         "defaults": {
@@ -194,7 +194,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 6,
         "w": 6,
         "x": 12,
         "y": 0
@@ -228,7 +228,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "af3woqo2g8gzkd"
+        "uid": "c3340f63-6cc1-4a9e-9cd2-72876665193b"
       },
       "fieldConfig": {
         "defaults": {
@@ -258,7 +258,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 6,
         "w": 6,
         "x": 18,
         "y": 0
@@ -292,7 +292,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "af3woqo2g8gzkd"
+        "uid": "c3340f63-6cc1-4a9e-9cd2-72876665193b"
       },
       "fieldConfig": {
         "defaults": {
@@ -345,7 +345,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 6
       },
       "id": 5,
       "options": {
@@ -376,7 +376,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "af3woqo2g8gzkd"
+        "uid": "c3340f63-6cc1-4a9e-9cd2-72876665193b"
       },
       "fieldConfig": {
         "defaults": {
@@ -489,7 +489,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 12
+        "y": 14
       },
       "id": 6,
       "options": {
@@ -508,7 +508,7 @@
         {
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  batch_id AS \"Batch ID\",\n  testing_data_nvrs_version AS \"Data Version\",\n  prompts_version AS \"Prompt Version\",\n  total_tp AS \"True Positives\",\n  total_fp AS \"False Positives\",\n  total_tn AS \"True Negatives\",\n  total_fn AS \"False Negatives\",\n  batch_accuracy AS \"Accuracy\"\nFROM mlops_batch_metrics_view\nWHERE $__timeFilter(submitted_at)\nORDER BY submitted_at DESC\nLIMIT 10;",
+          "rawSql": "SELECT\n  batch_id AS \"Batch ID\",\n  testing_data_nvrs_version AS \"Data Version\",\n  prompts_version AS \"Prompt Version\",\n  known_non_issues_version AS \"Known Non-Issues Version\",\n  container_image AS \"Container Image\",\n  total_tp AS \"True Positives\",\n  total_fp AS \"False Positives\",\n  total_tn AS \"True Negatives\",\n  total_fn AS \"False Negatives\",\n  batch_accuracy AS \"Accuracy\"\nFROM mlops_batch_metrics_view\nWHERE $__timeFilter(submitted_at)\nORDER BY submitted_at DESC\nLIMIT 10;",
           "refId": "A"
         }
       ],
@@ -518,7 +518,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "af3woqo2g8gzkd"
+        "uid": "c3340f63-6cc1-4a9e-9cd2-72876665193b"
       },
       "fieldConfig": {
         "defaults": {
@@ -615,7 +615,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 12
+        "y": 14
       },
       "id": 7,
       "options": {
@@ -639,7 +639,7 @@
         {
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  batch_id AS \"Batch ID\",\n  submitted_at AS \"Submitted At\",\n  testing_data_nvrs_version AS \"Data Version\",\n  prompts_version AS \"Prompt Version\",\n  total_jobs AS \"Total Jobs\",\n  jobs_with_metrics AS \"Jobs w/ Metrics\",\n  ROUND(avg_accuracy::NUMERIC, 4) AS \"Avg Accuracy\",\n  ROUND(batch_accuracy::NUMERIC, 4) AS \"Batch Accuracy\",\n  ROUND(avg_f1_score::NUMERIC, 4) AS \"Avg F1\",\n  ROUND(batch_f1_score::NUMERIC, 4) AS \"Batch F1\"\nFROM mlops_batch_metrics_view\nWHERE $__timeFilter(submitted_at)\nORDER BY submitted_at DESC;",
+          "rawSql": "SELECT\n  batch_id AS \"Batch ID\",\n  submitted_at AS \"Submitted At\",\n  testing_data_nvrs_version AS \"Data Version\",\n  prompts_version AS \"Prompt Version\",\n  known_non_issues_version AS \"Known Non-Issues Version\",\n  container_image AS \"Container Image\",\n  total_jobs AS \"Total Jobs\",\n  jobs_with_metrics AS \"Jobs w/ Metrics\",\n  ROUND(avg_accuracy::NUMERIC, 4) AS \"Avg Accuracy\",\n  ROUND(batch_accuracy::NUMERIC, 4) AS \"Batch Accuracy\",\n  ROUND(avg_f1_score::NUMERIC, 4) AS \"Avg F1\",\n  ROUND(batch_f1_score::NUMERIC, 4) AS \"Batch F1\"\nFROM mlops_batch_metrics_view\nWHERE $__timeFilter(submitted_at)\nORDER BY submitted_at DESC;",
           "refId": "A"
         }
       ],
@@ -649,7 +649,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "af3woqo2g8gzkd"
+        "uid": "c3340f63-6cc1-4a9e-9cd2-72876665193b"
       },
       "fieldConfig": {
         "defaults": {
@@ -702,7 +702,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 22
       },
       "id": 8,
       "options": {
@@ -723,11 +723,179 @@
         {
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  prompts_version,\n  AVG(batch_accuracy) AS avg_accuracy,\n  AVG(batch_precision) AS avg_precision,\n  AVG(batch_recall) AS avg_recall,\n  AVG(batch_f1_score) AS avg_f1_score,\n  COUNT(*) AS batch_count\nFROM mlops_batch_metrics_view\nWHERE $__timeFilter(submitted_at)\nGROUP BY prompts_version\nORDER BY prompts_version;",
+          "rawSql": "SELECT\n  prompts_version,\n  AVG(batch_accuracy) AS avg_accuracy,\n  AVG(batch_precision) AS avg_precision,\n  AVG(batch_recall) AS avg_recall,\n  AVG(batch_f1_score) AS avg_f1_score,\n  COUNT(*) AS batch_count\nFROM mlops_batch_metrics_view\nWHERE $__timeFilter(submitted_at)\n  AND (ARRAY_LENGTH(ARRAY[${prompt_versions:singlequote}], 1) IS NULL OR prompts_version IN (${prompt_versions:singlequote}))\nGROUP BY prompts_version\nORDER BY prompts_version;",
           "refId": "A"
         }
       ],
       "title": "Performance by Prompt Version",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "c3340f63-6cc1-4a9e-9cd2-72876665193b"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max",
+            "min"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  known_non_issues_version,\n  AVG(batch_accuracy) AS avg_accuracy,\n  AVG(batch_precision) AS avg_precision,\n  AVG(batch_recall) AS avg_recall,\n  AVG(batch_f1_score) AS avg_f1_score,\n  COUNT(*) AS batch_count\nFROM mlops_batch_metrics_view\nWHERE $__timeFilter(submitted_at)\n  AND (ARRAY_LENGTH(ARRAY[${known_non_issues_versions:singlequote}], 1) IS NULL OR known_non_issues_version IN (${known_non_issues_versions:singlequote}))\nGROUP BY known_non_issues_version\nORDER BY known_non_issues_version;",
+          "refId": "A"
+        }
+      ],
+      "title": "Performance by Known Non-Issues Version",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "c3340f63-6cc1-4a9e-9cd2-72876665193b"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max",
+            "min"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  container_image,\n  AVG(batch_accuracy) AS avg_accuracy,\n  AVG(batch_precision) AS avg_precision,\n  AVG(batch_recall) AS avg_recall,\n  AVG(batch_f1_score) AS avg_f1_score,\n  COUNT(*) AS batch_count\nFROM mlops_batch_metrics_view\nWHERE $__timeFilter(submitted_at)\n  AND (ARRAY_LENGTH(ARRAY[${container_images:singlequote}], 1) IS NULL OR container_image IN (${container_images:singlequote}))\nGROUP BY container_image\nORDER BY container_image;",
+          "refId": "A"
+        }
+      ],
+      "title": "Performance by Container Image",
       "type": "barchart"
     }
   ],
@@ -741,7 +909,80 @@
     "sast-ai"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "P413637974B2AAB20"
+        },
+        "definition": "SELECT DISTINCT prompts_version FROM mlops_batch_metrics_view ORDER BY prompts_version;",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Prompt Versions",
+        "multi": true,
+        "name": "prompt_versions",
+        "options": [],
+        "query": "SELECT DISTINCT prompts_version FROM mlops_batch_metrics_view ORDER BY prompts_version;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "P413637974B2AAB20"
+        },
+        "definition": "SELECT DISTINCT known_non_issues_version FROM mlops_batch_metrics_view ORDER BY known_non_issues_version;",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Known Non-Issues Versions",
+        "multi": true,
+        "name": "known_non_issues_versions",
+        "options": [],
+        "query": "SELECT DISTINCT known_non_issues_version FROM mlops_batch_metrics_view ORDER BY known_non_issues_version;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "P413637974B2AAB20"
+        },
+        "definition": "SELECT DISTINCT container_image FROM mlops_batch_metrics_view ORDER BY container_image;",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Container Images",
+        "multi": true,
+        "name": "container_images",
+        "options": [],
+        "query": "SELECT DISTINCT container_image FROM mlops_batch_metrics_view ORDER BY container_image;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-30d",

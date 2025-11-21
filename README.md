@@ -435,16 +435,17 @@ docker run -p 8080:8080 quay.io/ecosystem-appeng/sast-ai-orchestrator:v1.0.1
 
 ### Environment-Specific Access
 
-After deployment, access the applications:
+After deployment, access the applications via OpenShift routes:
 
 ```bash
-# Development
-kubectl port-forward svc/sast-ai-orchestrator-dev 8080:80 -n sast-ai-dev
-curl http://localhost:8080/api/v1/health
+# Get the route URL for production
+kubectl get route sast-ai-orchestrator-prod -n sast-ai-prod
 
-# Production  
-kubectl port-forward svc/sast-ai-orchestrator-prod 8080:80 -n sast-ai-prod
-curl http://localhost:8080/api/v1/health
+# Get the route URL for development
+kubectl get route sast-ai-orchestrator-dev -n sast-ai-dev
+
+# Access the API directly via route
+curl https://<route-hostname>/api/v1/health
 ```
 
 ## Configuration

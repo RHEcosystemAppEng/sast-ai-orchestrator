@@ -1,6 +1,6 @@
 package com.redhat.sast.api.v1.dto.response;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -58,7 +58,7 @@ public class OshScanStatusDto {
      * For uncollected scans: time added to retry queue
      */
     @JsonProperty("processedAt")
-    private LocalDateTime processedAt;
+    private Instant processedAt;
 
     /**
      * DTO representing retry information for an OSH scan.
@@ -80,6 +80,6 @@ public class OshScanStatusDto {
         private String failureReason;
 
         @JsonProperty("lastAttemptAt")
-        private LocalDateTime lastAttemptAt;
+        private Instant lastAttemptAt;
     }
 }

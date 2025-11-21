@@ -2,7 +2,8 @@ package com.redhat.sast.api.config;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 
@@ -286,24 +287,24 @@ class OshConfigurationTest {
         config.retryBackoffDuration = "PT20M";
         config.retryRetentionDays = 7;
 
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime cutoff = config.getStandardRetryCutoffTime();
+        Instant now = Instant.now();
+        Instant cutoff = config.getStandardRetryCutoffTime();
 
         assertNotNull(cutoff);
         assertTrue(cutoff.isBefore(now), "Cutoff should be in the past");
 
         // Verify cutoff is approximately 20 minutes ago (allow 1 minute tolerance)
-        long minutesDiff = java.time.Duration.between(cutoff, now).toMinutes();
+        long minutesDiff = Duration.between(cutoff, now).toMinutes();
         assertTrue(
                 minutesDiff >= 19 && minutesDiff <= 21,
                 "Cutoff should be ~20 minutes ago, was: " + minutesDiff + " minutes");
 
-        LocalDateTime retentionCutoff = config.getRetentionCutoffTime();
+        Instant retentionCutoff = config.getRetentionCutoffTime();
         assertNotNull(retentionCutoff);
         assertTrue(retentionCutoff.isBefore(now), "Retention cutoff should be in the past");
 
         // Verify retention cutoff is approximately 7 days ago
-        long daysDiff = java.time.Duration.between(retentionCutoff, now).toDays();
+        long daysDiff = Duration.between(retentionCutoff, now).toDays();
         assertTrue(
                 daysDiff >= 6 && daysDiff <= 7, "Retention cutoff should be ~7 days ago, was: " + daysDiff + " days");
     }
@@ -314,10 +315,10 @@ class OshConfigurationTest {
         config.retryBackoffDuration = "PT20M";
         config.retryExponentialBackoff = true;
 
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime cutoff1 = config.getRetryCutoffTime(1); // 20 minutes ago
-        LocalDateTime cutoff2 = config.getRetryCutoffTime(2); // 40 minutes ago
-        LocalDateTime cutoff3 = config.getRetryCutoffTime(3); // 80 minutes ago
+        Instant now = Instant.now();
+        Instant cutoff1 = config.getRetryCutoffTime(1); // 20 minutes ago
+        Instant cutoff2 = config.getRetryCutoffTime(2); // 40 minutes ago
+        Instant cutoff3 = config.getRetryCutoffTime(3); // 80 minutes ago
 
         assertNotNull(cutoff1);
         assertNotNull(cutoff2);

@@ -1,6 +1,6 @@
 package com.redhat.sast.api.repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import com.redhat.sast.api.model.DataArtifact;
@@ -66,7 +66,7 @@ public class DataArtifactRepository implements PanacheRepository<DataArtifact> {
     /**
      * Deletes old artifacts (cleanup utility)
      */
-    public long deleteOlderThan(LocalDateTime cutoffDate) {
+    public long deleteOlderThan(Instant cutoffDate) {
         return delete("createdAt < ?1", cutoffDate);
     }
 }

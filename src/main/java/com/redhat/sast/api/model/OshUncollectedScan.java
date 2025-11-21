@@ -1,6 +1,6 @@
 package com.redhat.sast.api.model;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.redhat.sast.api.enums.OshFailureReason;
 
@@ -83,14 +83,14 @@ public class OshUncollectedScan {
      * Timestamp when this scan was first recorded as uncollected.
      */
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     /**
      * Timestamp of the most recent retry attempt.
      * Used for backoff calculations to prevent rapid retry attempts.
      */
     @Column(name = "last_attempt_at", nullable = false)
-    private LocalDateTime lastAttemptAt;
+    private Instant lastAttemptAt;
 
     /**
      * Optimistic locking version field.
@@ -136,8 +136,8 @@ public class OshUncollectedScan {
         this.scanDataJson = scanDataJson;
         this.lastErrorMessage = errorMessage;
         this.attemptCount = 0;
-        this.createdAt = LocalDateTime.now();
-        this.lastAttemptAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
+        this.lastAttemptAt = Instant.now();
     }
 
     /**
@@ -146,7 +146,7 @@ public class OshUncollectedScan {
      */
     @PrePersist
     public void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         if (createdAt == null) {
             createdAt = now;
         }
@@ -167,7 +167,7 @@ public class OshUncollectedScan {
      */
     public void recordRetryAttempt(OshFailureReason newFailureReason, String errorMessage) {
         this.attemptCount++;
-        this.lastAttemptAt = LocalDateTime.now();
+        this.lastAttemptAt = Instant.now();
         this.failureReason = newFailureReason;
         this.lastErrorMessage = errorMessage;
     }

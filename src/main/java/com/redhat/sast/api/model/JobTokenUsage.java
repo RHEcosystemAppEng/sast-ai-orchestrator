@@ -1,7 +1,7 @@
 package com.redhat.sast.api.model;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -36,7 +36,7 @@ public class JobTokenUsage {
     private BigDecimal estimatedCost;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // Shared primary key relationship with Job
     @OneToOne(fetch = FetchType.LAZY)
@@ -46,6 +46,6 @@ public class JobTokenUsage {
 
     @PrePersist
     public void prePersist() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
     }
 }

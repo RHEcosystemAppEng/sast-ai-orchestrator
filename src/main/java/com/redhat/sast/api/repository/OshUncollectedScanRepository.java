@@ -1,6 +1,6 @@
 package com.redhat.sast.api.repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -58,7 +58,7 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
      * @return list of scans eligible for retry, locked for update
      */
     @Transactional
-    public List<OshUncollectedScan> findRetryableScansWithLock(LocalDateTime cutoffTime, int maxAttempts, int limit) {
+    public List<OshUncollectedScan> findRetryableScansWithLock(Instant cutoffTime, int maxAttempts, int limit) {
 
         String query =
                 """
@@ -109,7 +109,7 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
      * @return number of records deleted
      */
     @Transactional
-    public long deleteOlderThan(LocalDateTime cutoffTime) {
+    public long deleteOlderThan(Instant cutoffTime) {
         if (cutoffTime == null) {
             return 0;
         }
@@ -155,7 +155,7 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
 
         return getEntityManager()
                 .createQuery(updateQuery)
-                .setParameter("now", LocalDateTime.now())
+                .setParameter("now", Instant.now())
                 .setParameter("failureReason", newFailureReason)
                 .setParameter("errorMessage", errorMessage)
                 .setParameter("scanId", scanId)

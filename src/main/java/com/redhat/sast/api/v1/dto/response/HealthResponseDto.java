@@ -1,6 +1,6 @@
 package com.redhat.sast.api.v1.dto.response;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,7 +21,7 @@ public class HealthResponseDto {
     private String status;
 
     @JsonProperty("timestamp")
-    private LocalDateTime timestamp;
+    private Instant timestamp;
 
     @JsonProperty("version")
     private String version;
@@ -36,7 +36,7 @@ public class HealthResponseDto {
     private String message;
 
     public HealthResponseDto() {
-        this.timestamp = LocalDateTime.now();
+        this.timestamp = Instant.now();
         this.dependencies = new HashMap<>();
     }
 

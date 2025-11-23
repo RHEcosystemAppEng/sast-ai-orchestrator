@@ -1,0 +1,70 @@
+# Development environment overrides for sast-ai.
+# This file contains only development-specific settings that override values.yaml.
+
+## Application configuration
+app:
+  image:
+    pullPolicy: Always  # Always pull latest for dev
+    tag: "latest"  # Development uses latest tag (updated by CI/CD)
+  
+  # Number of replicas - single replica for dev
+  replicas: 1
+  
+  # Environment variables - development specific
+  env:
+    # Quarkus configuration - development settings
+    QUARKUS_PROFILE: dev
+    QUARKUS_LOG_LEVEL: INFO
+    QUARKUS_HIBERNATE_ORM_LOG_SQL: false
+    # SAST AI specific configuration - dev namespace
+    SAST_AI_WORKFLOW_NAMESPACE: sast-ai-dev
+    
+  # Resource limits and requests - lower for dev
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+## OpenShift Route configuration - dev specific
+route:
+  host: "sast-ai-dev"  # Dev-specific hostname prefix
+  annotations:
+    haproxy.router.openshift.io/timeout: 60s
+
+## PostgreSQL configuration - smaller resources for dev
+postgresql:
+  auth:
+    postgresPassword: "postgres-dev"
+    username: "quarkus"
+    password: "quarkus-dev"
+    database: "sast-ai-dev"
+  primary:
+    persistence:
+      enabled: true
+      size: 4Gi  # Smaller storage for dev
+    resources:
+      limits:
+        cpu: 250m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+## Horizontal Pod Autoscaler - disabled for dev
+hpa:
+  enabled: false
+
+## Pod Disruption Budget - disabled for dev
+pdb:
+  enabled: false
+
+## Monitoring - enabled for dev testing
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s

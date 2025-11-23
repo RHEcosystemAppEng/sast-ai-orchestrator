@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sast-ai-orchestrator-prod
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: sast-ai-orchestrator-prod
+    app.kubernetes.io/part-of: sast-ai
+    environment: production
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/background
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/RHEcosystemAppEng/sast-ai-orchestrator
+    targetRevision: HEAD
+    path: deploy/sast-ai-chart
+    helm:
+      releaseName: sast-ai-orchestrator-prod
+      valueFiles:
+        - values.yaml
+        - values-prod.yaml
+      parameters:
+        - name: app.env.SAST_AI_WORKFLOW_NAMESPACE
+          value: sast-ai-prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sast-ai-prod
+  syncPolicy:
+    automated:
+      prune: false  # Manual sync for production
+      selfHeal: false
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 10

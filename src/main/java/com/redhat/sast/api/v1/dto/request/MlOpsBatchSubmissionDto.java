@@ -30,4 +30,7 @@ public class MlOpsBatchSubmissionDto {
 
     @JsonProperty("submittedBy")
     private String submittedBy;
+
+    @JsonProperty("jobSettings")
+    private JobSettingsDto jobSettings;
 }

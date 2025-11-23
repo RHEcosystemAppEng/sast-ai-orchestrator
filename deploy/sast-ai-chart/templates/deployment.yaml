@@ -75,6 +75,8 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+            - name: GCS_BUCKET_NAME
+              value: {{ .Values.gcs.bucketName | quote }}
           {{- if .Values.app.livenessProbe }}
           livenessProbe:
             {{- toYaml .Values.app.livenessProbe | nindent 12 }}

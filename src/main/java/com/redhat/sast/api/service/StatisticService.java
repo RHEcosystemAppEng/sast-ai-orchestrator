@@ -165,7 +165,7 @@ public class StatisticService {
         Instant now = Instant.now();
 
         for (int i = 23; i >= 0; i--) {
-            Instant hourStart = now.minusSeconds(i * 3600).truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+            Instant hourStart = now.minusSeconds((long) i * 3600).truncatedTo(java.time.temporal.ChronoUnit.HOURS);
             Instant hourEnd = hourStart.plusSeconds(3600);
 
             JobActivityDataPointDto dataPoint = new JobActivityDataPointDto();

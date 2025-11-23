@@ -31,8 +31,6 @@ app:
     GOOGLE_SERVICE_ACCOUNT_SECRET_PATH: /etc/secrets/google-service-account-secret/service_account.json
     # OSH Package filtering configuration
     OSH_PACKAGES: "systemd,glibc"
-    # GCS configuration
-    GCS_BUCKET_NAME: "spog-extractor-rhel-sast-ai-poc"
 
   # Resource limits and requests
   resources:
@@ -217,6 +215,13 @@ configMap:
       # Package filtering - comma-separated list of packages to monitor
       # Example: systemd,glibc
       osh.packages=${OSH_PACKAGES:}
+
+      # GCS configuration - bucket name for uploading SARIF reports
+      gcs.bucket.name=${GCS_BUCKET_NAME:}
+
+## GCS Configuration
+gcs:
+  bucketName: "spog-extractor-rhel-sast-ai-poc"
 
 ## Horizontal Pod Autoscaler
 hpa:

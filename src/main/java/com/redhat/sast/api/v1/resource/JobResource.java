@@ -10,7 +10,6 @@ import com.redhat.sast.api.v1.dto.request.JobCreationDto;
 import com.redhat.sast.api.v1.dto.response.JobActivityDataPointDto;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
 
-import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -21,11 +20,13 @@ import jakarta.ws.rs.core.Response;
 @Consumes(MediaType.APPLICATION_JSON)
 public class JobResource {
 
-    @Inject
-    JobService jobService;
+    private final JobService jobService;
+    private final StatisticService statisticService;
 
-    @Inject
-    StatisticService statisticService;
+    public JobResource(JobService jobService, StatisticService statisticService) {
+        this.jobService = jobService;
+        this.statisticService = statisticService;
+    }
 
     @POST
     @Consumes(MediaType.MULTIPART_FORM_DATA)

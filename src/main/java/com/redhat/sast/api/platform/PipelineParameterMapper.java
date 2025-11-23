@@ -76,6 +76,10 @@ public class PipelineParameterMapper {
         addBasicJobParameters(params, job);
         addLlmParameters(params, job);
 
+        if (job.getInputSourceType() == InputSourceType.OSH_SCAN) {
+            addGcsParameters(params);
+        }
+
         return params;
     }
 
@@ -98,7 +102,12 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
 
         params.add(createParam(PARAM_AGGREGATE_RESULTS_G_SHEET, job.getAggregateResultsGSheet()));
+    }
 
+    /**
+     * Adds GCS parameters for OSH scan jobs only.
+     */
+    private void addGcsParameters(List<Param> params) {
         params.add(createParam(PARAM_GCS_BUCKET_NAME, gcsBucketName.orElse("")));
         params.add(createParam(PARAM_GCS_SA_FILE_NAME, "gcs_service_account.json"));
     }

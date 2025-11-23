@@ -32,11 +32,13 @@ public class PlatformService {
     private static final String GITLAB_TOKEN_WORKSPACE = "gitlab-token-ws";
     private static final String LLM_CREDENTIALS_WORKSPACE = "llm-credentials-ws";
     private static final String GOOGLE_SA_JSON_WORKSPACE = "google-sa-json-ws";
+    private static final String GCS_SA_JSON_WORKSPACE = "gcs-sa-json-ws";
 
     // Secret names
     private static final String GITLAB_TOKEN_SECRET = "sast-ai-gitlab-token";
     private static final String DEFAULT_LLM_SECRET = "sast-ai-default-llm-creds";
     private static final String GOOGLE_SA_SECRET = "sast-ai-google-service-account";
+    private static final String GCS_SA_SECRET = "sast-ai-gcs-service-account";
 
     private final TektonClient tektonClient;
     private final ManagedExecutor managedExecutor;
@@ -177,7 +179,8 @@ public class PlatformService {
             createSecretWorkspace(GITLAB_TOKEN_WORKSPACE, GITLAB_TOKEN_SECRET),
             createSecretWorkspace(
                     LLM_CREDENTIALS_WORKSPACE, Objects.requireNonNullElse(llmSecretName, DEFAULT_LLM_SECRET)),
-            createSecretWorkspace(GOOGLE_SA_JSON_WORKSPACE, GOOGLE_SA_SECRET)
+            createSecretWorkspace(GOOGLE_SA_JSON_WORKSPACE, GOOGLE_SA_SECRET),
+            createSecretWorkspace(GCS_SA_JSON_WORKSPACE, GCS_SA_SECRET)
         };
     }
 

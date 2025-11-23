@@ -3,6 +3,7 @@ package com.redhat.sast.api.platform;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -44,6 +45,8 @@ public class PipelineParameterMapper {
     private static final String PARAM_EMBEDDINGS_LLM_API_KEY = "EMBEDDINGS_LLM_API_KEY";
     private static final String PARAM_USE_KNOWN_FALSE_POSITIVE_FILE = "USE_KNOWN_FALSE_POSITIVE_FILE";
     private static final String PARAM_AGGREGATE_RESULTS_G_SHEET = "AGGREGATE_RESULTS_G_SHEET";
+    private static final String PARAM_GCS_BUCKET_NAME = "GCS_BUCKET_NAME";
+    private static final String PARAM_GCS_SA_FILE_NAME = "GCS_SA_FILE_NAME";
     // MLOps-specific parameter names
     private static final String PARAM_CONTAINER_IMAGE = "CONTAINER_IMAGE";
     private static final String PARAM_PROMPTS_VERSION = "PROMPTS_VERSION";
@@ -57,6 +60,9 @@ public class PipelineParameterMapper {
 
     @ConfigProperty(name = "quarkus.profile", defaultValue = "prod")
     String profile;
+
+    @ConfigProperty(name = "gcs.bucket.name")
+    Optional<String> gcsBucketName;
 
     /**
      * Extracts and converts Job data to pipeline parameters.
@@ -92,6 +98,9 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
 
         params.add(createParam(PARAM_AGGREGATE_RESULTS_G_SHEET, job.getAggregateResultsGSheet()));
+
+        params.add(createParam(PARAM_GCS_BUCKET_NAME, gcsBucketName.orElse("")));
+        params.add(createParam(PARAM_GCS_SA_FILE_NAME, "gcs_service_account.json"));
     }
 
     /**

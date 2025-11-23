@@ -37,7 +37,6 @@ public class JobService {
     private final ManagedExecutor managedExecutor;
     private final NvrResolutionService nvrResolutionService;
     private final PipelineParameterMapper parameterMapper;
-    private final UrlValidationService urlValidationService;
     private final EventBroadcastService eventBroadcastService;
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
@@ -147,7 +146,7 @@ public class JobService {
         settings.setJob(job);
         settings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
 
-        boolean shouldUseFile = shouldUseFalsePositiveFile(job, jobCreationDto);
+        boolean shouldUseFile = shouldUseFalsePositiveFile(jobCreationDto);
 
         settings.setUseKnownFalsePositiveFile(shouldUseFile);
         jobSettingsRepository.persist(settings);
@@ -195,8 +194,12 @@ public class JobService {
                 && !inputSourceUrl.trim().isEmpty()) {
             job.setInputSourceType(InputSourceType.OSH_SCAN);
             job.setOshScanId(oshScanId);
-            job.setGSheetUrl(inputSourceUrl); // Store OSH URL in gSheetUrl field
-            LOGGER.debug("Configured job as OSH_SCAN with URL: {} (scan ID: {})", inputSourceUrl, oshScanId);
+            job.setGSheetUrl(inputSourceUrl);
+            LOGGER.debug(
+                    "Configured job as OSH_SCAN - oshScanId: {}, OSH report URL: {}, package source URL: {}",
+                    oshScanId,
+                    inputSourceUrl,
+                    job.getPackageSourceCodeUrl());
             return;
         }
 
@@ -255,23 +258,14 @@ public class JobService {
         }
     }
 
-    private boolean shouldUseFalsePositiveFile(Job job, JobCreationDto jobCreationDto) {
+    private boolean shouldUseFalsePositiveFile(JobCreationDto jobCreationDto) {
         Boolean useFromDto = jobCreationDto.getUseKnownFalsePositiveFile();
-        boolean defaultToUse = useFromDto != null ? useFromDto : true;
 
-        if (!defaultToUse || job.getKnownFalsePositivesUrl() == null) {
-            return defaultToUse;
+        if (useFromDto != null) {
+            return useFromDto;
         }
 
-        if (urlValidationService.isUrlAccessible(job.getKnownFalsePositivesUrl())) {
-            return true;
-        }
-
-        LOGGER.info(
-                "Known false positives file not found for package '{}' at URL: {}. Setting useKnownFalsePositiveFile to false.",
-                job.getPackageNvr(),
-                job.getKnownFalsePositivesUrl());
-        return false;
+        return true;
     }
 
     private JobResponseDto convertToResponseDto(Job job) {

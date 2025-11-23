@@ -9,6 +9,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
 import com.redhat.sast.api.platform.KubernetesResourceManager;
+import com.redhat.sast.api.platform.MlOpsPipelineRunWatcher;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
 
 import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
@@ -31,15 +32,19 @@ public class PlatformService {
     private static final String GITLAB_TOKEN_WORKSPACE = "gitlab-token-ws";
     private static final String LLM_CREDENTIALS_WORKSPACE = "llm-credentials-ws";
     private static final String GOOGLE_SA_JSON_WORKSPACE = "google-sa-json-ws";
+    private static final String GCS_SA_JSON_WORKSPACE = "gcs-sa-json-ws";
 
     // Secret names
     private static final String GITLAB_TOKEN_SECRET = "sast-ai-gitlab-token";
     private static final String DEFAULT_LLM_SECRET = "sast-ai-default-llm-creds";
     private static final String GOOGLE_SA_SECRET = "sast-ai-google-service-account";
+    private static final String GCS_SA_SECRET = "sast-ai-gcs-service-account";
 
     private final TektonClient tektonClient;
     private final ManagedExecutor managedExecutor;
     private final JobService jobService;
+    private final MlOpsJobService mlOpsJobService;
+    private final MlOpsMetricsService mlOpsMetricsService;
     private final KubernetesResourceManager resourceManager;
     private final DvcMetadataService dvcMetadataService;
     private final DataArtifactService dataArtifactService;
@@ -174,7 +179,8 @@ public class PlatformService {
             createSecretWorkspace(GITLAB_TOKEN_WORKSPACE, GITLAB_TOKEN_SECRET),
             createSecretWorkspace(
                     LLM_CREDENTIALS_WORKSPACE, Objects.requireNonNullElse(llmSecretName, DEFAULT_LLM_SECRET)),
-            createSecretWorkspace(GOOGLE_SA_JSON_WORKSPACE, GOOGLE_SA_SECRET)
+            createSecretWorkspace(GOOGLE_SA_JSON_WORKSPACE, GOOGLE_SA_SECRET),
+            createSecretWorkspace(GCS_SA_JSON_WORKSPACE, GCS_SA_SECRET)
         };
     }
 
@@ -192,6 +198,83 @@ public class PlatformService {
                         .withSecretName(secretName)
                         .build())
                 .build();
+    }
+
+    /**
+     * Starts SAST AI workflow for an MLOps job with simplified status tracking.
+     * MLOps jobs use polling-based status checking rather than watchers.
+     */
+    public void startSastAIWorkflowForMlOpsJob(
+            @Nonnull Long batchId,
+            @Nonnull Long jobId,
+            @Nonnull List<Param> pipelineParams,
+            String llmSecretName,
+            @Nonnull Object mlOpsBatchService) {
+        // Skip Kubernetes operations in test mode
+        if ("test".equals(profile)) {
+            LOGGER.info("TEST MODE: Skipping Kubernetes operations for MLOps job {}", jobId);
+            return;
+        }
+
+        String pipelineRunName =
+                PIPELINE_NAME + "-mlops-" + UUID.randomUUID().toString().substring(0, 5);
+        LOGGER.info(
+                "Initiating MLOps PipelineRun: {} for Pipeline: {} in namespace: {}",
+                pipelineRunName,
+                PIPELINE_NAME,
+                namespace);
+
+        PipelineRun createdPipelineRun;
+        try {
+            PipelineRun pipelineRun = buildPipelineRun(pipelineRunName, pipelineParams, llmSecretName);
+            createdPipelineRun = tektonClient
+                    .v1()
+                    .pipelineRuns()
+                    .inNamespace(namespace)
+                    .resource(pipelineRun)
+                    .create();
+            LOGGER.info("Successfully created MLOps PipelineRun: {}", pipelineRunName);
+        } catch (Exception e) {
+            LOGGER.error("Failed to create MLOps PipelineRun {} in namespace {}", pipelineRunName, namespace, e);
+            throw new IllegalStateException("Failed to start Tekton pipeline for MLOps job", e);
+        }
+
+        String tektonUrl = buildTektonUrlFromClient(createdPipelineRun);
+        mlOpsJobService.updateJobTektonUrl(jobId, tektonUrl);
+
+        // Start monitoring the pipeline for MLOps job
+        managedExecutor.execute(() -> watchMlOpsPipelineRun(batchId, jobId, pipelineRunName, mlOpsBatchService));
+    }
+
+    private void watchMlOpsPipelineRun(
+            @Nonnull Long batchId,
+            @Nonnull Long jobId,
+            @Nonnull String pipelineRunName,
+            @Nonnull Object mlOpsBatchServiceParam) {
+        LOGGER.info("Starting watcher for MLOps PipelineRun: {}", pipelineRunName);
+        final CompletableFuture<Void> future = new CompletableFuture<>();
+        try (var ignoredWatch = tektonClient
+                .v1()
+                .pipelineRuns()
+                .inNamespace(namespace)
+                .withName(pipelineRunName)
+                .watch(new MlOpsPipelineRunWatcher(
+                        pipelineRunName,
+                        jobId,
+                        batchId,
+                        future,
+                        mlOpsJobService,
+                        mlOpsMetricsService,
+                        mlOpsBatchServiceParam))) {
+            future.join();
+        } catch (Exception e) {
+            LOGGER.error("Error watching MLOps PipelineRun {} for job ID: {}", pipelineRunName, jobId, e);
+            mlOpsJobService.updateJobStatus(jobId, com.redhat.sast.api.enums.JobStatus.FAILED);
+            // Update batch counter if service provided
+            if (mlOpsBatchServiceParam instanceof com.redhat.sast.api.service.MlOpsBatchService batchSvc) {
+                batchSvc.incrementBatchFailedJobs(batchId);
+            }
+        }
     }
 
     /**

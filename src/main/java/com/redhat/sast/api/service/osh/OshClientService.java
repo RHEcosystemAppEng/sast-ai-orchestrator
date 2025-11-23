@@ -72,11 +72,11 @@ public class OshClientService {
             scanId++;
         }
 
-        LOGGER.info("Discovered {} finished scans in range {}-{} (exclusive)", oshScanList.size(), startId, end);
+        LOGGER.debug("Discovered {} finished scans in range {}-{} (exclusive)", oshScanList.size(), startId, end);
         return oshScanList;
     }
 
-    private Optional<OshScanDto> fetchOshScanData(int oshScanId) {
+    public Optional<OshScanDto> fetchOshScanData(int oshScanId) {
         try (var httpResp = oshClient.fetchScanDetailsRaw(oshScanId)) {
             switch (httpResp.getStatus()) {
                 case 200 -> {
@@ -146,8 +146,13 @@ public class OshClientService {
     private Optional<OshScanDto> parseHtmlResponse(String html, int scanId) {
         try {
             Document doc = Jsoup.parse(html);
-            // Look for table rows with scan details
-            Elements rows = doc.select("table tr");
+
+            Elements rows = doc.select("table.details tr");
+
+            if (rows.isEmpty()) {
+                LOGGER.debug("No table.details found for scan {}, trying generic table selector", scanId);
+                rows = doc.select("table tr");
+            }
 
             if (rows.isEmpty()) {
                 LOGGER.warn("No table rows found in HTML response for scan {}", scanId);
@@ -160,10 +165,12 @@ public class OshClientService {
             Map<String, Object> rawData = new HashMap<>();
 
             for (Element row : rows) {
-                Elements cells = row.select("td");
-                if (cells.size() >= 2) {
-                    String key = cells.get(0).text().trim().toLowerCase();
-                    String value = cells.get(1).text().trim();
+                Element keyElement = row.selectFirst("th");
+                Element valueElement = row.selectFirst("td");
+
+                if (keyElement != null && valueElement != null) {
+                    String key = keyElement.text().trim().toLowerCase();
+                    String value = valueElement.text().trim();
 
                     rawData.put(key, value);
 
@@ -185,15 +192,16 @@ public class OshClientService {
             response.setRawData(rawData);
 
             LOGGER.debug(
-                    "Parsed HTML response for scan {}: state={}, component={}",
+                    "Parsed HTML response for scan {}: state={}, component={}, rawData size={}",
                     scanId,
                     response.getState(),
-                    response.getComponent());
+                    response.getComponent(),
+                    rawData.size());
 
             return Optional.of(response);
 
         } catch (Exception e) {
-            LOGGER.error("Failed to parse HTML response for scan {}: {}", scanId, e.getMessage());
+            LOGGER.error("Failed to parse HTML response for scan {}: {}", scanId, e.getMessage(), e);
             return Optional.empty();
         }
     }

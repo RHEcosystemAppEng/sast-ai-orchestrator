@@ -174,6 +174,121 @@ Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosy
 **Error Responses:**
 - `404 Not Found` - Batch not found
 
+### MLOps Batch
+
+MLOps batch endpoints enable automated testing of multiple NVRs (Name-Version-Release) fetched from DVC (Data Version Control). These endpoints are independent from regular job batches and designed specifically for ML operations workflows.
+
+#### `POST /api/v1/mlops-batch`
+**Description:** Submit MLOps batch for processing. Fetches NVR list from DVC and creates individual jobs for each NVR with specified MLOps parameters.
+
+**Request Body:**
+```json
+{
+  "testingDataNvrsVersion": "1.0",
+  "promptsVersion": "1.0",
+  "knownNonIssuesVersion": "1.0",
+  "sastAiImage": "quay.io/ecosystem-appeng/sast-ai-workflow:latest",
+  "submittedBy": "user@example.com"
+}
+```
+
+**Fields:**
+- `testingDataNvrsVersion` (required): DVC version tag for fetching test NVRs
+- `promptsVersion` (required): DVC version for prompts configuration
+- `knownNonIssuesVersion` (required): DVC version for known non-issues data
+- `sastAiImage` (required): Container image for SAST AI workflow
+- `submittedBy` (optional): User or system that submitted the batch
+
+**Response:** `201 Created`
+```json
+{
+  "batchId": 123,
+  "testingDataNvrsVersion": "1.0",
+  "promptsVersion": "1.0",
+  "knownNonIssuesVersion": "1.0",
+  "sastAiImage": "quay.io/ecosystem-appeng/sast-ai-workflow:latest",
+  "submittedBy": "user@example.com",
+  "submittedAt": "2025-01-01T10:00:00",
+  "status": "PROCESSING",
+  "totalJobs": 0,
+  "completedJobs": 0,
+  "failedJobs": 0,
+  "lastUpdatedAt": "2025-01-01T10:00:00"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Invalid request body or DVC fetch failure
+
+#### `GET /api/v1/mlops-batch`
+**Description:** List all MLOps batches with pagination
+
+**Query Parameters:**
+- `page` (optional, default: 0): Page number  
+- `size` (optional, default: 20): Page size
+
+**Response:** `200 OK` - Array of MLOps batch objects (same structure as batch creation response)
+
+#### `GET /api/v1/mlops-batch/{batchId}`
+**Description:** Get specific MLOps batch details
+
+**Response:** `200 OK` - Same structure as batch creation response
+
+**Error Responses:**
+- `404 Not Found` - MLOps batch not found
+
+#### `GET /api/v1/mlops-batch/{batchId}/detailed`
+**Description:** Get detailed MLOps batch information including all jobs and their metrics
+
+**Response:** `200 OK`
+```json
+{
+  "batchId": 123,
+  "testingDataNvrsVersion": "1.0",
+  "promptsVersion": "1.0",
+  "knownNonIssuesVersion": "1.0",
+  "sastAiImage": "quay.io/ecosystem-appeng/sast-ai-workflow:latest",
+  "submittedBy": "user@example.com",
+  "submittedAt": "2025-01-01T10:00:00",
+  "status": "COMPLETED_WITH_ERRORS",
+  "totalJobs": 5,
+  "completedJobs": 3,
+  "failedJobs": 2,
+  "lastUpdatedAt": "2025-01-01T11:00:00",
+  "jobs": [
+    {
+      "jobId": 456,
+      "packageNvr": "acl-2.3.2-1.el10",
+      "packageName": "acl",
+      "projectName": "acl",
+      "projectVersion": "2.3.2-1",
+      "packageSourceCodeUrl": "https://download.devel.redhat.com/brewroot/vol/rhel-10/packages/acl/2.3.2/1.el10/src/acl-2.3.2-1.el10.src.rpm",
+      "knownFalsePositivesUrl": "https://gitlab.cee.redhat.com/osh/known-false-positives/-/raw/master/acl/ignore.err",
+      "status": "COMPLETED",
+      "createdAt": "2025-01-01T10:00:00",
+      "startedAt": "2025-01-01T10:01:00",
+      "completedAt": "2025-01-01T10:30:00",
+      "tektonUrl": "https://tekton.example.com/pipelineruns/job-456",
+      "metrics": {
+        "accuracy": 0.95,
+        "precision": 0.87,
+        "recall": 0.92,
+        "f1Score": 0.89,
+        "confusionMatrix": {
+          "tp": 10,
+          "fp": 2,
+          "tn": 8,
+          "fn": 1
+        }
+      }
+    }
+  ]
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - MLOps batch not found
+
 ### Package Analysis
 
 #### `GET /api/v1/packages`

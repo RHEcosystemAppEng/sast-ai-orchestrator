@@ -18,9 +18,7 @@ app:
     QUARKUS_HIBERNATE_ORM_LOG_SQL: false
     # SAST AI specific configuration - dev namespace
     SAST_AI_WORKFLOW_NAMESPACE: sast-ai-dev
-    # OSH Package filtering configuration - dev
-    OSH_PACKAGES: ""
-    
+
   # Resource limits and requests - lower for dev
   resources:
     limits:

@@ -25,7 +25,7 @@ app:
     # Google Service Account configuration
     GOOGLE_SERVICE_ACCOUNT_SECRET_PATH: /etc/secrets/google-service-account-secret/service_account.json
     # OSH Package filtering configuration
-    OSH_PACKAGES: "systemd,glibc"
+    OSH_PACKAGES: ""
 
   # Liveness and readiness probes (shared)
   livenessProbe:
@@ -179,17 +179,17 @@ configMap:
       quarkus.datasource.username=${DB_USERNAME}
       quarkus.datasource.password=${DB_PASSWORD}
       quarkus.datasource.jdbc.url=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
-      
+
       # Hibernate ORM configuration
       quarkus.hibernate-orm.database.generation=${QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION}
       quarkus.hibernate-orm.log.sql=${QUARKUS_HIBERNATE_ORM_LOG_SQL}
-      
+
       # SAST AI configuration
       sast.ai.workflow.namespace=${SAST_AI_WORKFLOW_NAMESPACE}
-      
+
       # Kubernetes client configuration
       quarkus.kubernetes-client.trust-certs=${QUARKUS_KUBERNETES_CLIENT_TRUST_CERTS}
-      
+
       # Logging configuration
       quarkus.log.category."org.jboss.logging".level=${QUARKUS_LOG_LEVEL}
 
@@ -199,6 +199,35 @@ configMap:
 
       # GCS configuration - bucket name for uploading SARIF reports
       gcs.bucket.name=${GCS_BUCKET_NAME:}
+
+    packages.txt: |
+      adcli
+      audit
+      cpio
+      glibc
+      graphite2
+      gzip
+      libconfig
+      libksba
+      libpcap
+      libpng
+      libtalloc
+      libuser
+      lua
+      mpdecimal
+      nano
+      ncurses
+      popt
+      rpcbind
+      samba
+      sqlite
+      sysfsutils
+      systemd
+      texinfo
+      tpm2-tools
+      trace-cmd
+      unzip
+      util-linux
 
 ## GCS Configuration
 gcs:

@@ -18,6 +18,8 @@ app:
     QUARKUS_HIBERNATE_ORM_LOG_SQL: false
     # SAST AI specific configuration - prod namespace
     SAST_AI_WORKFLOW_NAMESPACE: sast-ai-prod
+    # OSH Package filtering configuration - prod
+    OSH_PACKAGES: ""
     
   # Resource limits and requests - production sizing
   resources:
@@ -72,3 +74,35 @@ monitoring:
     enabled: true
     interval: 15s
     scrapeTimeout: 10s
+
+## ConfigMap - prod-specific package list
+configMap:
+  data:
+    packages.txt: |
+      adcli
+      audit
+      cpio
+      glibc
+      graphite2
+      gzip
+      libconfig
+      libksba
+      libpcap
+      libpng
+      libtalloc
+      libuser
+      lua
+      mpdecimal
+      nano
+      ncurses
+      popt
+      rpcbind
+      samba
+      sqlite
+      sysfsutils
+      systemd
+      texinfo
+      tpm2-tools
+      trace-cmd
+      unzip
+      util-linux

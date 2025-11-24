@@ -3,6 +3,7 @@ package com.redhat.sast.api.platform;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -44,6 +45,8 @@ public class PipelineParameterMapper {
     private static final String PARAM_EMBEDDINGS_LLM_API_KEY = "EMBEDDINGS_LLM_API_KEY";
     private static final String PARAM_USE_KNOWN_FALSE_POSITIVE_FILE = "USE_KNOWN_FALSE_POSITIVE_FILE";
     private static final String PARAM_AGGREGATE_RESULTS_G_SHEET = "AGGREGATE_RESULTS_G_SHEET";
+    private static final String PARAM_GCS_BUCKET_NAME = "GCS_BUCKET_NAME";
+    private static final String PARAM_GCS_SA_FILE_NAME = "GCS_SA_FILE_NAME";
     // MLOps-specific parameter names
     private static final String PARAM_CONTAINER_IMAGE = "CONTAINER_IMAGE";
     private static final String PARAM_PROMPTS_VERSION = "PROMPTS_VERSION";
@@ -58,6 +61,9 @@ public class PipelineParameterMapper {
     @ConfigProperty(name = "quarkus.profile", defaultValue = "prod")
     String profile;
 
+    @ConfigProperty(name = "gcs.bucket.name")
+    Optional<String> gcsBucketName;
+
     /**
      * Extracts and converts Job data to pipeline parameters.
      *
@@ -69,6 +75,10 @@ public class PipelineParameterMapper {
 
         addBasicJobParameters(params, job);
         addLlmParameters(params, job);
+
+        if (job.getInputSourceType() == InputSourceType.OSH_SCAN) {
+            addGcsParameters(params);
+        }
 
         return params;
     }
@@ -92,6 +102,14 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
 
         params.add(createParam(PARAM_AGGREGATE_RESULTS_G_SHEET, job.getAggregateResultsGSheet()));
+    }
+
+    /**
+     * Adds GCS parameters for OSH scan jobs only.
+     */
+    private void addGcsParameters(List<Param> params) {
+        params.add(createParam(PARAM_GCS_BUCKET_NAME, gcsBucketName.orElse("")));
+        params.add(createParam(PARAM_GCS_SA_FILE_NAME, "gcs_service_account.json"));
     }
 
     /**
@@ -280,6 +298,17 @@ public class PipelineParameterMapper {
     }
 
     /**
+     * Gets the USE_KNOWN_FALSE_POSITIVE_FILE value from MlOpsJob with fallback to true
+     */
+    private Boolean getUseKnownFalsePositiveFileValueFromMlOpsJob(MlOpsJob mlOpsJob) {
+        if (mlOpsJob.getMlOpsJobSettings() != null
+                && mlOpsJob.getMlOpsJobSettings().getUseKnownFalsePositiveFile() != null) {
+            return mlOpsJob.getMlOpsJobSettings().getUseKnownFalsePositiveFile();
+        }
+        return true;
+    }
+
+    /**
      * Extracts and converts MLOpsJob data to pipeline parameters for MLOps workflows.
      * Includes INPUT_REPORT_FILE_PATH for ground truth sheets stored in MinIO.
      *
@@ -298,10 +327,15 @@ public class PipelineParameterMapper {
 
         // Basic job parameters
         params.add(createParam(PARAM_REPO_REMOTE_URL, mlOpsJob.getPackageSourceCodeUrl()));
-        params.add(createParam(PARAM_FALSE_POSITIVES_URL, mlOpsJob.getKnownFalsePositivesUrl()));
+
+        Boolean useKnownFalsePositiveFile = getUseKnownFalsePositiveFileValueFromMlOpsJob(mlOpsJob);
+        String falsePositivesUrl =
+                Boolean.TRUE.equals(useKnownFalsePositiveFile) ? mlOpsJob.getKnownFalsePositivesUrl() : "";
+        params.add(createParam(PARAM_FALSE_POSITIVES_URL, falsePositivesUrl));
+
         params.add(createParam(PARAM_PROJECT_NAME, mlOpsJob.getProjectName()));
         params.add(createParam(PARAM_PROJECT_VERSION, mlOpsJob.getProjectVersion()));
-        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, "true"));
+        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
 
         // Input report file path - ground truth sheet for this NVR
         String groundTruthUrl = String.format(

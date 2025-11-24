@@ -14,10 +14,14 @@ app:
   
   # Environment variables (common to all environments)
   env:
-    # Quarkus configuration (overridden per environment)
+    # Quarkus configuration
+    QUARKUS_PROFILE: prod
+    QUARKUS_LOG_LEVEL: INFO
+    QUARKUS_HIBERNATE_ORM_LOG_SQL: false
     QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: update
     QUARKUS_KUBERNETES_CLIENT_TRUST_CERTS: false
-    QUARKUS_HIBERNATE_ORM_LOG_SQL: false
+    # SAST AI specific configuration
+    SAST_AI_WORKFLOW_NAMESPACE: sast-ai
     # Google Service Account configuration
     GOOGLE_SERVICE_ACCOUNT_SECRET_PATH: /etc/secrets/google-service-account-secret/service_account.json
     # OSH Package filtering configuration
@@ -193,6 +197,13 @@ configMap:
       # Example: systemd,glibc
       osh.packages=${OSH_PACKAGES:}
 
+      # GCS configuration - bucket name for uploading SARIF reports
+      gcs.bucket.name=${GCS_BUCKET_NAME:}
+
+## GCS Configuration
+gcs:
+  bucketName: "spog-extractor-rhel-sast-ai-poc"
+
 ## Horizontal Pod Autoscaler (disabled by default)
 hpa:
   enabled: false
@@ -205,17 +216,17 @@ pdb:
   enabled: false
   minAvailable: 1
 
-## Monitoring and observability (disabled by default)
+## Network Policy - disabled by default for simplicity
+networkPolicy:
+  enabled: false
+
+## Monitoring and observability
 monitoring:
   enabled: false
   serviceMonitor:
     enabled: false
     interval: 30s
     scrapeTimeout: 10s
-
-## Network Policy - disabled by default for simplicity
-networkPolicy:
-  enabled: false
 
 ## Image pull secrets
 imagePullSecrets: []

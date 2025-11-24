@@ -12,11 +12,14 @@ import com.redhat.sast.api.enums.BatchStatus;
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.exceptions.DvcException;
 import com.redhat.sast.api.exceptions.InvalidNvrException;
+import com.redhat.sast.api.mapper.JobSettingsMapper;
 import com.redhat.sast.api.model.MlOpsBatch;
 import com.redhat.sast.api.model.MlOpsJob;
+import com.redhat.sast.api.model.MlOpsJobSettings;
 import com.redhat.sast.api.platform.PipelineParameterMapper;
 import com.redhat.sast.api.repository.MlOpsBatchRepository;
 import com.redhat.sast.api.repository.MlOpsJobRepository;
+import com.redhat.sast.api.v1.dto.request.JobSettingsDto;
 import com.redhat.sast.api.v1.dto.request.MlOpsBatchSubmissionDto;
 import com.redhat.sast.api.v1.dto.response.MlOpsBatchResponseDto;
 
@@ -59,7 +62,8 @@ public class MlOpsBatchService {
                 batch.getPromptsVersion(),
                 batch.getKnownNonIssuesVersion(),
                 batch.getContainerImage(),
-                batch.getSubmittedBy()));
+                batch.getSubmittedBy(),
+                submissionDto.getJobSettings()));
 
         return response;
     }
@@ -92,7 +96,8 @@ public class MlOpsBatchService {
             @Nonnull String promptsVersion,
             @Nonnull String knownNonIssuesVersion,
             @Nonnull String containerImage,
-            String submittedBy) {
+            String submittedBy,
+            JobSettingsDto jobSettingsDto) {
 
         LOGGER.info("Starting MLOps batch processing for batch ID: {}", batchId);
 
@@ -110,7 +115,8 @@ public class MlOpsBatchService {
             updateBatchTotalJobs(batchId, nvrs.size());
 
             // Process each NVR sequentially
-            processNvrs(batchId, nvrs, promptsVersion, knownNonIssuesVersion, containerImage, submittedBy);
+            processNvrs(
+                    batchId, nvrs, promptsVersion, knownNonIssuesVersion, containerImage, submittedBy, jobSettingsDto);
 
             // Update final batch status
             updateFinalBatchStatus(batchId);
@@ -135,7 +141,8 @@ public class MlOpsBatchService {
             String promptsVersion,
             String knownNonIssuesVersion,
             String containerImage,
-            String submittedBy) {
+            String submittedBy,
+            JobSettingsDto jobSettingsDto) {
 
         LOGGER.info(
                 "Batch {}: Starting parallel processing of {} NVRs (max {} parallel jobs with rolling window)",
@@ -165,7 +172,13 @@ public class MlOpsBatchService {
                                     semaphore.availablePermits());
 
                             processSingleNvr(
-                                    batchId, nvr, promptsVersion, knownNonIssuesVersion, containerImage, submittedBy);
+                                    batchId,
+                                    nvr,
+                                    promptsVersion,
+                                    knownNonIssuesVersion,
+                                    containerImage,
+                                    submittedBy,
+                                    jobSettingsDto);
 
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
@@ -200,7 +213,8 @@ public class MlOpsBatchService {
             String promptsVersion,
             String knownNonIssuesVersion,
             String containerImage,
-            String submittedBy) {
+            String submittedBy,
+            JobSettingsDto jobSettingsDto) {
 
         Long jobId = null;
 
@@ -213,8 +227,8 @@ public class MlOpsBatchService {
             }
 
             // Create MlOpsJob with resolved NVR information
-            final MlOpsJob createdJob =
-                    createMlOpsJobInNewTransaction(batchId, nvr, promptsVersion, knownNonIssuesVersion, submittedBy);
+            final MlOpsJob createdJob = createMlOpsJobInNewTransaction(
+                    batchId, nvr, promptsVersion, knownNonIssuesVersion, submittedBy, jobSettingsDto);
             jobId = createdJob.getId();
 
             // Generate pipeline parameters
@@ -256,7 +270,12 @@ public class MlOpsBatchService {
      */
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public MlOpsJob createMlOpsJobInNewTransaction(
-            Long batchId, String nvr, String promptsVersion, String knownNonIssuesVersion, String submittedBy) {
+            Long batchId,
+            String nvr,
+            String promptsVersion,
+            String knownNonIssuesVersion,
+            String submittedBy,
+            JobSettingsDto jobSettingsDto) {
 
         MlOpsBatch batch = mlOpsBatchRepository.findById(batchId);
         if (batch == null) {
@@ -286,6 +305,13 @@ public class MlOpsBatchService {
         } catch (InvalidNvrException e) {
             LOGGER.error("Failed to resolve NVR '{}': {}", nvr, e.getMessage());
             throw e;
+        }
+
+        // Map JobSettingsDto to MlOpsJobSettings entity if provided
+        if (jobSettingsDto != null) {
+            MlOpsJobSettings mlOpsJobSettings = JobSettingsMapper.INSTANCE.toEntity(jobSettingsDto);
+            mlOpsJobSettings.setMlOpsJob(job);
+            job.setMlOpsJobSettings(mlOpsJobSettings);
         }
 
         mlOpsJobRepository.persist(job);

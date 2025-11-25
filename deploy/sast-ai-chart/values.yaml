@@ -1,23 +1,18 @@
 # Default values for sast-ai.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# This file contains shared configuration used by all environments.
+# Environment-specific overrides are in values-dev.yaml and values-prod.yaml.
 
-## Application configuration
+## Application configuration (shared)
 app:
   name: sast-ai
   image:
     repository: quay.io/ecosystem-appeng/sast-ai-orchestrator
-    pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: "v1.0.1"
-  
-  # Number of replicas
-  replicas: 1
+    # pullPolicy and tag are set in environment-specific files
   
   # Container port
   port: 8080
   
-  # Environment variables
+  # Environment variables (common to all environments)
   env:
     # Quarkus configuration
     QUARKUS_PROFILE: prod
@@ -32,16 +27,7 @@ app:
     # OSH Package filtering configuration
     OSH_PACKAGES: "systemd,glibc"
 
-  # Resource limits and requests
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 500m
-      memory: 512Mi
-  
-  # Liveness and readiness probes
+  # Liveness and readiness probes (shared)
   livenessProbe:
     httpGet:
       path: /api/v1/health
@@ -60,19 +46,19 @@ app:
     timeoutSeconds: 10
     failureThreshold: 15
   
-  # Node selector, tolerations, and affinity
+  # Node selector, tolerations, and affinity (can be overridden)
   nodeSelector: {}
   tolerations: []
   affinity: {}
 
-## Service configuration
+## Service configuration (shared)
 service:
   type: ClusterIP
   port: 80
   targetPort: 8080
   annotations: {}
 
-## OpenShift Route configuration (instead of Ingress)
+## OpenShift Route configuration (base settings)
 route:
   enabled: true
   host: ""  # If empty, OpenShift will generate a hostname
@@ -83,14 +69,9 @@ route:
     insecureEdgeTerminationPolicy: Redirect
   annotations: {}
 
-## PostgreSQL configuration
+## PostgreSQL configuration (base settings)
 postgresql:
   enabled: true
-  auth:
-    postgresPassword: "postgres"
-    username: "quarkus"
-    password: "quarkus"
-    database: "sast-ai"
   # Inherit labels from parent chart for proper cleanup
   commonLabels:
     app.kubernetes.io/name: "{{ include \"sast-ai.name\" . }}"
@@ -135,7 +116,7 @@ externalDatabase:
   existingSecret: ""
   existingSecretPasswordKey: ""
 
-## ServiceAccount configuration
+## ServiceAccount configuration (shared)
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
@@ -145,7 +126,7 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: "sast-ai-orchestrator-sa"
 
-## RBAC configuration - for SAST AI Orchestrator
+## RBAC configuration - for SAST AI Orchestrator (shared)
 rbac:
   # Specifies whether RBAC resources should be created
   create: true
@@ -188,7 +169,7 @@ rbac:
       resources: ["clustertasks"]
       verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
-## ConfigMap for application configuration
+## ConfigMap for application configuration (shared)
 configMap:
   create: true
   data:
@@ -223,14 +204,14 @@ configMap:
 gcs:
   bucketName: "spog-extractor-rhel-sast-ai-poc"
 
-## Horizontal Pod Autoscaler
+## Horizontal Pod Autoscaler (disabled by default)
 hpa:
   enabled: false
   minReplicas: 1
   maxReplicas: 5
   targetCPUUtilizationPercentage: 70
 
-## Pod Disruption Budget
+## Pod Disruption Budget (disabled by default)
 pdb:
   enabled: false
   minAvailable: 1
@@ -254,4 +235,4 @@ imagePullSecrets: []
 labels: {}
 
 ## Additional annotations for all resources
-annotations: {} 
+annotations: {}

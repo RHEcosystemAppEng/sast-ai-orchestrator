@@ -1,11 +1,12 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: sast-ai-orchestrator-syncer
-  namespace: $NAMESPACE
+  name: sast-ai-orchestrator-dev
+  namespace: argocd
   labels:
-    app.kubernetes.io/name: sast-ai-orchestrator-syncer
+    app.kubernetes.io/name: sast-ai-orchestrator-dev
     app.kubernetes.io/part-of: sast-ai
+    environment: development
   finalizers:
     - resources-finalizer.argocd.argoproj.io/background
 spec:
@@ -15,15 +16,16 @@ spec:
     targetRevision: HEAD
     path: deploy/sast-ai-chart
     helm:
-      releaseName: sast-ai-orchestrator
+      releaseName: sast-ai-orchestrator-dev
       valueFiles:
         - values.yaml
+        - values-dev.yaml
       parameters:
         - name: app.env.SAST_AI_WORKFLOW_NAMESPACE
-          value: $NAMESPACE
+          value: sast-ai-dev
   destination:
     server: https://kubernetes.default.svc
-    namespace: $NAMESPACE
+    namespace: sast-ai-dev
   syncPolicy:
     automated:
       prune: true
@@ -39,4 +41,4 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
-  revisionHistoryLimit: 10 
+  revisionHistoryLimit: 10

@@ -385,16 +385,68 @@ MLOps batch endpoints enable automated testing of multiple NVRs (Name-Version-Re
    
 ## Deployment
 
+### Environment Strategy
+
+The project supports two deployment environments:
+
+- **Development** (`sast-ai-dev` namespace): 
+  - Uses `latest` container images
+  - Updated automatically on every main branch push
+  - Debug logging and relaxed resource limits
+  
+- **Production** (`sast-ai-prod` namespace):
+  - Uses release-tagged container images (e.g., `v1.0.1`)
+  - Updated only on GitHub releases
+  - Production-grade resource allocation and logging
+
+### Quick Deployment
+
+```bash
+# Development environment
+cd deploy
+make deploy-dev
+
+# Production environment  
+cd deploy
+make deploy-prod
+
+# Check deployment status
+make status
+```
+
+### Container Images
+
+- **Development**: `quay.io/ecosystem-appeng/sast-ai-orchestrator:latest`
+- **Production**: `quay.io/ecosystem-appeng/sast-ai-orchestrator:v1.0.x`
+
 ### Docker Deployment
 ```bash
-# JVM Mode (Fast startup)
-docker build -f src/main/docker/Dockerfile.jvm -t sast-ai-orchestrator:jvm .
+# Development (latest)
+docker run -p 8080:8080 quay.io/ecosystem-appeng/sast-ai-orchestrator:latest
+
+# Production (specific version)  
+docker run -p 8080:8080 quay.io/ecosystem-appeng/sast-ai-orchestrator:v1.0.1
 ```
 
 ### Kubernetes Deployment
 - **Helm Chart**: See `deploy/sast-ai-chart/` for Helm deployment
-- **ArgoCD**: See `deploy/argocd/` for GitOps deployment
-- **Documentation**: Refer to `deploy/README.md` for detailed instructions
+- **ArgoCD**: See `deploy/argocd/` for GitOps deployment  
+- **Documentation**: Use `make help` in the `deploy/` directory for available commands
+
+### Environment-Specific Access
+
+After deployment, access the applications via OpenShift routes:
+
+```bash
+# Get the route URL for production
+kubectl get route sast-ai-orchestrator-prod -n sast-ai-prod
+
+# Get the route URL for development
+kubectl get route sast-ai-orchestrator-dev -n sast-ai-dev
+
+# Access the API directly via route
+curl https://<route-hostname>/api/v1/health
+```
 
 ## Configuration
 

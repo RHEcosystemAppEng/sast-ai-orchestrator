@@ -1,0 +1,74 @@
+# Production environment overrides for sast-ai.
+# This file contains only production-specific settings that override values.yaml.
+
+## Application configuration
+app:
+  image:
+    pullPolicy: Always
+    tag: "v1.0.1"  # Production uses release tags (updated by CI/CD)
+  
+  # Number of replicas - multiple for HA
+  replicas: 2
+  
+  # Environment variables - production specific
+  env:
+    # Quarkus configuration - production settings
+    QUARKUS_PROFILE: prod
+    QUARKUS_LOG_LEVEL: INFO
+    QUARKUS_HIBERNATE_ORM_LOG_SQL: false
+    # SAST AI specific configuration - prod namespace
+    SAST_AI_WORKFLOW_NAMESPACE: sast-ai-prod
+    
+  # Resource limits and requests - production sizing
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+
+## OpenShift Route configuration - production specific
+route:
+  host: "sast-ai"  # Production hostname
+  annotations:
+    haproxy.router.openshift.io/timeout: 300s
+
+## PostgreSQL configuration - production sizing
+postgresql:
+  auth:
+    postgresPassword: "postgres-prod-secure"
+    username: "quarkus"
+    password: "quarkus-prod-secure"
+    database: "sast-ai-prod"
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi  # Larger storage for prod
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+
+## Horizontal Pod Autoscaler - enabled for prod
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+## Pod Disruption Budget - enabled for prod
+pdb:
+  enabled: true
+  minAvailable: 1
+
+## Monitoring - enabled for prod
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+    scrapeTimeout: 10s

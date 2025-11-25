@@ -85,8 +85,8 @@ jobs:
         # Update pom.xml version (without 'v' prefix)
         ./mvnw versions:set -DnewVersion=$POM_VERSION -DgenerateBackupPoms=false
 
-        # Update Helm values.yaml with full release tag (with 'v')
-        sed -i "s/tag: \".*\"/tag: \"$RELEASE_TAG\"/" deploy/sast-ai-chart/values.yaml
+        # Update Helm prod values.yaml with full release tag (with 'v')
+        sed -i "s/tag: \".*\"/tag: \"$RELEASE_TAG\"/" deploy/sast-ai-chart/values-prod.yaml
 
         # Update Helm Chart.yaml versions (without 'v' prefix) - be specific to avoid updating dependency versions
         sed -i "s/^version: .*/version: $POM_VERSION/" deploy/sast-ai-chart/Chart.yaml
@@ -95,8 +95,8 @@ jobs:
         # Verify the changes
         echo "Updated pom.xml version:"
         ./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout
-        echo "Updated values.yaml:"
-        grep -A 5 -B 5 "tag:" deploy/sast-ai-chart/values.yaml
+        echo "Updated prod values.yaml:"
+        grep -A 5 -B 5 "tag:" deploy/sast-ai-chart/values-prod.yaml
         echo "Updated Chart.yaml:"
         grep -E "(version|appVersion):" deploy/sast-ai-chart/Chart.yaml
 
@@ -104,7 +104,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add pom.xml deploy/sast-ai-chart/values.yaml deploy/sast-ai-chart/Chart.yaml
+        git add pom.xml deploy/sast-ai-chart/values-prod.yaml deploy/sast-ai-chart/Chart.yaml
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else
@@ -113,8 +113,8 @@ jobs:
           git checkout $DEFAULT_BRANCH
           git pull origin $DEFAULT_BRANCH
           # Re-add and commit the changes
-          git add pom.xml deploy/sast-ai-chart/values.yaml deploy/sast-ai-chart/Chart.yaml
-          git commit -m "Update versions to ${{ github.event.release.tag_name }}"
+          git add pom.xml deploy/sast-ai-chart/values-prod.yaml deploy/sast-ai-chart/Chart.yaml
+          git commit -m "Update production versions to ${{ github.event.release.tag_name }}"
           git push origin $DEFAULT_BRANCH
         fi
 
@@ -134,23 +134,34 @@ jobs:
 
           ## 📦 Container Images
 
-          This release includes the following container images published to Quay.io:
+          This release includes the following container image published to Quay.io:
 
           - \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name }}\`
-          - \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`
 
           ### 🐳 Usage
 
           \`\`\`bash
-          # Pull specific version
+          # Pull specific version for production
           podman pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name }}
           
-          # Pull latest
+          # For development, use the latest tag
           podman pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           \`\`\`
 
           ### 🔗 Registry
           View all versions: [Quay.io Repository](https://quay.io/repository/ecosystem-appeng/sast-ai-orchestrator)
+          
+          ### 🚀 Deployment
+          
+          **Production Deployment (sast-ai-prod namespace):**
+          \`\`\`bash
+          make deploy-prod
+          \`\`\`
+          
+          **Development Deployment (sast-ai-dev namespace):**
+          \`\`\`bash
+          make deploy-dev
+          \`\`\`
           `;
           
           await github.rest.repos.updateRelease({

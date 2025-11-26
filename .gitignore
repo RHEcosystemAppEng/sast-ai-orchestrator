@@ -39,6 +39,12 @@ nb-configuration.xml
 # Local environment
 .env
 
+# Deployment secrets (keep only .example files)
+deploy/secrets/*.env
+deploy/secrets/*.json
+!deploy/secrets/*.example
+!deploy/secrets/README.md
+
 # Plugin directory
 /.quarkus/cli/plugins/
 # TLS Certificates

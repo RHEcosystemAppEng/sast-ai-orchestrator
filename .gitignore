@@ -58,6 +58,7 @@ charts/*.tar.gz
 
 # Cursor
 .cursorrules
+.cursor/
 
 # Claude Code
 CLAUDE.md

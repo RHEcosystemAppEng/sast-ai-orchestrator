@@ -13,7 +13,70 @@ RELEASE_NAME ?= sast-ai-orchestrator
 CHART_PATH ?= ./sast-ai-chart
 HELM_TIMEOUT ?= 300s
 
+# Secrets configuration
+SECRETS_DIR ?= ./secrets
+S3_CREDENTIALS_FILE ?= $(SECRETS_DIR)/s3-credentials.env
+GOOGLE_SA_FILE ?= $(SECRETS_DIR)/google-service-account.json
+
 .DEFAULT_GOAL := help
+
+## ============================================================================
+## Secrets Management
+## ============================================================================
+
+.PHONY: check-secrets
+check-secrets: ## Verify that required secret files exist
+	@echo "🔐 Checking for secret files..."
+	@if [ ! -f "$(S3_CREDENTIALS_FILE)" ]; then \
+		echo "❌ Error: $(S3_CREDENTIALS_FILE) not found!"; \
+		echo "   Please copy $(S3_CREDENTIALS_FILE).example and fill in your credentials."; \
+		echo "   See $(SECRETS_DIR)/README.md for instructions."; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(GOOGLE_SA_FILE)" ]; then \
+		echo "❌ Error: $(GOOGLE_SA_FILE) not found!"; \
+		echo "   Please copy $(GOOGLE_SA_FILE).example and fill in your service account JSON."; \
+		echo "   See $(SECRETS_DIR)/README.md for instructions."; \
+		exit 1; \
+	fi
+	@echo "✅ All required secret files found"
+
+.PHONY: create-secrets
+create-secrets: check-secrets ## Create Kubernetes secrets from local files
+	@echo "🔐 Creating secrets in namespace: $(NAMESPACE)"
+	@# Create namespace if it doesn't exist
+	@$(KUBECTL_CMD) create namespace $(NAMESPACE) 2>/dev/null || true
+	@# Create S3 credentials secret with properly mapped keys
+	@echo "  Creating sast-ai-s3-credentials secret..."
+	@set -a; . $(S3_CREDENTIALS_FILE); set +a; \
+	$(KUBECTL_CMD) create secret generic sast-ai-s3-credentials \
+		-n $(NAMESPACE) \
+		--from-literal=access_key_id="$$AWS_ACCESS_KEY_ID" \
+		--from-literal=secret_access_key="$$AWS_SECRET_ACCESS_KEY" \
+		--from-literal=endpoint_url="$$AWS_S3_ENDPOINT_URL" \
+		--dry-run=client -o yaml | $(KUBECTL_CMD) apply -f -
+	@# Create Google Service Account secret
+	@echo "  Creating sast-ai-google-service-account secret..."
+	@$(KUBECTL_CMD) create secret generic sast-ai-google-service-account \
+		-n $(NAMESPACE) \
+		--from-file=service_account.json=$(GOOGLE_SA_FILE) \
+		--dry-run=client -o yaml | $(KUBECTL_CMD) apply -f -
+	@echo "✅ Secrets created successfully"
+
+.PHONY: delete-secrets
+delete-secrets: ## Delete Kubernetes secrets from namespace
+	@echo "🗑️  Deleting secrets from namespace: $(NAMESPACE)"
+	@$(KUBECTL_CMD) delete secret sast-ai-s3-credentials -n $(NAMESPACE) --ignore-not-found=true
+	@$(KUBECTL_CMD) delete secret sast-ai-google-service-account -n $(NAMESPACE) --ignore-not-found=true
+	@echo "✅ Secrets deleted"
+
+.PHONY: rotate-secrets
+rotate-secrets: delete-secrets create-secrets ## Rotate secrets (delete and recreate)
+	@echo "✅ Secrets rotated successfully"
+
+## ============================================================================
+## Deployment
+## ============================================================================
 
 .PHONY: deploy-dev
 deploy-dev: ## Deploy to development environment (sast-ai-dev namespace)
@@ -90,15 +153,16 @@ clean-prod: ## Remove production deployment
 
 .PHONY: _clean
 _clean: ## Internal clean target
+	@echo "Cleaning up deployment $(RELEASE_NAME) in namespace $(NAMESPACE)"
 	@if helm list -n $(NAMESPACE) | grep -q "^$(RELEASE_NAME)"; then \
 		helm uninstall $(RELEASE_NAME) -n $(NAMESPACE) --timeout=$(HELM_TIMEOUT); \
-		@echo "Cleaning up remaining resources by label..."
-		@$(KUBECTL_CMD) delete all,pvc,secrets,configmaps,ingress,routes,networkpolicy,pdb,sa,role,rolebinding,job -n $(NAMESPACE) -l "app.kubernetes.io/instance=$(RELEASE_NAME)" --ignore-not-found=true 2>/dev/null || true
-		@echo "Force cleaning any remaining resources with release name prefix..."
-		@for resource_type in deployment replicaset pod service configmap secret pvc role rolebinding serviceaccount networkpolicy poddisruptionbudget job cronjob ingress route; do \
+		echo "Cleaning up remaining resources by label..."; \
+		$(KUBECTL_CMD) delete all,pvc,secrets,configmaps,ingress,routes,networkpolicy,pdb,sa,role,rolebinding,job -n $(NAMESPACE) -l "app.kubernetes.io/instance=$(RELEASE_NAME)" --ignore-not-found=true 2>/dev/null || true; \
+		echo "Force cleaning any remaining resources with release name prefix..."; \
+		for resource_type in deployment replicaset pod service configmap secret pvc role rolebinding serviceaccount networkpolicy poddisruptionbudget job cronjob ingress route; do \
 			$(KUBECTL_CMD) get $$resource_type -n $(NAMESPACE) -o name 2>/dev/null | grep "$(RELEASE_NAME)" | xargs -r $(KUBECTL_CMD) delete -n $(NAMESPACE) --ignore-not-found=true 2>/dev/null || true; \
-		done
-		@echo "Cleanup completed!"
+		done; \
+		echo "Cleanup completed!"; \
 		echo "✅ Deployment removed from $(NAMESPACE)"; \
 	else \
 		echo "Release '$(RELEASE_NAME)' not found in namespace '$(NAMESPACE)'"; \
@@ -175,7 +239,7 @@ lint: ## Lint the Helm chart
 .PHONY: argocd
 argocd: ## Deploy ArgoCD Application to current namespace
 	@echo "Deploying ArgoCD Application..."
-	@NAMESPACE=$(NAMESPACE) envsubst < ./argocd/application.yaml | $(KUBECTL_CMD) apply -f -
+	@NAMESPACE=$(NAMESPACE) envsubst < argocd/application.yaml | $(KUBECTL_CMD) apply -f -
 	@echo "ArgoCD Application deployed to namespace: $(NAMESPACE)"
 
 .PHONY: help
@@ -191,8 +255,15 @@ help: ## Show this help message
 	@echo "  clean-dev      Remove development deployment"
 	@echo "  clean-prod     Remove production deployment"
 	@echo ""
-	@echo "Utility commands:"
-	@echo "  status         Show deployment status for both environments"
-	@echo "  argocd         Deploy ArgoCD Application"
+	@echo "Secrets management:"
+	@echo "  check-secrets     Verify that required secret files exist"
+	@echo "  create-secrets    Create Kubernetes secrets from local files"
+	@echo "  delete-secrets    Delete Kubernetes secrets"
+	@echo "  rotate-secrets    Rotate secrets (delete and recreate)"
 	@echo ""
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo "Utility commands:"
+	@echo "  status            Show deployment status for both environments"
+	@echo "  argocd            Deploy ArgoCD Application"
+	@echo ""
+	@echo "Other commands:"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)

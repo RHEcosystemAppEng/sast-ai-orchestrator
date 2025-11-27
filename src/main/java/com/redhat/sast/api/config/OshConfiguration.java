@@ -1,7 +1,7 @@
 package com.redhat.sast.api.config;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.Set;
@@ -264,9 +264,9 @@ public class OshConfiguration {
      * @param attemptNumber attempt number for exponential backoff calculation
      * @return cutoff timestamp - only retry scans attempted before this time
      */
-    public LocalDateTime getRetryCutoffTime(int attemptNumber) {
+    public Instant getRetryCutoffTime(int attemptNumber) {
         long calculatedBackoffMinutes = calculateBackoffMinutes(attemptNumber);
-        return LocalDateTime.now().minusMinutes(calculatedBackoffMinutes);
+        return Instant.now().minusSeconds(calculatedBackoffMinutes * 60);
     }
 
     /**
@@ -275,8 +275,8 @@ public class OshConfiguration {
      *
      * @return cutoff timestamp for basic retry eligibility
      */
-    public LocalDateTime getStandardRetryCutoffTime() {
-        return LocalDateTime.now().minus(Duration.parse(retryBackoffDuration));
+    public Instant getStandardRetryCutoffTime() {
+        return Instant.now().minus(Duration.parse(retryBackoffDuration));
     }
 
     /**
@@ -285,8 +285,8 @@ public class OshConfiguration {
      *
      * @return cutoff timestamp for retention policy
      */
-    public LocalDateTime getRetentionCutoffTime() {
-        return LocalDateTime.now().minusDays(retryRetentionDays);
+    public Instant getRetentionCutoffTime() {
+        return Instant.now().minusSeconds(retryRetentionDays * 86400L);
     }
 
     /**

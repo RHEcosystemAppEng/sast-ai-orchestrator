@@ -1,6 +1,6 @@
 package com.redhat.sast.api.repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -62,7 +62,7 @@ public class OshRetryStatisticsRepository implements PanacheRepository<OshUncoll
      * @param maxAttempts maximum retry attempts allowed (-1 = unlimited)
      * @return number of immediately eligible scans
      */
-    public long countEligibleForRetry(LocalDateTime cutoffTime, int maxAttempts) {
+    public long countEligibleForRetry(Instant cutoffTime, int maxAttempts) {
         String query =
                 """
             SELECT COUNT(u) FROM OshUncollectedScan u

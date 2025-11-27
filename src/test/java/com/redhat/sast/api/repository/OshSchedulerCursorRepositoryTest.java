@@ -2,7 +2,7 @@ package com.redhat.sast.api.repository;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +44,7 @@ class OshSchedulerCursorRepositoryTest {
     @Transactional
     void shouldCreateAndRetrieveCursorSuccessfully() {
         String testToken = "osh_scan_12345";
-        LocalDateTime testTimestamp = LocalDateTime.now();
+        Instant testTimestamp = Instant.now();
 
         repository.updateCursor(testToken, testTimestamp);
 
@@ -63,7 +63,7 @@ class OshSchedulerCursorRepositoryTest {
     void shouldUpdateExistingCursorWhenCalledMultipleTimes() {
         // First update
         String firstToken = "osh_scan_11111";
-        LocalDateTime firstTimestamp = LocalDateTime.of(2024, 1, 1, 10, 0, 0);
+        Instant firstTimestamp = Instant.parse("2024-01-01T10:00:00Z");
 
         repository.updateCursor(firstToken, firstTimestamp);
         Optional<OshSchedulerCursor> firstCursor = repository.getCurrentCursor();
@@ -72,7 +72,7 @@ class OshSchedulerCursorRepositoryTest {
 
         // Second update - should update same record, not create new one
         String secondToken = "osh_scan_22222";
-        LocalDateTime secondTimestamp = LocalDateTime.of(2024, 1, 2, 15, 30, 0);
+        Instant secondTimestamp = Instant.parse("2024-01-02T15:30:00Z");
 
         repository.updateCursor(secondToken, secondTimestamp);
         Optional<OshSchedulerCursor> secondCursor = repository.getCurrentCursor();
@@ -104,32 +104,32 @@ class OshSchedulerCursorRepositoryTest {
     @DisplayName("Should automatically set updatedAt timestamp")
     @Transactional
     void shouldAutomaticallySetUpdatedAtTimestamp() {
-        LocalDateTime beforeUpdate = LocalDateTime.now();
+        Instant beforeUpdate = Instant.now();
 
-        repository.updateCursor("test_token", LocalDateTime.now());
+        repository.updateCursor("test_token", Instant.now());
 
         Optional<OshSchedulerCursor> cursor = repository.getCurrentCursor();
 
         assertTrue(cursor.isPresent());
         assertNotNull(cursor.get().getUpdatedAt());
         assertTrue(cursor.get().getUpdatedAt().isAfter(beforeUpdate)
-                || cursor.get().getUpdatedAt().isEqual(beforeUpdate));
+                || cursor.get().getUpdatedAt().equals(beforeUpdate));
     }
 
     @Test
     @DisplayName("Should update updatedAt timestamp on subsequent updates")
     @Transactional
     void shouldUpdateUpdatedAtTimestampOnSubsequentUpdates() {
-        LocalDateTime firstTimestamp = LocalDateTime.now();
-        LocalDateTime secondTimestamp = firstTimestamp.plusSeconds(1);
+        Instant firstTimestamp = Instant.now();
+        Instant secondTimestamp = firstTimestamp.plusSeconds(1);
 
         repository.updateCursor("token1", firstTimestamp);
         Optional<OshSchedulerCursor> firstCursor = repository.getCurrentCursor();
-        LocalDateTime firstUpdatedAt = firstCursor.get().getUpdatedAt();
+        Instant firstUpdatedAt = firstCursor.get().getUpdatedAt();
 
         repository.updateCursor("token2", secondTimestamp);
         Optional<OshSchedulerCursor> secondCursor = repository.getCurrentCursor();
-        LocalDateTime secondUpdatedAt = secondCursor.get().getUpdatedAt();
+        Instant secondUpdatedAt = secondCursor.get().getUpdatedAt();
 
         assertTrue(secondUpdatedAt.isAfter(firstUpdatedAt));
     }
@@ -138,7 +138,7 @@ class OshSchedulerCursorRepositoryTest {
     @DisplayName("Should persist cursor across separate method calls")
     @Transactional
     void shouldPersistCursorAcrossSeparateMethodCalls() {
-        repository.updateCursor("persistent_token", LocalDateTime.now());
+        repository.updateCursor("persistent_token", Instant.now());
 
         Optional<OshSchedulerCursor> cursor = repository.getCurrentCursor();
 

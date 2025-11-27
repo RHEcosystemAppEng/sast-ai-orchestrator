@@ -1,6 +1,6 @@
 package com.redhat.sast.api.repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 
 import com.redhat.sast.api.model.OshSchedulerCursor;
@@ -17,7 +17,7 @@ public class OshSchedulerCursorRepository implements PanacheRepository<OshSchedu
     }
 
     @Transactional
-    public void updateCursor(String lastSeenToken, LocalDateTime timestamp) {
+    public void updateCursor(String lastSeenToken, Instant timestamp) {
         OshSchedulerCursor cursor = getCurrentCursor().orElseGet(OshSchedulerCursor::new);
         cursor.setLastSeenToken(lastSeenToken);
         cursor.setLastSeenTimestamp(timestamp);

@@ -1,6 +1,6 @@
 package com.redhat.sast.api.v1.dto.response.admin;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import com.redhat.sast.api.model.OshUncollectedScan;
@@ -51,14 +51,14 @@ public class OshRetryQueueResponseDto {
     /**
      * Timestamp when this response was generated.
      */
-    private LocalDateTime timestamp;
+    private Instant timestamp;
 
     /**
      * Indicates if there are more records available.
      */
     private boolean hasMore;
 
-    public OshRetryQueueResponseDto(String queueStatus, int requestedLimit, String sortBy, LocalDateTime timestamp) {
+    public OshRetryQueueResponseDto(String queueStatus, int requestedLimit, String sortBy, Instant timestamp) {
         this.queueStatus = queueStatus;
         this.requestedLimit = requestedLimit;
         this.sortBy = sortBy;
@@ -69,7 +69,7 @@ public class OshRetryQueueResponseDto {
     }
 
     public OshRetryQueueResponseDto() {
-        this(null, 50, "created", LocalDateTime.now());
+        this(null, 50, "created", Instant.now());
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.redhat.sast.api.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.redhat.sast.api.model.MlOpsJob;
 import com.redhat.sast.api.model.MlOpsJobSettings;
@@ -96,13 +97,14 @@ public class MlOpsJobSettingsService {
      * Helper method to extract parameter value by name from pipeline parameters.
      */
     private String getParamValue(List<Param> params, String paramName) {
-        return params.stream()
-                .filter(p -> paramName.equals(p.getName()))
-                .findFirst()
-                .map(Param::getValue)
-                .filter(value -> value != null && value.getStringVal() != null)
-                .map(value -> value.getStringVal().trim())
-                .filter(value -> !value.isEmpty())
-                .orElse(null);
+        Optional<Param> param =
+                params.stream().filter(p -> paramName.equals(p.getName())).findFirst();
+
+        if (param.isPresent() && param.get().getValue() != null) {
+            String value = param.get().getValue().getStringVal();
+            return (value != null && !value.trim().isEmpty()) ? value : null;
+        }
+
+        return null;
     }
 }

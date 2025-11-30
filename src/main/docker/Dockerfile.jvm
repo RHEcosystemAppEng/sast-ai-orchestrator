@@ -87,8 +87,8 @@ USER 0
 RUN microdnf install -y python3 python3-pip git && \
     pip3 install --no-cache-dir dvc dvc-s3 && \
     microdnf clean all && \
-    chown 185:185 /usr/local/bin/dvc && \
-    chmod 700 /usr/local/bin/dvc && \
+    chown 185:0 /usr/local/bin/dvc && \
+    chmod 750 /usr/local/bin/dvc && \
     chmod -R 755 /usr/local/lib*/python*/site-packages/dvc* || true
 USER 185
 

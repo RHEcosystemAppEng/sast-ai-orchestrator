@@ -24,11 +24,8 @@ app:
     SAST_AI_WORKFLOW_NAMESPACE: sast-ai
     # Google Service Account configuration
     GOOGLE_SERVICE_ACCOUNT_SECRET_PATH: /etc/secrets/google-service-account-secret/service_account.json
-    
-    # OSH (Open Scan Hub) Integration - Base Configuration
-    # Disabled by default. Override in values-prod.yaml to enable.
-    OSH_INTEGRATION_ENABLED: "false"
-    OSH_PACKAGES: "systemd,glibc"  # Comma-separated list of packages to monitor
+    # OSH Package filtering configuration
+    OSH_PACKAGES: "systemd,glibc"
 
   # Liveness and readiness probes (shared)
   livenessProbe:
@@ -75,11 +72,6 @@ route:
 ## PostgreSQL configuration (base settings)
 postgresql:
   enabled: true
-  # Use Bitnami legacy/stable image explicitly 
-  image:
-    registry: docker.io
-    repository: bitnamilegacy/postgresql
-    tag: "16.4.0-debian-12-r14"
   # Inherit labels from parent chart for proper cleanup
   commonLabels:
     app.kubernetes.io/name: "{{ include \"sast-ai.name\" . }}"

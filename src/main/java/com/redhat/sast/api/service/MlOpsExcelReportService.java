@@ -81,7 +81,7 @@ public class MlOpsExcelReportService {
 
             // Parse Excel and save issues
             List<MlOpsJobIssue> issues = parseExcelReport(excelBytes, job, s3FileUrl);
-            if (!issues.isEmpty()) {
+            if (issues != null && !issues.isEmpty()) {
                 issueRepository.persist(issues);
                 LOGGER.info("Successfully saved {} issues from Excel report for MLOps job {}", issues.size(), jobId);
             } else {

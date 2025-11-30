@@ -33,17 +33,6 @@ public class MlOpsExcelReportService {
 
     private static final String AI_REPORT_SHEET = "AI report";
 
-    // Excel column indices for AI report sheet
-    private static final int COL_ISSUE_ID = 0;
-    private static final int COL_ISSUE_NAME = 1;
-    private static final int COL_ERROR = 2; // Not currently stored
-    private static final int COL_INVESTIGATION_RESULT = 3;
-    private static final int COL_HINT = 4;
-    private static final int COL_JUSTIFICATIONS = 5; // Not currently stored
-    private static final int COL_RECOMMENDATIONS = 6; // Not currently stored
-    private static final int COL_ANSWER_RELEVANCY = 7;
-    private static final int COL_CONTEXT = 8; // Not currently stored
-
     /**
      * Downloads Excel report from S3 and parses issues into database.
      *
@@ -81,7 +70,7 @@ public class MlOpsExcelReportService {
 
             // Parse Excel and save issues
             List<MlOpsJobIssue> issues = parseExcelReport(excelBytes, job, s3FileUrl);
-            if (issues != null && !issues.isEmpty()) {
+            if (!issues.isEmpty()) {
                 issueRepository.persist(issues);
                 LOGGER.info("Successfully saved {} issues from Excel report for MLOps job {}", issues.size(), jobId);
             } else {
@@ -157,12 +146,10 @@ public class MlOpsExcelReportService {
 
     /**
      * Parses a single row from the AI report sheet into an MlOpsJobIssue.
-     * Validates string lengths against database constraints to prevent insertion failures.
-     * Uses column index constants to make the parsing more maintainable.
      */
     private MlOpsJobIssue parseIssueRow(Row row, MlOpsJob job, String s3FileUrl) {
         try {
-            String issueId = getCellValueAsString(row.getCell(COL_ISSUE_ID));
+            String issueId = getCellValueAsString(row.getCell(0));
             if (issueId == null || issueId.isBlank()) {
                 // Skip empty rows
                 return null;
@@ -170,21 +157,15 @@ public class MlOpsExcelReportService {
 
             MlOpsJobIssue issue = new MlOpsJobIssue();
             issue.setMlOpsJob(job);
-            issue.setIssueId(truncateString(issueId, 50, "issueId", row.getRowNum()));
-            issue.setIssueName(truncateString(
-                    getCellValueAsString(row.getCell(COL_ISSUE_NAME)), 100, "issueName", row.getRowNum()));
-            // Skip COL_ERROR - not stored
-            issue.setInvestigationResult(truncateString(
-                    getCellValueAsString(row.getCell(COL_INVESTIGATION_RESULT)),
-                    50,
-                    "investigationResult",
-                    row.getRowNum()));
-            issue.setHint(getCellValueAsString(row.getCell(COL_HINT))); // TEXT column - no limit
-            // Skip COL_JUSTIFICATIONS, COL_RECOMMENDATIONS - not stored
-            issue.setAnswerRelevancy(truncateString(
-                    getCellValueAsString(row.getCell(COL_ANSWER_RELEVANCY)), 20, "answerRelevancy", row.getRowNum()));
-            // Skip COL_CONTEXT - not stored
-            issue.setS3FileUrl(s3FileUrl); // TEXT column - no limit
+            issue.setIssueId(issueId);
+            issue.setIssueName(getCellValueAsString(row.getCell(1)));
+            // Skip column 2 (Error) - not stored per your request
+            issue.setInvestigationResult(getCellValueAsString(row.getCell(3)));
+            issue.setHint(getCellValueAsString(row.getCell(4)));
+            // Skip columns 5-6 (Justifications, Recommendations) - not stored per your request
+            issue.setAnswerRelevancy(getCellValueAsString(row.getCell(7)));
+            // Skip column 8 (Context) - not stored per your request
+            issue.setS3FileUrl(s3FileUrl);
 
             return issue;
 
@@ -192,33 +173,6 @@ public class MlOpsExcelReportService {
             LOGGER.warn("Failed to parse issue row {} for job {}: {}", row.getRowNum(), job.getId(), e.getMessage());
             return null;
         }
-    }
-
-    /**
-     * Truncates a string to the specified maximum length.
-     * Logs a warning if truncation occurs.
-     *
-     * @param value the string to truncate
-     * @param maxLength the maximum allowed length
-     * @param fieldName the field name for logging
-     * @param rowNum the row number for logging
-     * @return truncated string or null if input is null
-     */
-    private String truncateString(String value, int maxLength, String fieldName, int rowNum) {
-        if (value == null) {
-            return null;
-        }
-        if (value.length() > maxLength) {
-            LOGGER.warn(
-                    "Truncating {} from {} to {} characters at row {}: '{}'",
-                    fieldName,
-                    value.length(),
-                    maxLength,
-                    rowNum,
-                    value.substring(0, Math.min(50, value.length())) + "...");
-            return value.substring(0, maxLength);
-        }
-        return value;
     }
 
     /**

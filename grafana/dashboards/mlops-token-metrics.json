@@ -1,0 +1,568 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "05334480-fd0f-4d25-bf9e-b64b5162b6e2"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"total_jobs\"\nFROM mlops_job_token_usage t\nJOIN mlops_job mj ON t.id = mj.id\nWHERE (ARRAY_LENGTH(ARRAY[${batch_id}], 1) IS NULL OR mj.mlops_batch_id IN (${batch_id}));",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Jobs with Token Data",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "05334480-fd0f-4d25-bf9e-b64b5162b6e2"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["mean"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT AVG(t.total_input_tokens) AS \"avg_input_tokens\"\nFROM mlops_job_token_usage t\nJOIN mlops_job mj ON t.id = mj.id\nWHERE (ARRAY_LENGTH(ARRAY[${batch_id}], 1) IS NULL OR mj.mlops_batch_id IN (${batch_id}));",
+          "refId": "A"
+        }
+      ],
+      "title": "Avg Input Tokens",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "05334480-fd0f-4d25-bf9e-b64b5162b6e2"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["mean"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT AVG(t.total_output_tokens) AS \"avg_output_tokens\"\nFROM mlops_job_token_usage t\nJOIN mlops_job mj ON t.id = mj.id\nWHERE (ARRAY_LENGTH(ARRAY[${batch_id}], 1) IS NULL OR mj.mlops_batch_id IN (${batch_id}));",
+          "refId": "A"
+        }
+      ],
+      "title": "Avg Output Tokens",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "05334480-fd0f-4d25-bf9e-b64b5162b6e2"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["mean"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT AVG(t.total_duration_seconds) AS \"avg_duration\"\nFROM mlops_job_token_usage t\nJOIN mlops_job mj ON t.id = mj.id\nWHERE (ARRAY_LENGTH(ARRAY[${batch_id}], 1) IS NULL OR mj.mlops_batch_id IN (${batch_id}));",
+          "refId": "A"
+        }
+      ],
+      "title": "Avg Duration",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "05334480-fd0f-4d25-bf9e-b64b5162b6e2"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 6
+      },
+      "id": 5,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["sum"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT SUM(t.total_input_tokens) AS \"sum_input_tokens\"\nFROM mlops_job_token_usage t\nJOIN mlops_job mj ON t.id = mj.id\nWHERE (ARRAY_LENGTH(ARRAY[${batch_id}], 1) IS NULL OR mj.mlops_batch_id IN (${batch_id}));",
+          "refId": "A"
+        }
+      ],
+      "title": "Sum Input Tokens",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "05334480-fd0f-4d25-bf9e-b64b5162b6e2"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 6
+      },
+      "id": 6,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["sum"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT SUM(t.total_output_tokens) AS \"sum_output_tokens\"\nFROM mlops_job_token_usage t\nJOIN mlops_job mj ON t.id = mj.id\nWHERE (ARRAY_LENGTH(ARRAY[${batch_id}], 1) IS NULL OR mj.mlops_batch_id IN (${batch_id}));",
+          "refId": "A"
+        }
+      ],
+      "title": "Sum Output Tokens",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "05334480-fd0f-4d25-bf9e-b64b5162b6e2"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 6
+      },
+      "id": 7,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["sum"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT SUM(t.total_tokens) AS \"sum_total_tokens\"\nFROM mlops_job_token_usage t\nJOIN mlops_job mj ON t.id = mj.id\nWHERE (ARRAY_LENGTH(ARRAY[${batch_id}], 1) IS NULL OR mj.mlops_batch_id IN (${batch_id}));",
+          "refId": "A"
+        }
+      ],
+      "title": "Sum Total Tokens",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "05334480-fd0f-4d25-bf9e-b64b5162b6e2"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 6
+      },
+      "id": 8,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["sum"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT SUM(t.total_duration_seconds) AS \"sum_duration\"\nFROM mlops_job_token_usage t\nJOIN mlops_job mj ON t.id = mj.id\nWHERE (ARRAY_LENGTH(ARRAY[${batch_id}], 1) IS NULL OR mj.mlops_batch_id IN (${batch_id}));",
+          "refId": "A"
+        }
+      ],
+      "title": "Sum Duration",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "05334480-fd0f-4d25-bf9e-b64b5162b6e2"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "id": 9,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  mj.package_name AS \"Package\",\n  mj.id AS \"Job ID\",\n  mb.id AS \"Batch ID\",\n  t.total_input_tokens AS \"Input Tokens\",\n  t.total_output_tokens AS \"Output Tokens\",\n  t.total_tokens AS \"Total Tokens\",\n  t.total_duration_seconds AS \"Duration (s)\",\n  t.created_at AS \"Created At\"\nFROM mlops_job_token_usage t\nJOIN mlops_job mj ON t.id = mj.id\nJOIN mlops_batch mb ON mj.mlops_batch_id = mb.id\nWHERE (ARRAY_LENGTH(ARRAY[${batch_id}], 1) IS NULL OR mj.mlops_batch_id IN (${batch_id}))\nORDER BY t.created_at DESC\nLIMIT 100;",
+          "refId": "A"
+        }
+      ],
+      "title": "Token Usage Details",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": ["mlops", "token", "metrics", "performance"],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "05334480-fd0f-4d25-bf9e-b64b5162b6e2"
+        },
+        "definition": "SELECT DISTINCT mb.id FROM mlops_batch mb JOIN mlops_job mj ON mj.mlops_batch_id = mb.id JOIN mlops_job_token_usage t ON t.id = mj.id ORDER BY mb.id DESC",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "batch_id",
+        "options": [],
+        "query": "SELECT DISTINCT mb.id FROM mlops_batch mb JOIN mlops_job mj ON mj.mlops_batch_id = mb.id JOIN mlops_job_token_usage t ON t.id = mj.id ORDER BY mb.id DESC",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "MLOps Token Usage & Timing Metrics",
+  "uid": "mlops-token-metrics",
+  "version": 1
+}

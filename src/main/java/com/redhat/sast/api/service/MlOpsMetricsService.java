@@ -76,15 +76,15 @@ public class MlOpsMetricsService {
     }
 
     /**
-     * Extracts workflow-metrics result from PipelineRun.
+     * Extracts a specific Tekton result by name from PipelineRun.
      */
-    private String extractWorkflowMetrics(PipelineRun pipelineRun) {
+    public String extractTektonResult(PipelineRun pipelineRun, String resultName) {
         if (pipelineRun.getStatus() == null || pipelineRun.getStatus().getResults() == null) {
             return null;
         }
 
         for (PipelineRunResult result : pipelineRun.getStatus().getResults()) {
-            if ("workflow-metrics".equals(result.getName())) {
+            if (resultName.equals(result.getName())) {
                 ParamValue value = result.getValue();
                 if (value != null) {
                     return value.getStringVal();
@@ -93,6 +93,13 @@ public class MlOpsMetricsService {
         }
 
         return null;
+    }
+
+    /**
+     * Extracts workflow-metrics result from PipelineRun.
+     */
+    private String extractWorkflowMetrics(PipelineRun pipelineRun) {
+        return extractTektonResult(pipelineRun, "workflow-metrics");
     }
 
     /**

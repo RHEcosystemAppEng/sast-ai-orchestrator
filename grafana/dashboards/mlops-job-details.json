@@ -297,6 +297,118 @@
       ],
       "title": "Detailed Job Metrics",
       "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "c3340f63-6cc1-4a9e-9cd2-72876665193b"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Investigation Result"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": "UNRESOLVED"
+                    },
+                    {
+                      "color": "green",
+                      "value": "RESOLVED"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "S3 File URL"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open Excel Report",
+                    "url": "${__data.fields[\"S3 File URL\"]}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 3,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Package Name"
+          }
+        ]
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  j.package_name AS \"Package Name\",\n  ji.issue_id AS \"Issue ID\",\n  ji.issue_name AS \"Issue Name\",\n  ji.investigation_result AS \"Investigation Result\",\n  ji.hint AS \"Hint\",\n  ji.answer_relevancy AS \"Answer Relevancy\",\n  ji.s3_file_url AS \"S3 File URL\",\n  ji.created_at AS \"Created\"\nFROM mlops_job_issue ji\nJOIN mlops_job j ON ji.mlops_job_id = j.id\nWHERE j.mlops_batch_id = $batch_id\nORDER BY j.package_name, ji.issue_id;",
+          "refId": "A"
+        }
+      ],
+      "title": "AI Issue Analysis Results",
+      "type": "table"
     }
   ],
   "refresh": "",

@@ -1,0 +1,13 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: mlops-node-filter-evaluation
+  labels:
+    app: sast-ai-orchestrator
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  configMapRef:
+    name: dashboard-mlops-node-filter-evaluation
+    key: mlops-node-filter-evaluation.json

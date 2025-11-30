@@ -1,6 +1,7 @@
 package com.redhat.sast.api.service;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -88,7 +89,7 @@ public class S3ClientService {
      */
     public String downloadFileAsString(String s3Key) {
         byte[] bytes = downloadFileAsBytes(s3Key);
-        return bytes != null ? new String(bytes) : null;
+        return bytes != null ? new String(bytes, StandardCharsets.UTF_8) : null;
     }
 
     /**

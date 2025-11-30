@@ -8,9 +8,6 @@ import com.redhat.sast.api.service.MlOpsExcelReportService;
 import com.redhat.sast.api.service.MlOpsJobService;
 import com.redhat.sast.api.service.MlOpsJobSettingsService;
 import com.redhat.sast.api.service.MlOpsMetricsService;
-import com.redhat.sast.api.service.MlOpsNodeFilterEvalService;
-import com.redhat.sast.api.service.MlOpsNodeJudgeEvalService;
-import com.redhat.sast.api.service.MlOpsNodeSummaryEvalService;
 import com.redhat.sast.api.service.MlOpsTokenMetricsService;
 
 import io.fabric8.knative.pkg.apis.Condition;
@@ -37,9 +34,6 @@ public class MlOpsPipelineRunWatcher implements Watcher<PipelineRun> {
     private final MlOpsMetricsService mlOpsMetricsService;
     private final MlOpsTokenMetricsService mlOpsTokenMetricsService;
     private final MlOpsExcelReportService mlOpsExcelReportService;
-    private final MlOpsNodeFilterEvalService mlOpsNodeFilterEvalService;
-    private final MlOpsNodeJudgeEvalService mlOpsNodeJudgeEvalService;
-    private final MlOpsNodeSummaryEvalService mlOpsNodeSummaryEvalService;
     private final Object mlOpsBatchService; // Object to avoid circular dependency
 
     // Flag to prevent duplicate processing of completion event
@@ -157,39 +151,6 @@ public class MlOpsPipelineRunWatcher implements Watcher<PipelineRun> {
         } catch (Exception e) {
             LOGGER.error(
                     "Failed to fetch Excel report for MLOps job {}, but job will still be marked as completed",
-                    jobId,
-                    e);
-        }
-
-        // Extract and save filter node evaluation (optional - may not exist)
-        try {
-            mlOpsNodeFilterEvalService.extractAndSaveFilterEval(jobId, pipelineRun);
-            LOGGER.debug("Filter node evaluation extraction completed for MLOps job {}", jobId);
-        } catch (Exception e) {
-            LOGGER.error(
-                    "Failed to extract filter node evaluation for MLOps job {}, but job will still be marked as completed",
-                    jobId,
-                    e);
-        }
-
-        // Extract and save judge node evaluation (optional - may not exist)
-        try {
-            mlOpsNodeJudgeEvalService.extractAndSaveJudgeEval(jobId, pipelineRun);
-            LOGGER.debug("Judge node evaluation extraction completed for MLOps job {}", jobId);
-        } catch (Exception e) {
-            LOGGER.error(
-                    "Failed to extract judge node evaluation for MLOps job {}, but job will still be marked as completed",
-                    jobId,
-                    e);
-        }
-
-        // Extract and save summary node evaluation (optional - may not exist)
-        try {
-            mlOpsNodeSummaryEvalService.extractAndSaveSummaryEval(jobId, pipelineRun);
-            LOGGER.debug("Summary node evaluation extraction completed for MLOps job {}", jobId);
-        } catch (Exception e) {
-            LOGGER.error(
-                    "Failed to extract summary node evaluation for MLOps job {}, but job will still be marked as completed",
                     jobId,
                     e);
         }

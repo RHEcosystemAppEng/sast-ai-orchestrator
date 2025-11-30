@@ -48,9 +48,6 @@ public class PlatformService {
     private final MlOpsMetricsService mlOpsMetricsService;
     private final MlOpsTokenMetricsService mlOpsTokenMetricsService;
     private final MlOpsExcelReportService mlOpsExcelReportService;
-    private final MlOpsNodeFilterEvalService mlOpsNodeFilterEvalService;
-    private final MlOpsNodeJudgeEvalService mlOpsNodeJudgeEvalService;
-    private final MlOpsNodeSummaryEvalService mlOpsNodeSummaryEvalService;
     private final KubernetesResourceManager resourceManager;
     private final DvcMetadataService dvcMetadataService;
     private final DataArtifactService dataArtifactService;
@@ -274,9 +271,6 @@ public class PlatformService {
                         mlOpsMetricsService,
                         mlOpsTokenMetricsService,
                         mlOpsExcelReportService,
-                        mlOpsNodeFilterEvalService,
-                        mlOpsNodeJudgeEvalService,
-                        mlOpsNodeSummaryEvalService,
                         mlOpsBatchServiceParam))) {
             future.join();
         } catch (Exception e) {

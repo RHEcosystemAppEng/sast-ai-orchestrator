@@ -11,6 +11,7 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 import com.redhat.sast.api.platform.KubernetesResourceManager;
 import com.redhat.sast.api.platform.MlOpsPipelineRunWatcher;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
+import com.redhat.sast.api.service.MlOpsNodeFilterEvalService;
 
 import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
 import io.fabric8.tekton.client.TektonClient;
@@ -48,6 +49,7 @@ public class PlatformService {
     private final MlOpsMetricsService mlOpsMetricsService;
     private final MlOpsTokenMetricsService mlOpsTokenMetricsService;
     private final MlOpsExcelReportService mlOpsExcelReportService;
+    private final MlOpsNodeFilterEvalService mlOpsNodeFilterEvalService;
     private final KubernetesResourceManager resourceManager;
     private final DvcMetadataService dvcMetadataService;
     private final DataArtifactService dataArtifactService;
@@ -271,6 +273,7 @@ public class PlatformService {
                         mlOpsMetricsService,
                         mlOpsTokenMetricsService,
                         mlOpsExcelReportService,
+                        mlOpsNodeFilterEvalService,
                         mlOpsBatchServiceParam))) {
             future.join();
         } catch (Exception e) {

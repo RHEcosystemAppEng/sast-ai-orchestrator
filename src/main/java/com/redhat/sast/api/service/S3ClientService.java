@@ -114,11 +114,11 @@ public class S3ClientService {
                         .key(s3Key)
                         .build();
 
-                ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getObjectRequest);
-                String content = new String(response.readAllBytes());
-
-                LOGGER.info("Successfully downloaded file from S3: {} ({} bytes)", s3Key, content.length());
-                return content;
+                try (ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getObjectRequest)) {
+                    String content = new String(response.readAllBytes());
+                    LOGGER.info("Successfully downloaded file from S3: {} ({} bytes)", s3Key, content.length());
+                    return content;
+                }
 
             } catch (NoSuchKeyException e) {
                 LOGGER.warn(
@@ -198,11 +198,11 @@ public class S3ClientService {
                         .key(s3Key)
                         .build();
 
-                ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getObjectRequest);
-                byte[] bytes = response.readAllBytes();
-
-                LOGGER.info("Successfully downloaded file from S3: {} ({} bytes)", s3Key, bytes.length);
-                return bytes;
+                try (ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getObjectRequest)) {
+                    byte[] bytes = response.readAllBytes();
+                    LOGGER.info("Successfully downloaded file from S3: {} ({} bytes)", s3Key, bytes.length);
+                    return bytes;
+                }
 
             } catch (NoSuchKeyException e) {
                 LOGGER.warn(

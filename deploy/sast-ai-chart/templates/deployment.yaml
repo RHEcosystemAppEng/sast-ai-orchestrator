@@ -70,6 +70,16 @@ spec:
                 secretKeyRef:
                   name: sast-ai-s3-credentials
                   key: endpoint_url
+            - name: S3_OUTPUT_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: sast-ai-s3-credentials
+                  key: output_bucket_name
+            - name: S3_INPUT_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: sast-ai-s3-credentials
+                  key: input_bucket_name
             # Application environment variables
             {{- range $key, $value := .Values.app.env }}
             - name: {{ $key }}

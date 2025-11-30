@@ -146,6 +146,7 @@ public class MlOpsExcelReportService {
 
     /**
      * Parses a single row from the AI report sheet into an MlOpsJobIssue.
+     * Validates string lengths against database constraints to prevent insertion failures.
      */
     private MlOpsJobIssue parseIssueRow(Row row, MlOpsJob job, String s3FileUrl) {
         try {
@@ -157,15 +158,17 @@ public class MlOpsExcelReportService {
 
             MlOpsJobIssue issue = new MlOpsJobIssue();
             issue.setMlOpsJob(job);
-            issue.setIssueId(issueId);
-            issue.setIssueName(getCellValueAsString(row.getCell(1)));
+            issue.setIssueId(truncateString(issueId, 50, "issueId", row.getRowNum()));
+            issue.setIssueName(truncateString(getCellValueAsString(row.getCell(1)), 100, "issueName", row.getRowNum()));
             // Skip column 2 (Error) - not stored per your request
-            issue.setInvestigationResult(getCellValueAsString(row.getCell(3)));
-            issue.setHint(getCellValueAsString(row.getCell(4)));
+            issue.setInvestigationResult(
+                    truncateString(getCellValueAsString(row.getCell(3)), 50, "investigationResult", row.getRowNum()));
+            issue.setHint(getCellValueAsString(row.getCell(4))); // TEXT column - no limit
             // Skip columns 5-6 (Justifications, Recommendations) - not stored per your request
-            issue.setAnswerRelevancy(getCellValueAsString(row.getCell(7)));
+            issue.setAnswerRelevancy(
+                    truncateString(getCellValueAsString(row.getCell(7)), 20, "answerRelevancy", row.getRowNum()));
             // Skip column 8 (Context) - not stored per your request
-            issue.setS3FileUrl(s3FileUrl);
+            issue.setS3FileUrl(s3FileUrl); // TEXT column - no limit
 
             return issue;
 
@@ -173,6 +176,33 @@ public class MlOpsExcelReportService {
             LOGGER.warn("Failed to parse issue row {} for job {}: {}", row.getRowNum(), job.getId(), e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * Truncates a string to the specified maximum length.
+     * Logs a warning if truncation occurs.
+     *
+     * @param value the string to truncate
+     * @param maxLength the maximum allowed length
+     * @param fieldName the field name for logging
+     * @param rowNum the row number for logging
+     * @return truncated string or null if input is null
+     */
+    private String truncateString(String value, int maxLength, String fieldName, int rowNum) {
+        if (value == null) {
+            return null;
+        }
+        if (value.length() > maxLength) {
+            LOGGER.warn(
+                    "Truncating {} from {} to {} characters at row {}: '{}'",
+                    fieldName,
+                    value.length(),
+                    maxLength,
+                    rowNum,
+                    value.substring(0, Math.min(50, value.length())) + "...");
+            return value.substring(0, maxLength);
+        }
+        return value;
     }
 
     /**

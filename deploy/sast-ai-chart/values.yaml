@@ -72,6 +72,12 @@ route:
 ## PostgreSQL configuration (base settings)
 postgresql:
   enabled: true
+  # Pin PostgreSQL image version for stability and reproducibility
+  # Prevents unexpected version changes during deployments
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/postgresql
+    tag: "16.4.0-debian-12-r14"
   # Inherit labels from parent chart for proper cleanup
   commonLabels:
     app.kubernetes.io/name: "{{ include \"sast-ai.name\" . }}"

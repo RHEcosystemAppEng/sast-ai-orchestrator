@@ -87,79 +87,8 @@ public class S3ClientService {
      * @return The file content as a String, or null if download failed
      */
     public String downloadFileAsString(String s3Key) {
-        if (s3Client == null) {
-            LOGGER.warn("S3 client not initialized - cannot download file: {}", s3Key);
-            return null;
-        }
-
-        if (!s3BucketName.isPresent()) {
-            LOGGER.error("S3 bucket name not configured");
-            return null;
-        }
-
-        int maxRetries = 3;
-        int[] retryDelays = {2000, 5000, 8000}; // Retry delays: 2s, 5s, 8s
-
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                LOGGER.debug(
-                        "Downloading file from S3 (attempt {}/{}): bucket={}, key={}",
-                        attempt,
-                        maxRetries,
-                        s3BucketName.get(),
-                        s3Key);
-
-                GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                        .bucket(s3BucketName.get())
-                        .key(s3Key)
-                        .build();
-
-                try (ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getObjectRequest)) {
-                    String content = new String(response.readAllBytes());
-                    LOGGER.info("Successfully downloaded file from S3: {} ({} bytes)", s3Key, content.length());
-                    return content;
-                }
-
-            } catch (NoSuchKeyException e) {
-                LOGGER.warn(
-                        "File not found in S3 (attempt {}/{}): bucket={}, key={}",
-                        attempt,
-                        maxRetries,
-                        s3BucketName.get(),
-                        s3Key);
-                if (attempt < maxRetries) {
-                    try {
-                        int delayMs = retryDelays[attempt - 1];
-                        LOGGER.debug("Waiting {}ms before retry", delayMs);
-                        Thread.sleep(delayMs);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        return null;
-                    }
-                }
-            } catch (Exception e) {
-                LOGGER.warn(
-                        "Failed to download file from S3 (attempt {}/{}): bucket={}, key={} - {}",
-                        attempt,
-                        maxRetries,
-                        s3BucketName.get(),
-                        s3Key,
-                        e.getMessage());
-                if (attempt < maxRetries) {
-                    try {
-                        int delayMs = retryDelays[attempt - 1];
-                        LOGGER.debug("Waiting {}ms before retry", delayMs);
-                        Thread.sleep(delayMs);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        return null;
-                    }
-                } else {
-                    LOGGER.error("Failed to download file from S3 after {} attempts: {}", maxRetries, s3Key, e);
-                }
-            }
-        }
-        return null;
+        byte[] bytes = downloadFileAsBytes(s3Key);
+        return bytes != null ? new String(bytes) : null;
     }
 
     /**
@@ -212,14 +141,7 @@ public class S3ClientService {
                         s3BucketName.get(),
                         s3Key);
                 if (attempt < maxRetries) {
-                    try {
-                        int delayMs = retryDelays[attempt - 1];
-                        LOGGER.debug("Waiting {}ms before retry", delayMs);
-                        Thread.sleep(delayMs);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        return null;
-                    }
+                    retryWithDelay(retryDelays[attempt - 1]);
                 }
             } catch (Exception e) {
                 LOGGER.warn(
@@ -230,20 +152,28 @@ public class S3ClientService {
                         s3Key,
                         e.getMessage());
                 if (attempt < maxRetries) {
-                    try {
-                        int delayMs = retryDelays[attempt - 1];
-                        LOGGER.debug("Waiting {}ms before retry", delayMs);
-                        Thread.sleep(delayMs);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        return null;
-                    }
+                    retryWithDelay(retryDelays[attempt - 1]);
                 } else {
                     LOGGER.error("Failed to download file from S3 after {} attempts: {}", maxRetries, s3Key, e);
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * Waits for the specified delay before retrying.
+     *
+     * @param delayMs Delay in milliseconds
+     */
+    private void retryWithDelay(int delayMs) {
+        try {
+            LOGGER.debug("Waiting {}ms before retry", delayMs);
+            Thread.sleep(delayMs);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn("Retry interrupted");
+        }
     }
 
     /**

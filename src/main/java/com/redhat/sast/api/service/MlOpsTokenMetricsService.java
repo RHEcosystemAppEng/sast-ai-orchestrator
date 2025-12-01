@@ -43,7 +43,7 @@ public class MlOpsTokenMetricsService {
             String s3Key = s3ClientService.constructTokenUsageS3Key(
                     job.getPackageName(), job.getProjectVersion(), pipelineRunId);
 
-            LOGGER.info("Fetching token metrics from S3 for job {}: {}", jobId, s3Key);
+            LOGGER.debug("Fetching token metrics from S3 for job {}: {}", jobId, s3Key);
 
             // Download from S3
             String tokenMetricsJson = s3ClientService.downloadFileAsString(s3Key);

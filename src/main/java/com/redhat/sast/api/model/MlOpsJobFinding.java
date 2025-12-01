@@ -9,15 +9,15 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
-        name = "mlops_job_issue",
+        name = "mlops_job_finding",
         indexes = {
-            @Index(name = "idx_mlops_job_issue_mlops_job_id", columnList = "mlops_job_id"),
-            @Index(name = "idx_mlops_job_issue_result", columnList = "investigation_result")
+            @Index(name = "idx_mlops_job_finding_mlops_job_id", columnList = "mlops_job_id"),
+            @Index(name = "idx_mlops_job_finding_result", columnList = "investigation_result")
         })
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = "mlOpsJob")
-public class MlOpsJobIssue {
+public class MlOpsJobFinding {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,11 +27,11 @@ public class MlOpsJobIssue {
     @JoinColumn(name = "mlops_job_id", nullable = false)
     private MlOpsJob mlOpsJob;
 
-    @Column(name = "issue_id", length = 50, nullable = false)
-    private String issueId;
+    @Column(name = "finding_id", length = 50, nullable = false)
+    private String findingId;
 
-    @Column(name = "issue_name", length = 100)
-    private String issueName;
+    @Column(name = "finding_name", length = 100)
+    private String findingName;
 
     @Column(name = "investigation_result", length = 50)
     private String investigationResult;

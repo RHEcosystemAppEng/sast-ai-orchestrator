@@ -13,6 +13,19 @@ ADD COLUMN without_expected_total INTEGER DEFAULT 0,
 ADD COLUMN without_expected_faiss_found INTEGER DEFAULT 0,
 ADD COLUMN without_expected_perc_correct DECIMAL(5,4) DEFAULT 0.0;
 
+-- Migrate existing JSONB data to new columns
+-- Extract data from faiss_stratified_stats JSONB for existing records
+UPDATE mlops_job_node_filter_eval
+SET
+    with_expected_total = COALESCE((faiss_stratified_stats->'with_expected_matches'->>'total')::INTEGER, 0),
+    with_expected_faiss_found = COALESCE((faiss_stratified_stats->'with_expected_matches'->>'faiss_found_matches')::INTEGER, 0),
+    with_expected_perc_correct = COALESCE((faiss_stratified_stats->'with_expected_matches'->>'perc_correct')::DECIMAL(5,4), 0.0),
+    without_expected_total = COALESCE((faiss_stratified_stats->'without_expected_matches'->>'total')::INTEGER, 0),
+    without_expected_faiss_found = COALESCE((faiss_stratified_stats->'without_expected_matches'->>'faiss_found_matches')::INTEGER, 0),
+    without_expected_perc_correct = COALESCE((faiss_stratified_stats->'without_expected_matches'->>'perc_correct')::DECIMAL(5,4), 0.0)
+WHERE faiss_stratified_stats IS NOT NULL
+  AND faiss_stratified_stats != '{}'::jsonb;
+
 -- Add comments
 COMMENT ON COLUMN mlops_job_node_filter_eval.with_expected_total IS 'Total issues with expected matches';
 COMMENT ON COLUMN mlops_job_node_filter_eval.with_expected_faiss_found IS 'Issues with expected matches where FAISS found matches';

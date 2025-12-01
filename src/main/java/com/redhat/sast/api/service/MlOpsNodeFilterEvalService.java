@@ -1,5 +1,10 @@
 package com.redhat.sast.api.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Optional;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.sast.api.model.MlOpsJob;
@@ -8,6 +13,7 @@ import com.redhat.sast.api.repository.MlOpsJobNodeFilterEvalRepository;
 
 import io.fabric8.tekton.v1.PipelineRun;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,17 +53,26 @@ public class MlOpsNodeFilterEvalService {
             }
 
             // Parse and save filter evaluation
-            MlOpsJobNodeFilterEval filterEval = parseFilterEval(filterResultsJson, job);
-            if (filterEval != null) {
-                filterEvalRepository.persist(filterEval);
-                LOGGER.info(
-                        "Successfully saved filter evaluation for MLOps job {}: tokens={}, llm_calls={}",
-                        jobId,
-                        filterEval.getTotalTokens(),
-                        filterEval.getLlmCallCount());
-            } else {
-                LOGGER.warn("Could not parse filter-evaluation-results for job {} - invalid JSON format", jobId);
-            }
+            Optional<MlOpsJobNodeFilterEval> filterEvalOpt = parseFilterEval(filterResultsJson, job);
+            filterEvalOpt.ifPresentOrElse(
+                    filterEval -> {
+                        try {
+                            filterEvalRepository.persist(filterEval);
+                            LOGGER.info(
+                                    "Successfully saved filter evaluation for MLOps job {}: tokens={}, llm_calls={}",
+                                    jobId,
+                                    filterEval.getTotalTokens(),
+                                    filterEval.getLlmCallCount());
+                        } catch (PersistenceException e) {
+                            LOGGER.error(
+                                    "Failed to persist filter evaluation for MLOps job {}: {}",
+                                    jobId,
+                                    e.getMessage(),
+                                    e);
+                        }
+                    },
+                    () -> LOGGER.warn(
+                            "Could not parse filter-evaluation-results for job {} - invalid JSON format", jobId));
 
         } catch (Exception e) {
             LOGGER.error("Failed to extract and save filter evaluation for MLOps job {}: {}", jobId, e.getMessage(), e);
@@ -68,8 +83,10 @@ public class MlOpsNodeFilterEvalService {
     /**
      * Parses filter evaluation JSON and creates MlOpsJobNodeFilterEval entity.
      * Format: {"faiss_stratified_stats": {...}}
+     *
+     * @return Optional containing the parsed entity, or empty if parsing fails or validation fails
      */
-    private MlOpsJobNodeFilterEval parseFilterEval(String filterResultsJson, MlOpsJob job) {
+    private Optional<MlOpsJobNodeFilterEval> parseFilterEval(String filterResultsJson, MlOpsJob job) {
         try {
             JsonNode root = objectMapper.readTree(filterResultsJson);
 
@@ -81,18 +98,43 @@ public class MlOpsNodeFilterEvalService {
             if (!faissStats.isMissingNode() && !faissStats.isNull()) {
                 JsonNode withExpected = faissStats.path("with_expected_matches");
                 if (!withExpected.isMissingNode()) {
-                    filterEval.setWithExpectedTotal(withExpected.path("total").asInt(0));
-                    filterEval.setWithExpectedFaissFound(
-                            withExpected.path("faiss_found_matches").asInt(0));
+                    int withExpectedTotal = withExpected.path("total").asInt(0);
+                    int withExpectedFaissFound =
+                            withExpected.path("faiss_found_matches").asInt(0);
+
+                    // Validate non-negative totals
+                    if (withExpectedTotal < 0 || withExpectedFaissFound < 0) {
+                        LOGGER.warn(
+                                "Invalid negative values in with_expected_matches for job {}: total={}, faiss_found={}",
+                                job.getId(),
+                                withExpectedTotal,
+                                withExpectedFaissFound);
+                        return Optional.empty();
+                    }
+
+                    filterEval.setWithExpectedTotal(withExpectedTotal);
+                    filterEval.setWithExpectedFaissFound(withExpectedFaissFound);
                     filterEval.setWithExpectedPercCorrect(extractBigDecimal(withExpected, "perc_correct"));
                 }
 
                 JsonNode withoutExpected = faissStats.path("without_expected_matches");
                 if (!withoutExpected.isMissingNode()) {
-                    filterEval.setWithoutExpectedTotal(
-                            withoutExpected.path("total").asInt(0));
-                    filterEval.setWithoutExpectedFaissFound(
-                            withoutExpected.path("faiss_found_matches").asInt(0));
+                    int withoutExpectedTotal = withoutExpected.path("total").asInt(0);
+                    int withoutExpectedFaissFound =
+                            withoutExpected.path("faiss_found_matches").asInt(0);
+
+                    // Validate non-negative totals
+                    if (withoutExpectedTotal < 0 || withoutExpectedFaissFound < 0) {
+                        LOGGER.warn(
+                                "Invalid negative values in without_expected_matches for job {}: total={}, faiss_found={}",
+                                job.getId(),
+                                withoutExpectedTotal,
+                                withoutExpectedFaissFound);
+                        return Optional.empty();
+                    }
+
+                    filterEval.setWithoutExpectedTotal(withoutExpectedTotal);
+                    filterEval.setWithoutExpectedFaissFound(withoutExpectedFaissFound);
                     filterEval.setWithoutExpectedPercCorrect(extractBigDecimal(withoutExpected, "perc_correct"));
                 }
             }
@@ -100,8 +142,21 @@ public class MlOpsNodeFilterEvalService {
             // Extract performance metrics if available
             JsonNode perf = root.path("perf");
             if (!perf.isMissingNode()) {
-                filterEval.setTotalTokens(perf.path("total_tokens").asInt(0));
-                filterEval.setLlmCallCount(perf.path("llm_calls").asInt(0));
+                int totalTokens = perf.path("total_tokens").asInt(0);
+                int llmCallCount = perf.path("llm_calls").asInt(0);
+
+                // Validate non-negative values
+                if (totalTokens < 0 || llmCallCount < 0) {
+                    LOGGER.warn(
+                            "Invalid negative performance metrics for job {}: tokens={}, llm_calls={}",
+                            job.getId(),
+                            totalTokens,
+                            llmCallCount);
+                    return Optional.empty();
+                }
+
+                filterEval.setTotalTokens(totalTokens);
+                filterEval.setLlmCallCount(llmCallCount);
             } else {
                 filterEval.setTotalTokens(0);
                 filterEval.setLlmCallCount(0);
@@ -115,23 +170,58 @@ public class MlOpsNodeFilterEvalService {
                     filterEval.getTotalTokens(),
                     filterEval.getLlmCallCount());
 
-            return filterEval;
+            return Optional.of(filterEval);
 
-        } catch (Exception e) {
-            LOGGER.error("Failed to parse filter evaluation JSON for job {}: {}", job.getId(), e.getMessage(), e);
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Failed to parse filter evaluation JSON for job {}: {}", job.getId(), e.getMessage());
             LOGGER.debug("Problematic JSON: {}", filterResultsJson);
-            return null;
+            return Optional.empty();
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error parsing filter evaluation for job {}: {}", job.getId(), e.getMessage(), e);
+            return Optional.empty();
         }
     }
 
     /**
-     * Helper to extract BigDecimal from JsonNode
+     * Helper to extract BigDecimal from JsonNode with precise scale matching DECIMAL(5,4).
+     * Validates that percentage values are within [0, 1] range.
+     *
+     * @param node the JSON node containing the field
+     * @param fieldName the field name to extract
+     * @return BigDecimal with scale 4, or ZERO if missing/invalid
      */
-    private java.math.BigDecimal extractBigDecimal(JsonNode node, String fieldName) {
+    private BigDecimal extractBigDecimal(JsonNode node, String fieldName) {
         if (node == null || node.isMissingNode() || !node.has(fieldName)) {
-            return java.math.BigDecimal.ZERO;
+            return BigDecimal.ZERO;
         }
-        double value = node.path(fieldName).asDouble(0.0);
-        return java.math.BigDecimal.valueOf(value);
+
+        try {
+            // Get value as text to avoid double precision issues
+            String textValue = node.path(fieldName).asText();
+            if (textValue == null || textValue.isBlank()) {
+                return BigDecimal.ZERO;
+            }
+
+            // Create BigDecimal from string for exact precision
+            BigDecimal value = new BigDecimal(textValue).setScale(4, RoundingMode.HALF_UP);
+
+            // Validate percentage is within [0, 1] range
+            if (value.compareTo(BigDecimal.ZERO) < 0 || value.compareTo(BigDecimal.ONE) > 0) {
+                LOGGER.warn("Percentage value {} for field {} is outside [0, 1] range, clamping", value, fieldName);
+                // Clamp to valid range
+                if (value.compareTo(BigDecimal.ZERO) < 0) {
+                    return BigDecimal.ZERO;
+                }
+                if (value.compareTo(BigDecimal.ONE) > 0) {
+                    return BigDecimal.ONE.setScale(4, RoundingMode.HALF_UP);
+                }
+            }
+
+            return value;
+
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid number format for field {}: {}", fieldName, e.getMessage());
+            return BigDecimal.ZERO;
+        }
     }
 }

@@ -1,35 +1,32 @@
 package com.redhat.sast.api.service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 
+import com.redhat.sast.api.client.DvcApiClient;
 import com.redhat.sast.api.exceptions.DvcException;
-import com.redhat.sast.api.util.dvc.ProcessExecutor;
 
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.WebApplicationException;
 import lombok.extern.slf4j.Slf4j;
 
 @ApplicationScoped
 @Slf4j
 public class DvcService {
 
-    @ConfigProperty(name = "dvc.repo.url")
-    String dvcRepoUrl;
-
-    @ConfigProperty(name = "dvc.batch.yaml.path")
-    String batchYamlPath;
+    @Inject
+    @RestClient
+    DvcApiClient dvcApiClient;
 
     /**
-     * Get list of NVRs from DVC repository by version tag
-     * Fetches YAML file from DVC and extracts NVR list
+     * Get list of NVRs from DVC repository by version tag.
+     * Fetches YAML file from DVC API server and extracts NVR list.
      *
      * @param version DVC version tag (e.g., "1.0.0" or "v1.0.0")
      * @return List of package NVR strings (empty list if no NVRs found)
@@ -37,9 +34,8 @@ public class DvcService {
      * @throws IllegalArgumentException if version is null or empty
      */
     public List<String> getNvrList(@Nonnull String version) {
-
         String yamlContent = fetchNvrConfigFromDvc(version);
-        LOGGER.debug("Raw YAML content from DVC ({} bytes)", yamlContent.length());
+        LOGGER.debug("Raw YAML content from DVC API ({} bytes)", yamlContent.length());
 
         Object object;
         try {
@@ -93,29 +89,145 @@ public class DvcService {
         }
     }
 
+    /**
+     * Fetches NVR configuration from DVC API server.
+     *
+     * @param version the version/revision to fetch
+     * @return the YAML content as a string
+     * @throws DvcException if the API call fails
+     */
     private String fetchNvrConfigFromDvc(@Nonnull String version) {
         validateDvcInputs(version);
-        LOGGER.debug("Executing DVC get command: repo={}, path={}, version={}", dvcRepoUrl, batchYamlPath, version);
-        Path tempFile = null;
+        LOGGER.debug("Fetching testing-data-nvrs.yaml from DVC API (rev={})", version);
+
         try {
-            tempFile = Files.createTempFile("dvc-fetch-", ".tmp");
-            ProcessExecutor.runDvcCommand(dvcRepoUrl, batchYamlPath, version, tempFile);
-            // read content from temp file which has filled by DVC command
-            return Files.readString(tempFile, java.nio.charset.StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new DvcException("I/O error during DVC fetch operation", e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new DvcException("DVC fetch operation was interrupted", e);
-        } finally {
-            // clean up temp file
-            if (tempFile != null) {
-                try {
-                    Files.deleteIfExists(tempFile);
-                } catch (IOException e) {
-                    LOGGER.warn("[ACTION REQUIRED] Failed to delete temp file: {}", tempFile, e);
-                }
-            }
+            String content = dvcApiClient.getTestingDataNvrs(version);
+            LOGGER.debug("Successfully fetched testing-data-nvrs.yaml from DVC API ({} bytes)", content.length());
+            return content;
+        } catch (WebApplicationException e) {
+            int statusCode = e.getResponse().getStatus();
+            String errorMessage = String.format(
+                    "DVC API request failed with status %d for version '%s': %s", statusCode, version, e.getMessage());
+            LOGGER.error(errorMessage, e);
+            throw new DvcException(errorMessage, e);
+        } catch (Exception e) {
+            String errorMessage =
+                    String.format("Failed to fetch data from DVC API for version '%s': %s", version, e.getMessage());
+            LOGGER.error(errorMessage, e);
+            throw new DvcException(errorMessage, e);
+        }
+    }
+
+    /**
+     * Get any file from DVC repository by path and version.
+     *
+     * @param path    Relative path to the file in the repository
+     * @param version DVC version tag (e.g., "1.0.0" or "v1.0.0")
+     * @return File content as string
+     * @throws DvcException if the API call fails
+     */
+    public String getFile(@Nonnull String path, @Nonnull String version) {
+        validateDvcInputs(version);
+        LOGGER.debug("Fetching file '{}' from DVC API (rev={})", path, version);
+
+        try {
+            String content = dvcApiClient.getFile(path, version);
+            LOGGER.debug("Successfully fetched file '{}' from DVC API ({} bytes)", path, content.length());
+            return content;
+        } catch (WebApplicationException e) {
+            int statusCode = e.getResponse().getStatus();
+            String errorMessage = String.format(
+                    "DVC API request failed with status %d for file '%s' version '%s': %s",
+                    statusCode, path, version, e.getMessage());
+            LOGGER.error(errorMessage, e);
+            throw new DvcException(errorMessage, e);
+        } catch (Exception e) {
+            String errorMessage = String.format(
+                    "Failed to fetch file '%s' from DVC API for version '%s': %s", path, version, e.getMessage());
+            LOGGER.error(errorMessage, e);
+            throw new DvcException(errorMessage, e);
+        }
+    }
+
+    /**
+     * Get known-non-issues ignore.err file for a specific package.
+     *
+     * @param packageName Package name (e.g., 'adcli', 'acl')
+     * @param version     DVC version tag
+     * @return The ignore.err file content
+     * @throws DvcException if the API call fails
+     */
+    public String getKnownNonIssues(@Nonnull String packageName, @Nonnull String version) {
+        validateDvcInputs(version);
+        LOGGER.debug("Fetching known-non-issues for package '{}' from DVC API (rev={})", packageName, version);
+
+        try {
+            String content = dvcApiClient.getKnownNonIssues(packageName, version);
+            LOGGER.debug(
+                    "Successfully fetched known-non-issues for package '{}' from DVC API ({} bytes)",
+                    packageName,
+                    content.length());
+            return content;
+        } catch (WebApplicationException e) {
+            int statusCode = e.getResponse().getStatus();
+            String errorMessage = String.format(
+                    "DVC API request failed with status %d for known-non-issues package '%s' version '%s': %s",
+                    statusCode, packageName, version, e.getMessage());
+            LOGGER.error(errorMessage, e);
+            throw new DvcException(errorMessage, e);
+        } catch (Exception e) {
+            String errorMessage = String.format(
+                    "Failed to fetch known-non-issues for package '%s' from DVC API for version '%s': %s",
+                    packageName, version, e.getMessage());
+            LOGGER.error(errorMessage, e);
+            throw new DvcException(errorMessage, e);
+        }
+    }
+
+    /**
+     * Get a file from the prompts directory.
+     *
+     * @param filename File name in prompts directory (e.g., 'sast-ai-prompts.yaml')
+     * @param version  DVC version tag
+     * @return The file content
+     * @throws DvcException if the API call fails
+     */
+    public String getPrompt(@Nonnull String filename, @Nonnull String version) {
+        validateDvcInputs(version);
+        LOGGER.debug("Fetching prompt file '{}' from DVC API (rev={})", filename, version);
+
+        try {
+            String content = dvcApiClient.getPrompt(filename, version);
+            LOGGER.debug("Successfully fetched prompt file '{}' from DVC API ({} bytes)", filename, content.length());
+            return content;
+        } catch (WebApplicationException e) {
+            int statusCode = e.getResponse().getStatus();
+            String errorMessage = String.format(
+                    "DVC API request failed with status %d for prompt file '%s' version '%s': %s",
+                    statusCode, filename, version, e.getMessage());
+            LOGGER.error(errorMessage, e);
+            throw new DvcException(errorMessage, e);
+        } catch (Exception e) {
+            String errorMessage = String.format(
+                    "Failed to fetch prompt file '%s' from DVC API for version '%s': %s",
+                    filename, version, e.getMessage());
+            LOGGER.error(errorMessage, e);
+            throw new DvcException(errorMessage, e);
+        }
+    }
+
+    /**
+     * Check if DVC API server is healthy.
+     *
+     * @return true if the server is healthy, false otherwise
+     */
+    public boolean isHealthy() {
+        try {
+            String response = dvcApiClient.healthCheck();
+            return response != null && response.contains("healthy");
+        } catch (Exception e) {
+            LOGGER.warn("DVC API health check failed: {}", e.getMessage());
+            return false;
         }
     }
 }

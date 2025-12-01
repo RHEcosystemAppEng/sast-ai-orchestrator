@@ -51,7 +51,6 @@ public class PipelineParameterMapper {
     private static final String PARAM_CONTAINER_IMAGE = "CONTAINER_IMAGE";
     private static final String PARAM_PROMPTS_VERSION = "PROMPTS_VERSION";
     private static final String PARAM_KNOWN_NON_ISSUES_VERSION = "KNOWN_NON_ISSUES_VERSION";
-    private static final String PARAM_EVALUATE_SPECIFIC_NODE = "EVALUATE_SPECIFIC_NODE";
 
     @Inject
     TektonClient tektonClient;
@@ -349,14 +348,6 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_CONTAINER_IMAGE, containerImage));
         params.add(createParam(PARAM_PROMPTS_VERSION, promptsVersion));
         params.add(createParam(PARAM_KNOWN_NON_ISSUES_VERSION, knownNonIssuesVersion));
-
-        // Evaluation mode parameter - defaults to "all" if not set
-        String evaluateSpecificNode = "all";
-        if (mlOpsJob.getMlOpsJobSettings() != null
-                && mlOpsJob.getMlOpsJobSettings().getEvaluateSpecificNode() != null) {
-            evaluateSpecificNode = mlOpsJob.getMlOpsJobSettings().getEvaluateSpecificNode();
-        }
-        params.add(createParam(PARAM_EVALUATE_SPECIFIC_NODE, evaluateSpecificNode));
 
         // Add default LLM parameters (can be enhanced later to support custom secrets)
         String llmSecretName = "sast-ai-default-llm-creds";

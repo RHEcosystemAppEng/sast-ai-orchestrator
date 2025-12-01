@@ -28,7 +28,4 @@ public class JobSettingsDto {
 
     @JsonProperty("useKnownFalsePositiveFile")
     private Boolean useKnownFalsePositiveFile;
-
-    @JsonProperty("evaluateSpecificNode")
-    private String evaluateSpecificNode;
 }

@@ -44,10 +44,7 @@ public class PlatformService {
     private final ManagedExecutor managedExecutor;
     private final JobService jobService;
     private final MlOpsJobService mlOpsJobService;
-    private final MlOpsJobSettingsService mlOpsJobSettingsService;
     private final MlOpsMetricsService mlOpsMetricsService;
-    private final MlOpsTokenMetricsService mlOpsTokenMetricsService;
-    private final MlOpsExcelReportService mlOpsExcelReportService;
     private final KubernetesResourceManager resourceManager;
     private final DvcMetadataService dvcMetadataService;
     private final DataArtifactService dataArtifactService;
@@ -267,10 +264,7 @@ public class PlatformService {
                         batchId,
                         future,
                         mlOpsJobService,
-                        mlOpsJobSettingsService,
                         mlOpsMetricsService,
-                        mlOpsTokenMetricsService,
-                        mlOpsExcelReportService,
                         mlOpsBatchServiceParam))) {
             future.join();
         } catch (Exception e) {

@@ -39,7 +39,4 @@ public class MlOpsJobSettings {
 
     @Column(name = "use_known_false_positive_file")
     private Boolean useKnownFalsePositiveFile;
-
-    @Column(name = "evaluate_specific_node", length = 100)
-    private String evaluateSpecificNode;
 }

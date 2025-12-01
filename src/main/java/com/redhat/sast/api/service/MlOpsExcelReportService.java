@@ -11,8 +11,8 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import com.redhat.sast.api.model.MlOpsJob;
-import com.redhat.sast.api.model.MlOpsJobIssue;
-import com.redhat.sast.api.repository.MlOpsJobIssueRepository;
+import com.redhat.sast.api.model.MlOpsJobFinding;
+import com.redhat.sast.api.repository.MlOpsJobFindingRepository;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -27,15 +27,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class MlOpsExcelReportService {
 
-    private final MlOpsJobIssueRepository issueRepository;
+    private final MlOpsJobFindingRepository findingRepository;
     private final MlOpsJobService mlOpsJobService;
     private final S3ClientService s3ClientService;
 
     private static final String AI_REPORT_SHEET = "AI report";
 
     // Excel column indices for AI report sheet
-    private static final int COL_ISSUE_ID = 0;
-    private static final int COL_ISSUE_NAME = 1;
+    private static final int COL_FINDING_ID = 0;
+    private static final int COL_FINDING_NAME = 1;
     private static final int COL_ERROR = 2; // Not currently stored
     private static final int COL_INVESTIGATION_RESULT = 3;
     private static final int COL_HINT = 4;
@@ -45,7 +45,7 @@ public class MlOpsExcelReportService {
     private static final int COL_CONTEXT = 8; // Not currently stored
 
     /**
-     * Downloads Excel report from S3 and parses issues into database.
+     * Downloads Excel report from S3 and parses findings into database.
      *
      * @param jobId MLOps job ID
      * @param pipelineRunId Pipeline run ID
@@ -79,13 +79,14 @@ public class MlOpsExcelReportService {
                 return;
             }
 
-            // Parse Excel and save issues
-            List<MlOpsJobIssue> issues = parseExcelReport(excelBytes, job, s3FileUrl);
-            if (issues != null && !issues.isEmpty()) {
-                issueRepository.persist(issues);
-                LOGGER.info("Successfully saved {} issues from Excel report for MLOps job {}", issues.size(), jobId);
+            // Parse Excel and save findings
+            List<MlOpsJobFinding> findings = parseExcelReport(excelBytes, job, s3FileUrl);
+            if (findings != null && !findings.isEmpty()) {
+                findingRepository.persist(findings);
+                LOGGER.info(
+                        "Successfully saved {} findings from Excel report for MLOps job {}", findings.size(), jobId);
             } else {
-                LOGGER.info("No issues found in Excel report for job {}", jobId);
+                LOGGER.info("No findings found in Excel report for job {}", jobId);
             }
 
         } catch (Exception e) {
@@ -104,11 +105,11 @@ public class MlOpsExcelReportService {
     }
 
     /**
-     * Parses Excel file and extracts issues from "AI report" sheet.
+     * Parses Excel file and extracts findings from "AI report" sheet.
      *
      * Expected columns:
-     * 0: Issue ID
-     * 1: Issue Name
+     * 0: Finding ID
+     * 1: Finding Name
      * 2: Error
      * 3: Investigation Result
      * 4: Hint
@@ -117,8 +118,8 @@ public class MlOpsExcelReportService {
      * 7: Answer Relevancy
      * 8: Context
      */
-    private List<MlOpsJobIssue> parseExcelReport(byte[] excelBytes, MlOpsJob job, String s3FileUrl) {
-        List<MlOpsJobIssue> issues = new ArrayList<>();
+    private List<MlOpsJobFinding> parseExcelReport(byte[] excelBytes, MlOpsJob job, String s3FileUrl) {
+        List<MlOpsJobFinding> findings = new ArrayList<>();
 
         try (ByteArrayInputStream bis = new ByteArrayInputStream(excelBytes);
                 Workbook workbook = new XSSFWorkbook(bis)) {
@@ -126,7 +127,7 @@ public class MlOpsExcelReportService {
             Sheet sheet = workbook.getSheet(AI_REPORT_SHEET);
             if (sheet == null) {
                 LOGGER.warn("Sheet '{}' not found in Excel report for job {}", AI_REPORT_SHEET, job.getId());
-                return issues;
+                return findings;
             }
 
             LOGGER.debug(
@@ -142,9 +143,9 @@ public class MlOpsExcelReportService {
                     continue;
                 }
 
-                MlOpsJobIssue issue = parseIssueRow(row, job, s3FileUrl);
-                if (issue != null) {
-                    issues.add(issue);
+                MlOpsJobFinding finding = parseFindingRow(row, job, s3FileUrl);
+                if (finding != null) {
+                    findings.add(finding);
                 }
             }
 
@@ -152,44 +153,44 @@ public class MlOpsExcelReportService {
             LOGGER.error("Failed to parse Excel report for job {}: {}", job.getId(), e.getMessage(), e);
         }
 
-        return issues;
+        return findings;
     }
 
     /**
-     * Parses a single row from the AI report sheet into an MlOpsJobIssue.
+     * Parses a single row from the AI report sheet into an MlOpsJobFinding.
      * Validates string lengths against database constraints to prevent insertion failures.
      * Uses column index constants to make the parsing more maintainable.
      */
-    private MlOpsJobIssue parseIssueRow(Row row, MlOpsJob job, String s3FileUrl) {
+    private MlOpsJobFinding parseFindingRow(Row row, MlOpsJob job, String s3FileUrl) {
         try {
-            String issueId = getCellValueAsString(row.getCell(COL_ISSUE_ID));
-            if (issueId == null || issueId.isBlank()) {
+            String findingId = getCellValueAsString(row.getCell(COL_FINDING_ID));
+            if (findingId == null || findingId.isBlank()) {
                 // Skip empty rows
                 return null;
             }
 
-            MlOpsJobIssue issue = new MlOpsJobIssue();
-            issue.setMlOpsJob(job);
-            issue.setIssueId(truncateString(issueId, 50, "issueId", row.getRowNum()));
-            issue.setIssueName(truncateString(
-                    getCellValueAsString(row.getCell(COL_ISSUE_NAME)), 100, "issueName", row.getRowNum()));
+            MlOpsJobFinding finding = new MlOpsJobFinding();
+            finding.setMlOpsJob(job);
+            finding.setFindingId(truncateString(findingId, 50, "findingId", row.getRowNum()));
+            finding.setFindingName(truncateString(
+                    getCellValueAsString(row.getCell(COL_FINDING_NAME)), 100, "findingName", row.getRowNum()));
             // Skip COL_ERROR - not stored
-            issue.setInvestigationResult(truncateString(
+            finding.setInvestigationResult(truncateString(
                     getCellValueAsString(row.getCell(COL_INVESTIGATION_RESULT)),
                     50,
                     "investigationResult",
                     row.getRowNum()));
-            issue.setHint(getCellValueAsString(row.getCell(COL_HINT))); // TEXT column - no limit
+            finding.setHint(getCellValueAsString(row.getCell(COL_HINT))); // TEXT column - no limit
             // Skip COL_JUSTIFICATIONS, COL_RECOMMENDATIONS - not stored
-            issue.setAnswerRelevancy(truncateString(
+            finding.setAnswerRelevancy(truncateString(
                     getCellValueAsString(row.getCell(COL_ANSWER_RELEVANCY)), 20, "answerRelevancy", row.getRowNum()));
             // Skip COL_CONTEXT - not stored
-            issue.setS3FileUrl(s3FileUrl); // TEXT column - no limit
+            finding.setS3FileUrl(s3FileUrl); // TEXT column - no limit
 
-            return issue;
+            return finding;
 
         } catch (Exception e) {
-            LOGGER.warn("Failed to parse issue row {} for job {}: {}", row.getRowNum(), job.getId(), e.getMessage());
+            LOGGER.warn("Failed to parse finding row {} for job {}: {}", row.getRowNum(), job.getId(), e.getMessage());
             return null;
         }
     }

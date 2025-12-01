@@ -70,7 +70,7 @@ public class MlOpsExcelReportService {
             String s3Key = constructExcelS3Key(packageName, pipelineRunId);
             String s3FileUrl = s3Key; // Store the S3 path for reference
 
-            LOGGER.info("Fetching Excel report from S3 for job {}: {}", jobId, s3Key);
+            LOGGER.debug("Fetching Excel report from S3 for job {}: {}", jobId, s3Key);
 
             // Download Excel file from S3
             byte[] excelBytes = s3ClientService.downloadFileAsBytes(s3Key);

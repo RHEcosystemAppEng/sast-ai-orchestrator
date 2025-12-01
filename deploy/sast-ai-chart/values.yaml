@@ -75,7 +75,8 @@ route:
 ## PostgreSQL configuration (base settings)
 postgresql:
   enabled: true
-  # Use Bitnami legacy/stable image explicitly 
+  # Pin PostgreSQL image version for stability and reproducibility
+  # Prevents unexpected version changes during deployments
   image:
     registry: docker.io
     repository: bitnamilegacy/postgresql

@@ -7,6 +7,7 @@ package com.redhat.sast.api.platform;
 public record LlmSecretValues(
         String llmUrl,
         String llmApiKey,
+        String llmApiType,
         String embeddingsUrl,
         String embeddingsApiKey,
         String llmModelName,
@@ -18,6 +19,7 @@ public record LlmSecretValues(
     public LlmSecretValues {
         llmUrl = llmUrl != null ? llmUrl : "";
         llmApiKey = llmApiKey != null ? llmApiKey : "";
+        llmApiType = llmApiType != null ? llmApiType : "";
         embeddingsUrl = embeddingsUrl != null ? embeddingsUrl : "";
         embeddingsApiKey = embeddingsApiKey != null ? embeddingsApiKey : "";
         llmModelName = llmModelName != null ? llmModelName : "";
@@ -28,6 +30,6 @@ public record LlmSecretValues(
      * Creates a SecretValues with all empty values.
      */
     public static LlmSecretValues empty() {
-        return new LlmSecretValues("", "", "", "", "", "");
+        return new LlmSecretValues("", "", "", "", "", "", "");
     }
 }

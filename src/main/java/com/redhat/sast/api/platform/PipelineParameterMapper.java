@@ -40,6 +40,7 @@ public class PipelineParameterMapper {
     private static final String PARAM_LLM_URL = "LLM_URL";
     private static final String PARAM_LLM_MODEL_NAME = "LLM_MODEL_NAME";
     private static final String PARAM_LLM_API_KEY = "LLM_API_KEY";
+    private static final String PARAM_LLM_API_TYPE = "LLM_API_TYPE";
     private static final String PARAM_EMBEDDINGS_LLM_URL = "EMBEDDINGS_LLM_URL";
     private static final String PARAM_EMBEDDINGS_LLM_MODEL_NAME = "EMBEDDINGS_LLM_MODEL_NAME";
     private static final String PARAM_EMBEDDINGS_LLM_API_KEY = "EMBEDDINGS_LLM_API_KEY";
@@ -52,6 +53,8 @@ public class PipelineParameterMapper {
     private static final String PARAM_PROMPTS_VERSION = "PROMPTS_VERSION";
     private static final String PARAM_KNOWN_NON_ISSUES_VERSION = "KNOWN_NON_ISSUES_VERSION";
     private static final String PARAM_EVALUATE_SPECIFIC_NODE = "EVALUATE_SPECIFIC_NODE";
+    private static final String PARAM_S3_ENDPOINT_URL = "S3_ENDPOINT_URL";
+    private static final String PARAM_S3_BUCKET_NAME = "S3_BUCKET_NAME";
 
     @Inject
     TektonClient tektonClient;
@@ -64,6 +67,12 @@ public class PipelineParameterMapper {
 
     @ConfigProperty(name = "gcs.bucket.name")
     Optional<String> gcsBucketName;
+
+    @ConfigProperty(name = "s3.endpoint.url")
+    Optional<String> s3EndpointUrl;
+
+    @ConfigProperty(name = "s3.bucket.name")
+    Optional<String> s3BucketName;
 
     /**
      * Extracts and converts Job data to pipeline parameters.
@@ -171,6 +180,7 @@ public class PipelineParameterMapper {
                 PARAM_LLM_MODEL_NAME,
                 getModelNameWithFallback(job.getJobSettings().getLlmModelName(), llmSecretValues.llmModelName())));
         params.add(createParam(PARAM_LLM_API_KEY, llmSecretValues.llmApiKey()));
+        params.add(createParam(PARAM_LLM_API_TYPE, llmSecretValues.llmApiType()));
 
         // Embeddings LLM parameters
         params.add(createParam(PARAM_EMBEDDINGS_LLM_URL, llmSecretValues.embeddingsUrl()));
@@ -214,11 +224,12 @@ public class PipelineParameterMapper {
             LOGGER.info("TEST MODE: Using mock LLM secret values for secret '{}'", secretName);
             return new LlmSecretValues(
                     "http://test-llm-url",
-                    "test-model",
                     "test-api-key",
+                    "openai",
                     "http://test-embeddings-url",
-                    "test-embeddings-model",
-                    "test-embeddings-key");
+                    "test-embeddings-key",
+                    "test-model",
+                    "test-embeddings-model");
         }
 
         try {
@@ -247,13 +258,14 @@ public class PipelineParameterMapper {
             // Extract and decode all values in one pass
             String llmUrl = getDecodedSecretValue(secret, "llm_url");
             String llmApiKey = getDecodedSecretValue(secret, "llm_api_key");
+            String llmApiType = getDecodedSecretValue(secret, "llm_api_type");
             String embeddingsUrl = getDecodedSecretValue(secret, "embeddings_llm_url");
             String embeddingsApiKey = getDecodedSecretValue(secret, "embeddings_llm_api_key");
             String llmModelName = getDecodedSecretValue(secret, "llm_model_name");
             String embeddingsModelName = getDecodedSecretValue(secret, "embedding_llm_model_name");
 
             return new LlmSecretValues(
-                    llmUrl, llmApiKey, embeddingsUrl, embeddingsApiKey, llmModelName, embeddingsModelName);
+                    llmUrl, llmApiKey, llmApiType, embeddingsUrl, embeddingsApiKey, llmModelName, embeddingsModelName);
         } catch (Exception e) {
             LOGGER.error("Failed to read secret '{}' from namespace '{}'", secretName, namespace, e);
             return LlmSecretValues.empty();
@@ -358,6 +370,12 @@ public class PipelineParameterMapper {
         }
         params.add(createParam(PARAM_EVALUATE_SPECIFIC_NODE, evaluateSpecificNode));
 
+        // S3/MinIO endpoint for DVC and evaluation data
+        params.add(createParam(PARAM_S3_ENDPOINT_URL, s3EndpointUrl.orElse("")));
+
+        // S3/MinIO bucket name for uploading outputs (Excel reports, token metrics, etc.)
+        params.add(createParam(PARAM_S3_BUCKET_NAME, s3BucketName.orElse("")));
+
         // Add default LLM parameters (can be enhanced later to support custom secrets)
         String llmSecretName = "sast-ai-default-llm-creds";
         LlmSecretValues llmSecretValues = getLlmSecretValues(llmSecretName);
@@ -365,6 +383,7 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_LLM_URL, llmSecretValues.llmUrl()));
         params.add(createParam(PARAM_LLM_MODEL_NAME, llmSecretValues.llmModelName()));
         params.add(createParam(PARAM_LLM_API_KEY, llmSecretValues.llmApiKey()));
+        params.add(createParam(PARAM_LLM_API_TYPE, llmSecretValues.llmApiType()));
         params.add(createParam(PARAM_EMBEDDINGS_LLM_URL, llmSecretValues.embeddingsUrl()));
         params.add(createParam(PARAM_EMBEDDINGS_LLM_MODEL_NAME, llmSecretValues.embeddingsModelName()));
         params.add(createParam(PARAM_EMBEDDINGS_LLM_API_KEY, llmSecretValues.embeddingsApiKey()));

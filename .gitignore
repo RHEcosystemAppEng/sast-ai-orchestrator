@@ -66,3 +66,4 @@ orchestrator-ai-assistant-rules/
 grafana/openshift/.env
 grafana/openshift/configmap-*.yaml
 grafana/openshift/fix-datasource-password.sh
+grafana-setup/

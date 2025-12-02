@@ -23,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class MlOpsNodeJudgeEvalService {
 
+    private static final String JUDGE_EVAL_RESULTS_KEY = "judge-evaluation-results";
+
     private final MlOpsJobNodeJudgeEvalRepository judgeEvalRepository;
     private final MlOpsJobService mlOpsJobService;
     private final MlOpsMetricsService mlOpsMetricsService;
@@ -42,9 +44,9 @@ public class MlOpsNodeJudgeEvalService {
             }
 
             // Extract judge-evaluation-results from Tekton
-            String judgeResultsJson = mlOpsMetricsService.extractTektonResult(pipelineRun, "judge-evaluation-results");
+            String judgeResultsJson = mlOpsMetricsService.extractTektonResult(pipelineRun, JUDGE_EVAL_RESULTS_KEY);
             if (judgeResultsJson == null || judgeResultsJson.isBlank() || "{}".equals(judgeResultsJson.trim())) {
-                LOGGER.debug("No judge-evaluation-results found for job {} - judge evaluation not run", jobId);
+                LOGGER.debug("No {} found for job {} - judge evaluation not run", JUDGE_EVAL_RESULTS_KEY, jobId);
                 return; // Gracefully skip - judge evaluation is optional
             }
 
@@ -89,15 +91,10 @@ public class MlOpsNodeJudgeEvalService {
                 judgeEval.setLogicalFlow(extractBigDecimal(quality, "logical_flow"));
             }
 
-            // Extract performance metrics
+            // Extract performance metrics (asInt handles missing nodes with default 0)
             JsonNode perf = root.path("perf");
-            if (!perf.isMissingNode()) {
-                judgeEval.setTotalTokens(perf.path("total_tokens").asInt(0));
-                judgeEval.setLlmCallCount(perf.path("llm_calls").asInt(0));
-            } else {
-                judgeEval.setTotalTokens(0);
-                judgeEval.setLlmCallCount(0);
-            }
+            judgeEval.setTotalTokens(perf.path("total_tokens").asInt(0));
+            judgeEval.setLlmCallCount(perf.path("llm_calls").asInt(0));
 
             LOGGER.debug(
                     "Parsed judge evaluation for job {}: overall={}, clarity={}, completeness={}, tech_accuracy={}, logical_flow={}",
@@ -123,13 +120,19 @@ public class MlOpsNodeJudgeEvalService {
      */
     private BigDecimal extractBigDecimal(JsonNode parentNode, String fieldName) {
         JsonNode fieldNode = parentNode.path(fieldName);
-        if (fieldNode.isNull() || fieldNode.isMissingNode()) {
+        if (fieldNode.isMissingNode() || fieldNode.isNull() || !fieldNode.isNumber()) {
+            if (!fieldNode.isMissingNode() && !fieldNode.isNull() && !fieldNode.isNumber()) {
+                LOGGER.warn(
+                        "Invalid BigDecimal value for field '{}': {}. Defaulting to null.",
+                        fieldName,
+                        fieldNode.asText());
+            }
             return null;
         }
         try {
             return fieldNode.decimalValue();
         } catch (NumberFormatException e) {
-            LOGGER.warn("Failed to parse {} as BigDecimal: {}", fieldName, e.getMessage());
+            LOGGER.warn("Failed to parse {} as BigDecimal: {}. Defaulting to null.", fieldName, e.getMessage());
             return null;
         }
     }

@@ -23,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class MlOpsNodeSummaryEvalService {
 
+    private static final String SUMMARY_EVAL_RESULTS_KEY = "summary-evaluation-results";
+
     private final MlOpsJobNodeSummaryEvalRepository summaryEvalRepository;
     private final MlOpsJobService mlOpsJobService;
     private final MlOpsMetricsService mlOpsMetricsService;
@@ -42,10 +44,9 @@ public class MlOpsNodeSummaryEvalService {
             }
 
             // Extract summary-evaluation-results from Tekton
-            String summaryResultsJson =
-                    mlOpsMetricsService.extractTektonResult(pipelineRun, "summary-evaluation-results");
+            String summaryResultsJson = mlOpsMetricsService.extractTektonResult(pipelineRun, SUMMARY_EVAL_RESULTS_KEY);
             if (summaryResultsJson == null || summaryResultsJson.isBlank() || "{}".equals(summaryResultsJson.trim())) {
-                LOGGER.debug("No summary-evaluation-results found for job {} - summary evaluation not run", jobId);
+                LOGGER.debug("No {} found for job {} - summary evaluation not run", SUMMARY_EVAL_RESULTS_KEY, jobId);
                 return; // Gracefully skip - summary evaluation is optional
             }
 
@@ -91,15 +92,10 @@ public class MlOpsNodeSummaryEvalService {
                 summaryEval.setProfessionalTone(extractBigDecimal(quality, "prof_tone"));
             }
 
-            // Extract performance metrics
+            // Extract performance metrics (asInt handles missing nodes with default 0)
             JsonNode perf = root.path("perf");
-            if (!perf.isMissingNode()) {
-                summaryEval.setTotalTokens(perf.path("total_tokens").asInt(0));
-                summaryEval.setLlmCallCount(perf.path("llm_calls").asInt(0));
-            } else {
-                summaryEval.setTotalTokens(0);
-                summaryEval.setLlmCallCount(0);
-            }
+            summaryEval.setTotalTokens(perf.path("total_tokens").asInt(0));
+            summaryEval.setLlmCallCount(perf.path("llm_calls").asInt(0));
 
             LOGGER.debug(
                     "Parsed summary evaluation for job {}: overall={}, sem_similarity={}, fact_accuracy={}, conciseness={}, prof_tone={}",
@@ -125,13 +121,19 @@ public class MlOpsNodeSummaryEvalService {
      */
     private BigDecimal extractBigDecimal(JsonNode parentNode, String fieldName) {
         JsonNode fieldNode = parentNode.path(fieldName);
-        if (fieldNode.isNull() || fieldNode.isMissingNode()) {
+        if (fieldNode.isMissingNode() || fieldNode.isNull() || !fieldNode.isNumber()) {
+            if (!fieldNode.isMissingNode() && !fieldNode.isNull() && !fieldNode.isNumber()) {
+                LOGGER.warn(
+                        "Invalid BigDecimal value for field '{}': {}. Defaulting to null.",
+                        fieldName,
+                        fieldNode.asText());
+            }
             return null;
         }
         try {
             return fieldNode.decimalValue();
         } catch (NumberFormatException e) {
-            LOGGER.warn("Failed to parse {} as BigDecimal: {}", fieldName, e.getMessage());
+            LOGGER.warn("Failed to parse {} as BigDecimal: {}. Defaulting to null.", fieldName, e.getMessage());
             return null;
         }
     }

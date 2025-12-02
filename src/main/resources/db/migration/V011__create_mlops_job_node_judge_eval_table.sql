@@ -4,11 +4,11 @@
 
 CREATE TABLE IF NOT EXISTS mlops_job_node_judge_eval (
     id BIGINT PRIMARY KEY,
-    overall_score DECIMAL(5, 4),
-    clarity DECIMAL(5, 4),
-    completeness DECIMAL(5, 4),
-    technical_accuracy DECIMAL(5, 4),
-    logical_flow DECIMAL(5, 4),
+    overall_score DECIMAL(5, 4) NOT NULL,
+    clarity DECIMAL(5, 4) NOT NULL,
+    completeness DECIMAL(5, 4) NOT NULL,
+    technical_accuracy DECIMAL(5, 4) NOT NULL,
+    logical_flow DECIMAL(5, 4) NOT NULL,
     total_tokens INTEGER DEFAULT 0,
     llm_call_count INTEGER DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

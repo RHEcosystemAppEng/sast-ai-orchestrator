@@ -2,6 +2,7 @@ package com.redhat.sast.api.service;
 
 import java.math.BigDecimal;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.sast.api.model.MlOpsJob;
@@ -109,7 +110,7 @@ public class MlOpsNodeJudgeEvalService {
 
             return judgeEval;
 
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             LOGGER.error("Failed to parse judge evaluation JSON for job {}: {}", job.getId(), e.getMessage(), e);
             LOGGER.debug("Problematic JSON: {}", judgeResultsJson);
             return null;
@@ -118,6 +119,7 @@ public class MlOpsNodeJudgeEvalService {
 
     /**
      * Extracts BigDecimal from JSON node, handling null values.
+     * Uses decimalValue() for precise decimal conversion without double precision loss.
      */
     private BigDecimal extractBigDecimal(JsonNode parentNode, String fieldName) {
         JsonNode fieldNode = parentNode.path(fieldName);
@@ -125,8 +127,8 @@ public class MlOpsNodeJudgeEvalService {
             return null;
         }
         try {
-            return BigDecimal.valueOf(fieldNode.asDouble());
-        } catch (Exception e) {
+            return fieldNode.decimalValue();
+        } catch (NumberFormatException e) {
             LOGGER.warn("Failed to parse {} as BigDecimal: {}", fieldName, e.getMessage());
             return null;
         }

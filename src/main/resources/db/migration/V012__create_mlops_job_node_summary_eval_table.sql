@@ -4,11 +4,11 @@
 
 CREATE TABLE IF NOT EXISTS mlops_job_node_summary_eval (
     id BIGINT PRIMARY KEY,
-    overall_score DECIMAL(5, 4),
-    semantic_similarity DECIMAL(5, 4),
-    factual_accuracy DECIMAL(5, 4),
-    conciseness DECIMAL(5, 4),
-    professional_tone DECIMAL(5, 4),
+    overall_score DECIMAL(5, 4) NOT NULL,
+    semantic_similarity DECIMAL(5, 4) NOT NULL,
+    factual_accuracy DECIMAL(5, 4) NOT NULL,
+    conciseness DECIMAL(5, 4) NOT NULL,
+    professional_tone DECIMAL(5, 4) NOT NULL,
     total_tokens INTEGER DEFAULT 0,
     llm_call_count INTEGER DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

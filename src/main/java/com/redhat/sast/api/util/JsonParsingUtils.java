@@ -41,4 +41,32 @@ public class JsonParsingUtils {
             return null;
         }
     }
+
+    /**
+     * Extracts a percentage value as BigDecimal from JSON node, with null-safe defaults.
+     * Returns BigDecimal.ZERO for missing/invalid values, clamped to [0,1] range, scale 4.
+     *
+     * @param parentNode the parent JSON node
+     * @param fieldName the field name to extract
+     * @return the percentage value (0.0000-1.0000), never null
+     */
+    public static BigDecimal extractPercentageOrZero(JsonNode parentNode, String fieldName) {
+        BigDecimal value = extractBigDecimal(parentNode, fieldName);
+        if (value == null) {
+            LOGGER.debug("Missing or invalid percentage for '{}', defaulting to 0.0000", fieldName);
+            return BigDecimal.ZERO.setScale(4, java.math.RoundingMode.HALF_UP);
+        }
+
+        // Clamp to [0, 1] range
+        if (value.compareTo(BigDecimal.ZERO) < 0) {
+            LOGGER.warn("Percentage '{}' is negative ({}), clamping to 0.0000", fieldName, value);
+            return BigDecimal.ZERO.setScale(4, java.math.RoundingMode.HALF_UP);
+        }
+        if (value.compareTo(BigDecimal.ONE) > 0) {
+            LOGGER.warn("Percentage '{}' exceeds 1.0 ({}), clamping to 1.0000", fieldName, value);
+            return BigDecimal.ONE.setScale(4, java.math.RoundingMode.HALF_UP);
+        }
+
+        return value.setScale(4, java.math.RoundingMode.HALF_UP);
+    }
 }

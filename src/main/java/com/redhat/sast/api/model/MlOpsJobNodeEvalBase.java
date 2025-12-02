@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 /**
  * Abstract base class for MLOps job node evaluation entities.
@@ -12,6 +14,8 @@ import lombok.Data;
  */
 @MappedSuperclass
 @Data
+@EqualsAndHashCode(exclude = "mlOpsJob")
+@ToString(exclude = "mlOpsJob")
 public abstract class MlOpsJobNodeEvalBase {
 
     @Id

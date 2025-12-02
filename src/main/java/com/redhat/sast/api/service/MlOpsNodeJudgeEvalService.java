@@ -80,14 +80,14 @@ public class MlOpsNodeJudgeEvalService {
             MlOpsJobNodeJudgeEval judgeEval = new MlOpsJobNodeJudgeEval();
             judgeEval.setMlOpsJob(job);
 
-            // Extract quality metrics
+            // Extract quality metrics (using null-safe extractor for NOT NULL columns)
             JsonNode quality = root.path("quality");
             if (!quality.isMissingNode()) {
-                judgeEval.setOverallScore(JsonParsingUtils.extractBigDecimal(quality, "overall"));
-                judgeEval.setClarity(JsonParsingUtils.extractBigDecimal(quality, "clarity"));
-                judgeEval.setCompleteness(JsonParsingUtils.extractBigDecimal(quality, "completeness"));
-                judgeEval.setTechnicalAccuracy(JsonParsingUtils.extractBigDecimal(quality, "tech_accuracy"));
-                judgeEval.setLogicalFlow(JsonParsingUtils.extractBigDecimal(quality, "logical_flow"));
+                judgeEval.setOverallScore(JsonParsingUtils.extractPercentageOrZero(quality, "overall"));
+                judgeEval.setClarity(JsonParsingUtils.extractPercentageOrZero(quality, "clarity"));
+                judgeEval.setCompleteness(JsonParsingUtils.extractPercentageOrZero(quality, "completeness"));
+                judgeEval.setTechnicalAccuracy(JsonParsingUtils.extractPercentageOrZero(quality, "tech_accuracy"));
+                judgeEval.setLogicalFlow(JsonParsingUtils.extractPercentageOrZero(quality, "logical_flow"));
             }
 
             // Extract performance metrics (asInt handles missing nodes with default 0)

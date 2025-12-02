@@ -81,14 +81,14 @@ public class MlOpsNodeSummaryEvalService {
             MlOpsJobNodeSummaryEval summaryEval = new MlOpsJobNodeSummaryEval();
             summaryEval.setMlOpsJob(job);
 
-            // Extract quality metrics
+            // Extract quality metrics (using null-safe extractor for NOT NULL columns)
             JsonNode quality = root.path("quality");
             if (!quality.isMissingNode()) {
-                summaryEval.setOverallScore(JsonParsingUtils.extractBigDecimal(quality, "overall"));
-                summaryEval.setSemanticSimilarity(JsonParsingUtils.extractBigDecimal(quality, "sem_similarity"));
-                summaryEval.setFactualAccuracy(JsonParsingUtils.extractBigDecimal(quality, "fact_accuracy"));
-                summaryEval.setConciseness(JsonParsingUtils.extractBigDecimal(quality, "conciseness"));
-                summaryEval.setProfessionalTone(JsonParsingUtils.extractBigDecimal(quality, "prof_tone"));
+                summaryEval.setOverallScore(JsonParsingUtils.extractPercentageOrZero(quality, "overall"));
+                summaryEval.setSemanticSimilarity(JsonParsingUtils.extractPercentageOrZero(quality, "sem_similarity"));
+                summaryEval.setFactualAccuracy(JsonParsingUtils.extractPercentageOrZero(quality, "fact_accuracy"));
+                summaryEval.setConciseness(JsonParsingUtils.extractPercentageOrZero(quality, "conciseness"));
+                summaryEval.setProfessionalTone(JsonParsingUtils.extractPercentageOrZero(quality, "prof_tone"));
             }
 
             // Extract performance metrics (asInt handles missing nodes with default 0)

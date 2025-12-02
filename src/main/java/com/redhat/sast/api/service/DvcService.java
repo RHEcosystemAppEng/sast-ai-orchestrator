@@ -7,8 +7,8 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 
-import com.redhat.sast.api.client.DvcApiClient;
 import com.redhat.sast.api.exceptions.DvcException;
+import com.redhat.sast.api.platform.dvc.DvcRestClient;
 
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -22,7 +22,7 @@ public class DvcService {
 
     @Inject
     @RestClient
-    DvcApiClient dvcApiClient;
+    DvcRestClient dvcRestClient;
 
     /**
      * Get list of NVRs from DVC repository by version tag.
@@ -101,7 +101,7 @@ public class DvcService {
         LOGGER.debug("Fetching testing-data-nvrs.yaml from DVC API (rev={})", version);
 
         try {
-            String content = dvcApiClient.getTestingDataNvrs(version);
+            String content = dvcRestClient.getTestingDataNvrs(version);
             LOGGER.debug("Successfully fetched testing-data-nvrs.yaml from DVC API ({} bytes)", content.length());
             return content;
         } catch (WebApplicationException e) {
@@ -131,7 +131,7 @@ public class DvcService {
         LOGGER.debug("Fetching file '{}' from DVC API (rev={})", path, version);
 
         try {
-            String content = dvcApiClient.getFile(path, version);
+            String content = dvcRestClient.getFile(path, version);
             LOGGER.debug("Successfully fetched file '{}' from DVC API ({} bytes)", path, content.length());
             return content;
         } catch (WebApplicationException e) {
@@ -162,7 +162,7 @@ public class DvcService {
         LOGGER.debug("Fetching known-non-issues for package '{}' from DVC API (rev={})", packageName, version);
 
         try {
-            String content = dvcApiClient.getKnownNonIssues(packageName, version);
+            String content = dvcRestClient.getKnownNonIssues(packageName, version);
             LOGGER.debug(
                     "Successfully fetched known-non-issues for package '{}' from DVC API ({} bytes)",
                     packageName,
@@ -197,7 +197,7 @@ public class DvcService {
         LOGGER.debug("Fetching prompt file '{}' from DVC API (rev={})", filename, version);
 
         try {
-            String content = dvcApiClient.getPrompt(filename, version);
+            String content = dvcRestClient.getPrompt(filename, version);
             LOGGER.debug("Successfully fetched prompt file '{}' from DVC API ({} bytes)", filename, content.length());
             return content;
         } catch (WebApplicationException e) {
@@ -223,7 +223,7 @@ public class DvcService {
      */
     public boolean isHealthy() {
         try {
-            String response = dvcApiClient.healthCheck();
+            String response = dvcRestClient.healthCheck();
             return response != null && response.contains("healthy");
         } catch (Exception e) {
             LOGGER.warn("DVC API health check failed: {}", e.getMessage());

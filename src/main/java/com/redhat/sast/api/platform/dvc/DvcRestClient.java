@@ -1,20 +1,24 @@
-package com.redhat.sast.api.client;
+package com.redhat.sast.api.platform.dvc;
 
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
 /**
  * REST client for the DVC API server.
- * Replaces direct DVC CLI calls with HTTP API calls.
+ *
+ * This interface uses Quarkus REST Client to generate an HTTP client implementation
+ * based on configuration properties defined in application.properties:
+ * - quarkus.rest-client.dvc-api.url (base URL)
  */
 @Path("/")
 @RegisterRestClient(configKey = "dvc-api")
-public interface DvcApiClient {
+public interface DvcRestClient {
 
     /**
      * Get the testing-data-nvrs.yaml file content.
@@ -49,7 +53,7 @@ public interface DvcApiClient {
     @GET
     @Path("/known-non-issues-el10/{package}")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    String getKnownNonIssues(@jakarta.ws.rs.PathParam("package") String packageName, @QueryParam("rev") String rev);
+    String getKnownNonIssues(@PathParam("package") String packageName, @QueryParam("rev") String rev);
 
     /**
      * Get a file from the prompts directory.
@@ -61,7 +65,7 @@ public interface DvcApiClient {
     @GET
     @Path("/prompts/{filename}")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    String getPrompt(@jakarta.ws.rs.PathParam("filename") String filename, @QueryParam("rev") String rev);
+    String getPrompt(@PathParam("filename") String filename, @QueryParam("rev") String rev);
 
     /**
      * Health check endpoint.

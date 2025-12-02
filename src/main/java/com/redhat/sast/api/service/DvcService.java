@@ -12,7 +12,6 @@ import com.redhat.sast.api.platform.dvc.DvcRestClient;
 
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,9 +19,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DvcService {
 
-    @Inject
-    @RestClient
-    DvcRestClient dvcRestClient;
+    private final DvcRestClient dvcRestClient;
+
+    public DvcService(@RestClient DvcRestClient dvcRestClient) {
+        this.dvcRestClient = dvcRestClient;
+    }
 
     /**
      * Get list of NVRs from DVC repository by version tag.

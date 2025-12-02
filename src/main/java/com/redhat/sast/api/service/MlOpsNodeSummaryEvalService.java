@@ -1,13 +1,12 @@
 package com.redhat.sast.api.service;
 
-import java.math.BigDecimal;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.sast.api.model.MlOpsJob;
 import com.redhat.sast.api.model.MlOpsJobNodeSummaryEval;
 import com.redhat.sast.api.repository.MlOpsJobNodeSummaryEvalRepository;
+import com.redhat.sast.api.util.JsonParsingUtils;
 
 import io.fabric8.tekton.v1.PipelineRun;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -85,11 +84,11 @@ public class MlOpsNodeSummaryEvalService {
             // Extract quality metrics
             JsonNode quality = root.path("quality");
             if (!quality.isMissingNode()) {
-                summaryEval.setOverallScore(extractBigDecimal(quality, "overall"));
-                summaryEval.setSemanticSimilarity(extractBigDecimal(quality, "sem_similarity"));
-                summaryEval.setFactualAccuracy(extractBigDecimal(quality, "fact_accuracy"));
-                summaryEval.setConciseness(extractBigDecimal(quality, "conciseness"));
-                summaryEval.setProfessionalTone(extractBigDecimal(quality, "prof_tone"));
+                summaryEval.setOverallScore(JsonParsingUtils.extractBigDecimal(quality, "overall"));
+                summaryEval.setSemanticSimilarity(JsonParsingUtils.extractBigDecimal(quality, "sem_similarity"));
+                summaryEval.setFactualAccuracy(JsonParsingUtils.extractBigDecimal(quality, "fact_accuracy"));
+                summaryEval.setConciseness(JsonParsingUtils.extractBigDecimal(quality, "conciseness"));
+                summaryEval.setProfessionalTone(JsonParsingUtils.extractBigDecimal(quality, "prof_tone"));
             }
 
             // Extract performance metrics (asInt handles missing nodes with default 0)
@@ -111,29 +110,6 @@ public class MlOpsNodeSummaryEvalService {
         } catch (JsonProcessingException e) {
             LOGGER.error("Failed to parse summary evaluation JSON for job {}: {}", job.getId(), e.getMessage(), e);
             LOGGER.debug("Problematic JSON: {}", summaryResultsJson);
-            return null;
-        }
-    }
-
-    /**
-     * Extracts BigDecimal from JSON node, handling null values.
-     * Uses decimalValue() for precise decimal conversion without double precision loss.
-     */
-    private BigDecimal extractBigDecimal(JsonNode parentNode, String fieldName) {
-        JsonNode fieldNode = parentNode.path(fieldName);
-        if (fieldNode.isMissingNode() || fieldNode.isNull() || !fieldNode.isNumber()) {
-            if (!fieldNode.isMissingNode() && !fieldNode.isNull() && !fieldNode.isNumber()) {
-                LOGGER.warn(
-                        "Invalid BigDecimal value for field '{}': {}. Defaulting to null.",
-                        fieldName,
-                        fieldNode.asText());
-            }
-            return null;
-        }
-        try {
-            return fieldNode.decimalValue();
-        } catch (NumberFormatException e) {
-            LOGGER.warn("Failed to parse {} as BigDecimal: {}. Defaulting to null.", fieldName, e.getMessage());
             return null;
         }
     }

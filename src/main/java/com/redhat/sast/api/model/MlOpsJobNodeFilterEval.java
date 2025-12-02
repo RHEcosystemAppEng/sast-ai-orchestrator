@@ -1,9 +1,8 @@
 package com.redhat.sast.api.model;
 
-import java.time.LocalDateTime;
-
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 /**
@@ -13,17 +12,9 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "mlops_job_node_filter_eval")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
-public class MlOpsJobNodeFilterEval {
-
-    @Id
-    private Long id;
-
-    @Column(name = "total_tokens")
-    private Integer totalTokens;
-
-    @Column(name = "llm_call_count")
-    private Integer llmCallCount;
+public class MlOpsJobNodeFilterEval extends MlOpsJobNodeEvalBase {
 
     // FAISS stratified stats - with expected matches
     @Column(name = "with_expected_total")
@@ -44,17 +35,4 @@ public class MlOpsJobNodeFilterEval {
 
     @Column(name = "without_expected_perc_correct")
     private java.math.BigDecimal withoutExpectedPercCorrect;
-
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
-    @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
-    @JoinColumn(name = "id")
-    private MlOpsJob mlOpsJob;
-
-    @PrePersist
-    public void prePersist() {
-        this.createdAt = LocalDateTime.now();
-    }
 }

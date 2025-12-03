@@ -1,6 +1,6 @@
 package com.redhat.sast.api.model;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -21,14 +21,14 @@ public class OshSchedulerCursor {
     private String lastSeenToken;
 
     @Column(name = "last_seen_timestamp")
-    private LocalDateTime lastSeenTimestamp;
+    private Instant lastSeenTimestamp;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @PrePersist
     @PreUpdate
     public void updateTimestamp() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 }

@@ -1,6 +1,6 @@
 package com.redhat.sast.api.service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,7 +31,7 @@ public class DataArtifactService {
             String artifactType,
             String projectName,
             String projectVersion,
-            LocalDateTime createdAt) {}
+            Instant createdAt) {}
 
     private final DataArtifactRepository dataArtifactRepository;
 
@@ -135,6 +135,6 @@ public class DataArtifactService {
                 category,
                 job.getProjectName(),
                 job.getProjectVersion(),
-                LocalDateTime.now());
+                Instant.now());
     }
 }

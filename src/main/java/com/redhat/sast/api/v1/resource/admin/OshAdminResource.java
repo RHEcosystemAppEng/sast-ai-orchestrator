@@ -1,6 +1,6 @@
 package com.redhat.sast.api.v1.resource.admin;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -79,7 +79,7 @@ public class OshAdminResource {
 
             status.setCursorStatus(oshScheduler.getCursorStatus());
 
-            status.setTimestamp(LocalDateTime.now());
+            status.setTimestamp(Instant.now());
 
             LOGGER.debug("OSH status requested via admin endpoint");
             return Response.ok(status).build();
@@ -248,7 +248,7 @@ public class OshAdminResource {
             LOGGER.info("Manual expired retry cleanup triggered via admin endpoint");
 
             return Response.ok()
-                    .entity(new CleanupResult(result, LocalDateTime.now()))
+                    .entity(new CleanupResult(result, Instant.now()))
                     .build();
 
         } catch (Exception e) {
@@ -274,7 +274,7 @@ public class OshAdminResource {
             LOGGER.info("Manual exceeded retry cleanup triggered via admin endpoint: {} records removed", deletedCount);
 
             return Response.ok()
-                    .entity(new CleanupResult(result, LocalDateTime.now()))
+                    .entity(new CleanupResult(result, Instant.now()))
                     .build();
 
         } catch (Exception e) {
@@ -297,9 +297,7 @@ public class OshAdminResource {
             String result = oshScheduler.manualPollOsh();
 
             LOGGER.info("Manual OSH poll triggered via admin endpoint");
-            return Response.ok()
-                    .entity(new PollResult(result, LocalDateTime.now()))
-                    .build();
+            return Response.ok().entity(new PollResult(result, Instant.now())).build();
 
         } catch (Exception e) {
             LOGGER.error("Failed to trigger manual poll: {}", e.getMessage(), e);
@@ -385,7 +383,7 @@ public class OshAdminResource {
         dto.setAwaitingBackoff(stats.awaitingBackoff);
         dto.setExceededMaxAttempts(stats.exceededMaxAttempts);
         dto.setConfigurationSummary(stats.configurationSummary);
-        dto.setTimestamp(LocalDateTime.now());
+        dto.setTimestamp(Instant.now());
 
         return dto;
     }
@@ -398,7 +396,7 @@ public class OshAdminResource {
         dto.setQueueStatus(oshRetryService.getRetryQueueStatus());
         dto.setRequestedLimit(limit);
         dto.setSortBy(sortBy);
-        dto.setTimestamp(LocalDateTime.now());
+        dto.setTimestamp(Instant.now());
 
         List<OshUncollectedScan> records = oshRetryService.getRetryQueueSnapshot(limit, sortBy);
         long totalCount = oshRetryService.getDetailedRetryStatistics().totalInQueue;
@@ -411,10 +409,10 @@ public class OshAdminResource {
     /**
      * Simple DTO for cleanup operation results.
      */
-    public static record CleanupResult(String message, LocalDateTime timestamp) {}
+    public static record CleanupResult(String message, Instant timestamp) {}
 
     /**
      * Simple DTO for manual poll operation results.
      */
-    public static record PollResult(String message, LocalDateTime timestamp) {}
+    public static record PollResult(String message, Instant timestamp) {}
 }

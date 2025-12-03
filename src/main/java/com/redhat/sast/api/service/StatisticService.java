@@ -1,6 +1,6 @@
 package com.redhat.sast.api.service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,6 +14,7 @@ import com.redhat.sast.api.repository.JobBatchRepository;
 import com.redhat.sast.api.repository.JobRepository;
 import com.redhat.sast.api.repository.OshUncollectedScanRepository;
 import com.redhat.sast.api.v1.dto.response.DashboardSummaryDto;
+import com.redhat.sast.api.v1.dto.response.JobActivityDataPointDto;
 import com.redhat.sast.api.v1.dto.response.OshScanStatusDto;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -71,7 +72,7 @@ public class StatisticService {
         dto.setUncollectedOshScans(uncollectedOshScans);
         dto.setTotalOshScans(collectedOshScans + uncollectedOshScans);
 
-        dto.setTimestamp(LocalDateTime.now());
+        dto.setTimestamp(Instant.now());
 
         return dto;
     }
@@ -151,5 +152,32 @@ public class StatisticService {
 
         dto.setProcessedAt(uncollectedScan.getCreatedAt());
         return dto;
+    }
+
+    /**
+     * Gets job activity statistics for the last 24 hours.
+     * Returns hourly data points showing job counts by status.
+     *
+     * @return list of 24 hourly data points with job counts
+     */
+    public List<JobActivityDataPointDto> getJobActivity24h() {
+        List<JobActivityDataPointDto> dataPoints = new ArrayList<>();
+        Instant now = Instant.now();
+
+        for (int i = 23; i >= 0; i--) {
+            Instant hourEnd = now.minusSeconds((long) i * 3600);
+            Instant hourStart = hourEnd.minusSeconds(3600);
+
+            JobActivityDataPointDto dataPoint = new JobActivityDataPointDto();
+            dataPoint.setTimestamp(hourStart.toString());
+            dataPoint.setRunning(jobRepository.countByStatusInTimeWindow(JobStatus.RUNNING, hourStart, hourEnd));
+            dataPoint.setPending(jobRepository.countByStatusInTimeWindow(JobStatus.PENDING, hourStart, hourEnd));
+            dataPoint.setCompleted(jobRepository.countByStatusInTimeWindow(JobStatus.COMPLETED, hourStart, hourEnd));
+            dataPoint.setFailed(jobRepository.countByStatusInTimeWindow(JobStatus.FAILED, hourStart, hourEnd));
+
+            dataPoints.add(dataPoint);
+        }
+
+        return dataPoints;
     }
 }

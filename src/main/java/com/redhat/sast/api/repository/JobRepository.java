@@ -1,5 +1,6 @@
 package com.redhat.sast.api.repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -8,6 +9,7 @@ import com.redhat.sast.api.model.Job;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import io.quarkus.panache.common.Page;
+import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
@@ -26,16 +28,17 @@ public class JobRepository implements PanacheRepository<Job> {
     }
 
     public List<Job> findJobsWithPagination(String packageName, JobStatus status, Page page) {
+        Sort sort = Sort.by("createdAt").descending();
         if (packageName != null && status != null) {
-            return find("packageName = ?1 and status = ?2", packageName, status)
+            return find("packageName = ?1 and status = ?2", sort, packageName, status)
                     .page(page)
                     .list();
         } else if (packageName != null) {
-            return find("packageName = ?1", packageName).page(page).list();
+            return find("packageName = ?1", sort, packageName).page(page).list();
         } else if (status != null) {
-            return find("status = ?1", status).page(page).list();
+            return find("status = ?1", sort, status).page(page).list();
         } else {
-            return findAll().page(page).list();
+            return findAll(sort).page(page).list();
         }
     }
 
@@ -82,5 +85,15 @@ public class JobRepository implements PanacheRepository<Job> {
         return getEntityManager()
                 .createQuery("SELECT COUNT(j) FROM Job j WHERE j.oshScanId IS NOT NULL", Long.class)
                 .getSingleResult();
+    }
+
+    /**
+     * @param status the job status to count
+     * @param startTime the start of the time window
+     * @param endTime the end of the time window
+     * @return count of jobs with the given status in the time window
+     */
+    public long countByStatusInTimeWindow(JobStatus status, Instant startTime, Instant endTime) {
+        return count("status = ?1 AND createdAt >= ?2 AND createdAt < ?3", status, startTime, endTime);
     }
 }

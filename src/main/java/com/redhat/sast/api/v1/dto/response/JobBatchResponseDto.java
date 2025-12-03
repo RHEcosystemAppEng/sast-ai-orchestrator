@@ -1,6 +1,6 @@
 package com.redhat.sast.api.v1.dto.response;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.redhat.sast.api.enums.BatchStatus;
@@ -24,7 +24,7 @@ public class JobBatchResponseDto {
     private String submittedBy;
 
     @JsonProperty("submittedAt")
-    private LocalDateTime submittedAt;
+    private Instant submittedAt;
 
     @JsonProperty("status")
     private BatchStatus status;

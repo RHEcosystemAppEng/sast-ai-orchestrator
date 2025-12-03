@@ -1,6 +1,6 @@
 package com.redhat.sast.api.v1.dto.response.admin;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import lombok.Data;
 
@@ -28,7 +28,7 @@ public class OshStatusResponseDto {
     /**
      * Timestamp when this status was generated.
      */
-    private LocalDateTime timestamp;
+    private Instant timestamp;
 
     /**
      * Overall health status of OSH integration.
@@ -41,7 +41,7 @@ public class OshStatusResponseDto {
     private String notes;
 
     public OshStatusResponseDto() {
-        this.timestamp = LocalDateTime.now();
+        this.timestamp = Instant.now();
         this.overallStatus = "UNKNOWN";
     }
 }

@@ -1,6 +1,6 @@
 package com.redhat.sast.api.model;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.enums.JobStatus;
@@ -69,22 +69,22 @@ public class Job {
     protected JobStatus status;
 
     @Column(name = "created_at", nullable = false)
-    protected LocalDateTime createdAt;
+    protected Instant createdAt;
 
     @Column(name = "started_at")
-    protected LocalDateTime startedAt;
+    protected Instant startedAt;
 
     @Column(name = "completed_at")
-    protected LocalDateTime completedAt;
+    protected Instant completedAt;
 
     @Column(name = "cancelled_at")
-    protected LocalDateTime cancelledAt;
+    protected Instant cancelledAt;
 
     @Column(name = "tekton_url")
     protected String tektonUrl;
 
     @Column(name = "last_updated_at")
-    private LocalDateTime lastUpdatedAt;
+    private Instant lastUpdatedAt;
 
     @Column(name = "submitted_by")
     private String submittedBy;
@@ -113,8 +113,8 @@ public class Job {
 
     @PrePersist
     public void prePersist() {
-        this.createdAt = LocalDateTime.now();
-        this.lastUpdatedAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
+        this.lastUpdatedAt = Instant.now();
         if (this.status == null) {
             this.status = JobStatus.PENDING;
         }
@@ -122,6 +122,6 @@ public class Job {
 
     @PreUpdate
     public void preUpdate() {
-        this.lastUpdatedAt = LocalDateTime.now();
+        this.lastUpdatedAt = Instant.now();
     }
 }

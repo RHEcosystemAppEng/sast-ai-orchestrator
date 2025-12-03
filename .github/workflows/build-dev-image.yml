@@ -38,6 +38,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v5
 
+    - name: Validate manual tag
+      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag == 'latest' }}
+      run: |
+        echo "::error::The 'latest' tag is reserved for main branch builds and cannot be used for manual dispatches."
+        exit 1
+
     - name: Determine image tag
       id: tag
       run: |

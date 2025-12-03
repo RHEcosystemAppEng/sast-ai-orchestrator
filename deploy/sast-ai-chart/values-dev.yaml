@@ -100,3 +100,26 @@ configMap:
       trace-cmd
       unzip
       util-linux
+      device-mapper-multipath
+      libkcapi
+      pcsc-lite-ccid
+      sed
+      xz
+      rhc
+      parted
+      lmdb
+      numad
+      lzop
+      file
+      libffi
+      libev
+      pcsc-lite
+      pixman
+      libldb
+      cachefilesd
+      libselinux
+      libfido2
+      libpwquality
+      libgpg-error
+      libidn2
+      gcab

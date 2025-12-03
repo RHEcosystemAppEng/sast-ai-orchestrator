@@ -1,6 +1,6 @@
 package com.redhat.sast.api.model;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -28,7 +28,7 @@ public abstract class MlOpsJobNodeEvalBase {
     private Integer llmCallCount;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
@@ -37,6 +37,6 @@ public abstract class MlOpsJobNodeEvalBase {
 
     @PrePersist
     public void prePersist() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
     }
 }

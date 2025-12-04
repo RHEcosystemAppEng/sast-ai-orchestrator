@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "job_batch")
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"jobs", "jobBatchExecutionContext", "jobBatchRunDefinition"})
+@EqualsAndHashCode(exclude = {"jobs"})
 public class JobBatch {
 
     @Id
@@ -56,13 +56,6 @@ public class JobBatch {
 
     @OneToMany(mappedBy = "jobBatch", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Job> jobs;
-
-    @OneToOne(mappedBy = "jobBatch", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private JobBatchExecutionContext jobBatchExecutionContext;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "job_batch_run_definition_id")
-    private JobBatchRunDefinition jobBatchRunDefinition;
 
     @PrePersist
     public void prePersist() {

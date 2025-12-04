@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
         })
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"jobBatch", "jobSettings", "jobTokenUsage", "jobMetrics"})
+@EqualsAndHashCode(exclude = {"jobBatch", "jobSettings"})
 public class Job {
 
     @Id
@@ -104,12 +104,6 @@ public class Job {
 
     @OneToOne(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private JobSettings jobSettings;
-
-    @OneToOne(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private JobTokenUsage jobTokenUsage;
-
-    @OneToOne(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private JobMetrics jobMetrics;
 
     @PrePersist
     public void prePersist() {

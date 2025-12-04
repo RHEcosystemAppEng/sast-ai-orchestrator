@@ -91,10 +91,11 @@ public class OshJobCreationService {
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public Job createJobEntityInTransaction(@Nonnull OshScanDto scan) {
         var scanId = scan.getScanId();
-        
-        LOGGER.info("Creating job entity from OSH scan - scanId: {}, state: {}, component: {}, version: {}, owner: {}", 
-                scanId, 
-                scan.getState(), 
+
+        LOGGER.info(
+                "Creating job entity from OSH scan - scanId: {}, state: {}, component: {}, version: {}, owner: {}",
+                scanId,
+                scan.getState(),
                 scan.getComponent(),
                 scan.getVersion(),
                 scan.getOwner());

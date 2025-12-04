@@ -419,6 +419,28 @@ make status
 - **Development**: `quay.io/ecosystem-appeng/sast-ai-orchestrator:latest`
 - **Production**: `quay.io/ecosystem-appeng/sast-ai-orchestrator:v1.0.x`
 
+### Manual Dev Image Builds
+
+The **Build Dev Image** workflow supports manual triggering via GitHub Actions UI, allowing developers to build and push dev images from any branch.
+
+**To trigger a manual build:**
+
+1. Navigate to **Actions** → **Build Dev Image** → **Run workflow**
+2. Select the branch to build from
+3. Configure options:
+   - **Image tag**: Custom tag (defaults to branch name, or `latest` for main)
+   - **Push image**: Toggle whether to push to registry (default: true)
+
+**Use cases:**
+- Test feature branch images before merging
+- Build images with custom tags for specific testing scenarios
+- Build without pushing to verify the build process
+
+**Notes:**
+- Manual dispatches require the `dev-image-builds` environment approval
+- The `latest` tag is reserved for main branch builds and cannot be used for manual dispatches
+- Branch names with `/` are converted to `-` in the tag (e.g., `feature/foo` → `feature-foo`)
+
 ### Docker Deployment
 ```bash
 # Development (latest)

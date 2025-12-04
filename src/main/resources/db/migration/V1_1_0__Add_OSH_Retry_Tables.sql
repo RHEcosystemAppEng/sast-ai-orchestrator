@@ -86,7 +86,8 @@ COMMENT ON COLUMN osh_uncollected_scan.last_error_message IS
 'Error message from most recent failure (for debugging and analysis)';
 
 -- Insert initial statistics (optional - for monitoring setup)
--- This can be removed if not needed
-INSERT INTO osh_uncollected_scan (osh_scan_id, failure_reason, attempt_count, created_at, last_attempt_at, scan_data_json)
-VALUES (0, 'UNKNOWN_ERROR', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '{"note": "Initial placeholder record for testing"}')
-ON CONFLICT (osh_scan_id) DO NOTHING;
+-- REMOVED: Placeholder record caused NullPointerException in retry processor
+-- The invalid JSON structure didn't match OshScanDto expectations
+-- INSERT INTO osh_uncollected_scan (osh_scan_id, failure_reason, attempt_count, created_at, last_attempt_at, scan_data_json)
+-- VALUES (0, 'UNKNOWN_ERROR', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '{"note": "Initial placeholder record for testing"}')
+-- ON CONFLICT (osh_scan_id) DO NOTHING;

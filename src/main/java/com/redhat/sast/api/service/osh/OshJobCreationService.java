@@ -92,6 +92,20 @@ public class OshJobCreationService {
     public Job createJobEntityInTransaction(@Nonnull OshScanDto scan) {
         var scanId = scan.getScanId();
 
+        LOGGER.info(
+                "Creating job entity from OSH scan - scanId: {}, state: {}, component: {}, version: {}, owner: {}",
+                scanId,
+                scan.getState(),
+                scan.getComponent(),
+                scan.getVersion(),
+                scan.getOwner());
+
+        // Defensive check for null scanId (could happen with malformed stored JSON)
+        if (scanId == null) {
+            LOGGER.warn("Received OSH scan with null scanId, skipping (likely malformed retry record)");
+            return null;
+        }
+
         if (isAlreadyProcessed(scanId)) {
             LOGGER.debug("OSH scan {} already processed, skipping", scanId);
             return null;

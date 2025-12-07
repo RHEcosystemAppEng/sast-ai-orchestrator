@@ -120,7 +120,7 @@ public class PlatformService {
 
     private String buildTektonUrlFromClient(PipelineRun pipelineRun) {
         try {
-            String namespace = pipelineRun.getMetadata().getNamespace();
+            String pipelineRunNamespace = pipelineRun.getMetadata().getNamespace();
             String pipelineRunName = pipelineRun.getMetadata().getName();
 
             String consoleUrl = openshiftConsoleBaseUrl;
@@ -130,8 +130,8 @@ public class PlatformService {
 
             // Construct OpenShift Console URL for PipelineRun
             // Format: https://console-openshift-console.apps.../k8s/ns/{namespace}/tekton.dev~v1~PipelineRun/{name}/
-            String pipelineRunUrl =
-                    String.format("%s/k8s/ns/%s/tekton.dev~v1~PipelineRun/%s/", consoleUrl, namespace, pipelineRunName);
+            String pipelineRunUrl = String.format(
+                    "%s/k8s/ns/%s/tekton.dev~v1~PipelineRun/%s/", consoleUrl, pipelineRunNamespace, pipelineRunName);
 
             return pipelineRunUrl;
         } catch (Exception e) {

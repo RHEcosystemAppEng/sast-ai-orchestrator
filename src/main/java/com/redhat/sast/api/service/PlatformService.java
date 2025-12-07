@@ -61,6 +61,9 @@ public class PlatformService {
     @ConfigProperty(name = "quarkus.profile", defaultValue = "prod")
     String profile;
 
+    @ConfigProperty(name = "openshift.console.base.url")
+    String openshiftConsoleBaseUrl;
+
     public void startSastAIWorkflow(@Nonnull Long jobId, @Nonnull List<Param> pipelineParams, String llmSecretName) {
         // Skip Kubernetes operations in test mode
         if ("test".equals(profile)) {
@@ -117,24 +120,23 @@ public class PlatformService {
 
     private String buildTektonUrlFromClient(PipelineRun pipelineRun) {
         try {
-            // Get the Kubernetes cluster URL from the client
-            String masterUrl = tektonClient.getMasterUrl().toString();
-            // Remove trailing slash if present
-            if (masterUrl.endsWith("/")) {
-                masterUrl = masterUrl.substring(0, masterUrl.length() - 1);
+            String namespace = pipelineRun.getMetadata().getNamespace();
+            String pipelineRunName = pipelineRun.getMetadata().getName();
+
+            String consoleUrl = openshiftConsoleBaseUrl;
+            if (consoleUrl.endsWith("/")) {
+                consoleUrl = consoleUrl.substring(0, consoleUrl.length() - 1);
             }
 
-            // Construct the Kubernetes API URL for the PipelineRun resource
-            String pipelineRunUrl = String.format(
-                    "%s/apis/tekton.dev/v1/namespaces/%s/pipelineruns/%s",
-                    masterUrl,
-                    pipelineRun.getMetadata().getNamespace(),
-                    pipelineRun.getMetadata().getName());
+            // Construct OpenShift Console URL for PipelineRun
+            // Format: https://console-openshift-console.apps.../k8s/ns/{namespace}/tekton.dev~v1~PipelineRun/{name}/
+            String pipelineRunUrl =
+                    String.format("%s/k8s/ns/%s/tekton.dev~v1~PipelineRun/%s/", consoleUrl, namespace, pipelineRunName);
 
             return pipelineRunUrl;
         } catch (Exception e) {
             LOGGER.error(
-                    "Failed to construct Tekton URL for PipelineRun: {}",
+                    "Failed to construct OpenShift Console URL for PipelineRun: {}",
                     pipelineRun.getMetadata().getName(),
                     e);
             // Return a fallback URL if construction fails

@@ -18,7 +18,9 @@ app:
     QUARKUS_HIBERNATE_ORM_LOG_SQL: false
     # SAST AI specific configuration - dev namespace
     SAST_AI_WORKFLOW_NAMESPACE: sast-ai-dev
-    
+    # OpenShift Console URL - development
+    OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com"
+
   # Resource limits and requests - lower for dev
   resources:
     limits:

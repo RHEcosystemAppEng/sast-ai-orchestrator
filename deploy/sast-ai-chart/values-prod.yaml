@@ -18,9 +18,11 @@ app:
     QUARKUS_HIBERNATE_ORM_LOG_SQL: false
     # SAST AI specific configuration - prod namespace
     SAST_AI_WORKFLOW_NAMESPACE: sast-ai-prod
+    # OpenShift Console URL - production
+    OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com"
     # OSH Integration - Production Configuration
     OSH_INTEGRATION_ENABLED: "true"
-    
+
   # Resource limits and requests - production sizing
   resources:
     limits:

@@ -24,7 +24,9 @@ app:
     SAST_AI_WORKFLOW_NAMESPACE: sast-ai
     # Google Service Account configuration
     GOOGLE_SERVICE_ACCOUNT_SECRET_PATH: /etc/secrets/google-service-account-secret/service_account.json
-    
+    # OpenShift Console configuration
+    OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com"
+
     # OSH (Open Scan Hub) Integration - Base Configuration
     # Disabled by default. Override in values-prod.yaml to enable.
     OSH_INTEGRATION_ENABLED: "false"
@@ -198,7 +200,10 @@ configMap:
       
       # Kubernetes client configuration
       quarkus.kubernetes-client.trust-certs=${QUARKUS_KUBERNETES_CLIENT_TRUST_CERTS}
-      
+
+      # OpenShift Console configuration
+      openshift.console.base.url=${OPENSHIFT_CONSOLE_BASE_URL}
+
       # Logging configuration
       quarkus.log.category."org.jboss.logging".level=${QUARKUS_LOG_LEVEL}
 

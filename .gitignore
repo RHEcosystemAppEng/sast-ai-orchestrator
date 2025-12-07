@@ -52,8 +52,8 @@ deploy/secrets/*.json
 
 # Helm
 Chart.lock
-charts/*.tgz
-charts/*.tar.gz
+**/charts/*.tgz
+**/charts/*.tar.gz
 .helmignore
 
 # Cursor

@@ -59,27 +59,30 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: sast-ai-s3-credentials
-                  key: access_key_id
+                  key: aws_access_key_id
             - name: AWS_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: sast-ai-s3-credentials
-                  key: secret_access_key
+                  key: aws_secret_access_key
             - name: AWS_S3_ENDPOINT_URL
               valueFrom:
                 secretKeyRef:
                   name: sast-ai-s3-credentials
                   key: endpoint_url
+                  optional: true
             - name: S3_OUTPUT_BUCKET_NAME
               valueFrom:
                 secretKeyRef:
                   name: sast-ai-s3-credentials
                   key: output_bucket_name
+                  optional: true
             - name: S3_INPUT_BUCKET_NAME
               valueFrom:
                 secretKeyRef:
                   name: sast-ai-s3-credentials
                   key: input_bucket_name
+                  optional: true
             # Application environment variables
             {{- range $key, $value := .Values.app.env }}
             - name: {{ $key }}

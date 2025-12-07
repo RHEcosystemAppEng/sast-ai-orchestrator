@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Locale;
 
 import com.redhat.sast.api.enums.JobStatus;
+import com.redhat.sast.api.enums.TimePeriod;
 import com.redhat.sast.api.service.JobService;
 import com.redhat.sast.api.service.StatisticService;
 import com.redhat.sast.api.v1.dto.request.JobCreationDto;
@@ -127,11 +128,16 @@ public class JobResource {
     }
 
     @GET
-    @Path("/activity/24h")
-    public Response getJobActivity24h() {
+    @Path("/activity/{timePeriod}")
+    public Response getJobActivity(@PathParam("timePeriod") String timePeriodCode) {
         try {
-            List<JobActivityDataPointDto> activity = statisticService.getJobActivity24h();
+            TimePeriod timePeriod = TimePeriod.fromCode(timePeriodCode);
+            List<JobActivityDataPointDto> activity = statisticService.getJobActivity(timePeriod);
             return Response.ok(activity).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(e.getMessage())
+                    .build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("Error retrieving job activity: " + e.getMessage())

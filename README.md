@@ -91,7 +91,7 @@ Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosy
     "createdAt": "2025-01-01T10:00:00",
     "startedAt": "2025-01-01T10:05:00",
     "completedAt": "2025-01-01T10:30:00",
-    "tektonUrl": "https://tekton.example.com/pipelineruns/job-123",
+    "tektonUrl": "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com/k8s/ns/sast-ai/tekton.dev~v1~PipelineRun/sast-ai-workflow-pipeline-123/",
     "batchId": null,
     "projectName": "package-name",
     "projectVersion": "version-release",
@@ -268,7 +268,7 @@ MLOps batch endpoints enable automated testing of multiple NVRs (Name-Version-Re
       "createdAt": "2025-01-01T10:00:00",
       "startedAt": "2025-01-01T10:01:00",
       "completedAt": "2025-01-01T10:30:00",
-      "tektonUrl": "https://tekton.example.com/pipelineruns/job-456",
+      "tektonUrl": "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com/k8s/ns/sast-ai/tekton.dev~v1~PipelineRun/sast-ai-workflow-pipeline-456/",
       "metrics": {
         "accuracy": 0.95,
         "precision": 0.87,

@@ -32,7 +32,7 @@ app:
 
 ## OpenShift Route configuration - dev specific
 route:
-  host: "sast-ai-dev"  # Dev-specific hostname prefix
+  host: "sast-ai-orchestrator-sast-ai-dev.apps.appeng.clusters.se-apps.redhat.com"
   annotations:
     haproxy.router.openshift.io/timeout: 60s
 

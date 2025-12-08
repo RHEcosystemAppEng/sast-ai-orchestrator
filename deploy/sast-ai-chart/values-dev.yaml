@@ -20,8 +20,6 @@ app:
     SAST_AI_WORKFLOW_NAMESPACE: sast-ai-dev
     # OpenShift Console URL - development
     OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com"
-    # OSH Integration - Packages to monitor
-    OSH_PACKAGES: "adcli,audit,cpio,glibc,graphite2,gzip,libconfig,libksba,libpcap,libpng,libtalloc,libuser,lua,mpdecimal,nano,ncurses,popt,rpcbind,samba,sqlite,sysfsutils,systemd,texinfo,tpm2-tools,trace-cmd,unzip,util-linux,device-mapper-multipath,libkcapi,pcsc-lite-ccid,sed,xz,rhc,parted,lmdb,numad,lzop,file,libffi,libev,pcsc-lite,pixman,libldb,cachefilesd,libselinux,libfido2,libpwquality,libgpg-error,libidn2,gcab"
 
   # Resource limits and requests - lower for dev
   resources:
@@ -73,4 +71,86 @@ monitoring:
     interval: 30s
     scrapeTimeout: 10s
 
-## ConfigMap - no overrides needed for dev (uses base values.yaml)
+## ConfigMap - dev-specific package list
+configMap:
+  data:
+    application.properties: |
+      # PostgreSQL setup
+      quarkus.datasource.db-kind=postgresql
+      quarkus.datasource.username=${DB_USERNAME}
+      quarkus.datasource.password=${DB_PASSWORD}
+      quarkus.datasource.jdbc.url=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+
+      # Hibernate ORM configuration
+      quarkus.hibernate-orm.database.generation=${QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION}
+      quarkus.hibernate-orm.log.sql=${QUARKUS_HIBERNATE_ORM_LOG_SQL}
+
+      # SAST AI configuration
+      sast.ai.workflow.namespace=${SAST_AI_WORKFLOW_NAMESPACE}
+
+      # Kubernetes client configuration
+      quarkus.kubernetes-client.trust-certs=${QUARKUS_KUBERNETES_CLIENT_TRUST_CERTS}
+
+      # OpenShift Console configuration
+      openshift.console.base.url=${OPENSHIFT_CONSOLE_BASE_URL}
+
+      # Logging configuration
+      quarkus.log.category."org.jboss.logging".level=${QUARKUS_LOG_LEVEL}
+
+      # Package filtering - comma-separated list of packages to monitor
+      # Example: systemd,glibc
+      osh.packages=${OSH_PACKAGES:}
+
+      # GCS configuration - bucket name for uploading SARIF reports
+      gcs.bucket.name=${GCS_BUCKET_NAME:}
+    packages.txt: |
+      adcli
+      audit
+      cpio
+      glibc
+      graphite2
+      gzip
+      libconfig
+      libksba
+      libpcap
+      libpng
+      libtalloc
+      libuser
+      lua
+      mpdecimal
+      nano
+      ncurses
+      popt
+      rpcbind
+      samba
+      sqlite
+      sysfsutils
+      systemd
+      texinfo
+      tpm2-tools
+      trace-cmd
+      unzip
+      util-linux
+      device-mapper-multipath
+      libkcapi
+      pcsc-lite-ccid
+      sed
+      xz
+      rhc
+      parted
+      lmdb
+      numad
+      lzop
+      file
+      libffi
+      libev
+      pcsc-lite
+      pixman
+      libldb
+      cachefilesd
+      libselinux
+      libfido2
+      libpwquality
+      libgpg-error
+      libidn2
+      gcab

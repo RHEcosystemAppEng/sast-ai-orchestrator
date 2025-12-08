@@ -22,6 +22,8 @@ app:
     OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com"
     # OSH Integration - Production Configuration
     OSH_INTEGRATION_ENABLED: "true"
+    # OSH Integration - Packages to monitor
+    OSH_PACKAGES: "adcli,audit,cpio,glibc,graphite2,gzip,libconfig,libksba,libpcap,libpng,libtalloc,libuser,lua,mpdecimal,nano,ncurses,popt,rpcbind,samba,sqlite,sysfsutils,systemd,texinfo,tpm2-tools,trace-cmd,unzip,util-linux,device-mapper-multipath,libkcapi,pcsc-lite-ccid,sed,xz,rhc,parted,lmdb,numad,lzop,file,libffi,libev,pcsc-lite,pixman,libldb,cachefilesd,libselinux,libfido2,libpwquality,libgpg-error,libidn2,gcab"
 
   # Resource limits and requests - production sizing
   resources:
@@ -77,57 +79,4 @@ monitoring:
     interval: 15s
     scrapeTimeout: 10s
 
-## ConfigMap - prod-specific package list
-configMap:
-  data:
-    packages.txt: |
-      adcli
-      audit
-      cpio
-      glibc
-      graphite2
-      gzip
-      libconfig
-      libksba
-      libpcap
-      libpng
-      libtalloc
-      libuser
-      lua
-      mpdecimal
-      nano
-      ncurses
-      popt
-      rpcbind
-      samba
-      sqlite
-      sysfsutils
-      systemd
-      texinfo
-      tpm2-tools
-      trace-cmd
-      unzip
-      util-linux
-      device-mapper-multipath
-      libkcapi
-      pcsc-lite-ccid
-      sed
-      xz
-      rhc
-      parted
-      lmdb
-      numad
-      lzop
-      file
-      libffi
-      libev
-      pcsc-lite
-      pixman
-      libldb
-      cachefilesd
-      libselinux
-      libfido2
-      libpwquality
-      libgpg-error
-      libidn2
-      gcab
+## ConfigMap - no overrides needed for prod (uses base values.yaml)

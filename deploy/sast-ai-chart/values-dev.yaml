@@ -20,6 +20,8 @@ app:
     SAST_AI_WORKFLOW_NAMESPACE: sast-ai-dev
     # OpenShift Console URL - development
     OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com"
+    # OSH Integration - Packages to monitor
+    OSH_PACKAGES: "adcli,audit,cpio,glibc,graphite2,gzip,libconfig,libksba,libpcap,libpng,libtalloc,libuser,lua,mpdecimal,nano,ncurses,popt,rpcbind,samba,sqlite,sysfsutils,systemd,texinfo,tpm2-tools,trace-cmd,unzip,util-linux,device-mapper-multipath,libkcapi,pcsc-lite-ccid,sed,xz,rhc,parted,lmdb,numad,lzop,file,libffi,libev,pcsc-lite,pixman,libldb,cachefilesd,libselinux,libfido2,libpwquality,libgpg-error,libidn2,gcab"
 
   # Resource limits and requests - lower for dev
   resources:
@@ -71,57 +73,4 @@ monitoring:
     interval: 30s
     scrapeTimeout: 10s
 
-## ConfigMap - dev-specific package list
-configMap:
-  data:
-    packages.txt: |
-      adcli
-      audit
-      cpio
-      glibc
-      graphite2
-      gzip
-      libconfig
-      libksba
-      libpcap
-      libpng
-      libtalloc
-      libuser
-      lua
-      mpdecimal
-      nano
-      ncurses
-      popt
-      rpcbind
-      samba
-      sqlite
-      sysfsutils
-      systemd
-      texinfo
-      tpm2-tools
-      trace-cmd
-      unzip
-      util-linux
-      device-mapper-multipath
-      libkcapi
-      pcsc-lite-ccid
-      sed
-      xz
-      rhc
-      parted
-      lmdb
-      numad
-      lzop
-      file
-      libffi
-      libev
-      pcsc-lite
-      pixman
-      libldb
-      cachefilesd
-      libselinux
-      libfido2
-      libpwquality
-      libgpg-error
-      libidn2
-      gcab
+## ConfigMap - no overrides needed for dev (uses base values.yaml)

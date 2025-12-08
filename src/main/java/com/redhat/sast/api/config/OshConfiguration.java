@@ -67,6 +67,13 @@ public class OshConfiguration {
     private boolean packageNameSetOverridden = false;
 
     /**
+     * Path to the packages.txt file containing the list of packages to monitor.
+     * Default is /deployments/config/packages.txt (mounted from ConfigMap).
+     */
+    @ConfigProperty(name = "osh.packages.file.path", defaultValue = "/deployments/config/packages.txt")
+    String packagesFilePath;
+
+    /**
      * Number of sequential scan IDs to check in each polling batch.
      */
     @ConfigProperty(name = "osh.batch.size", defaultValue = "10")
@@ -230,7 +237,7 @@ public class OshConfiguration {
     }
 
     /**
-     * Loads package list from /deployments/config/packages.txt file.
+     * Loads package list from the configured packages file.
      *
      * File format:
      * - One package name per line
@@ -241,22 +248,21 @@ public class OshConfiguration {
      * @return immutable set of package names to monitor
      */
     private Set<String> loadPackageListFromFile() {
-        String filePath = "/deployments/config/packages.txt";
-        Path path = Path.of(filePath);
+        Path path = Path.of(packagesFilePath);
 
         try {
-            LOGGER.info("Loading package list from file: {}", filePath);
+            LOGGER.info("Loading package list from file: {}", packagesFilePath);
             Set<String> packages = Files.readAllLines(path, StandardCharsets.UTF_8).stream()
                     .map(String::trim)
                     .filter(line -> !line.isEmpty())
                     .filter(line -> !line.startsWith("#"))
                     .collect(Collectors.toUnmodifiableSet());
 
-            LOGGER.info("Successfully loaded {} packages from file: {}", packages.size(), filePath);
+            LOGGER.info("Successfully loaded {} packages from file: {}", packages.size(), packagesFilePath);
             return packages;
         } catch (IOException e) {
-            LOGGER.error("Failed to read package list from file: {}", filePath, e);
-            throw new IllegalStateException("Cannot load package list from " + filePath, e);
+            LOGGER.error("Failed to read package list from file: {}", packagesFilePath, e);
+            throw new IllegalStateException("Cannot load package list from " + packagesFilePath, e);
         }
     }
 

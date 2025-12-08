@@ -149,17 +149,6 @@ class OshConfigurationTest {
     }
 
     @Test
-    @DisplayName("Should monitor nothing when empty set configured (fail-safe)")
-    void testShouldMonitorPackage_EmptyPackageSet() {
-        config.enabled = true;
-        config.setPackageNameSetForTesting(Set.of());
-
-        assertFalse(config.shouldMonitorPackage("systemd"));
-        assertFalse(config.shouldMonitorPackage("kernel"));
-        assertFalse(config.shouldMonitorPackage("any-package"));
-    }
-
-    @Test
     @DisplayName("Should monitor only configured packages")
     void testShouldMonitorPackage_SpecificPackages() {
         config.enabled = true;

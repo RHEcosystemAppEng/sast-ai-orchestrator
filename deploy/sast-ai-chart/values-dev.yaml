@@ -20,6 +20,8 @@ app:
     SAST_AI_WORKFLOW_NAMESPACE: sast-ai-dev
     # OpenShift Console URL - development
     OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com"
+    # OSH Integration - enabled for dev
+    OSH_INTEGRATION_ENABLED: "true"
 
   # Resource limits and requests - lower for dev
   resources:
@@ -41,8 +43,8 @@ postgresql:
   auth:
     postgresPassword: "postgres-dev"
     username: "quarkus"
-    password: "quarkus-dev"
-    database: "sast-ai-dev"
+    password: "quarkus"
+    database: "sast-ai"
   primary:
     persistence:
       enabled: true

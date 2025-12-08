@@ -1,10 +1,14 @@
 package com.redhat.sast.api.config;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
-import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -49,13 +53,25 @@ public class OshConfiguration {
     String baseUrl;
 
     /**
-     * Comma-separated list of package names to monitor.
+     * Set of package names to monitor.
+     * Loaded from /deployments/config/packages.txt file.
      * Only scans for these packages will be processed.
-     * If not configured or empty, no packages will be monitored.
-     * Example: systemd,kernel,glibc
+     * Initialized in @PostConstruct.
      */
-    @ConfigProperty(name = "osh.packages")
-    Optional<Set<String>> packageNameSet;
+    private Set<String> packageNameSet = Set.of();
+
+    /**
+     * Flag to indicate if packageNameSet was set for testing purposes.
+     * When true, file loading is skipped during validation.
+     */
+    private boolean packageNameSetOverridden = false;
+
+    /**
+     * Path to the packages.txt file containing the list of packages to monitor.
+     * Default is /deployments/config/packages.txt (mounted from ConfigMap).
+     */
+    @ConfigProperty(name = "osh.packages.file.path", defaultValue = "/deployments/config/packages.txt")
+    String packagesFilePath;
 
     /**
      * Number of sequential scan IDs to check in each polling batch.
@@ -148,8 +164,18 @@ public class OshConfiguration {
 
         LOGGER.info("OSH integration is enabled - validating configuration");
 
-        if (packageNameSet.isEmpty() || packageNameSet.get().isEmpty()) {
+        // Load packages from file (skip if already set for testing)
+        if (!packageNameSetOverridden) {
+            packageNameSet = loadPackageListFromFile();
+        } else {
+            LOGGER.debug("Package set already configured (test mode), skipping file load");
+        }
+
+        if (packageNameSet.isEmpty()) {
             LOGGER.warn("OSH package filter is empty - no packages will be monitored");
+        } else {
+            LOGGER.info("Loaded {} packages for monitoring", packageNameSet.size());
+            LOGGER.debug("Packages to monitor: {}", packageNameSet);
         }
 
         if (batchSize <= 0) {
@@ -197,11 +223,7 @@ public class OshConfiguration {
 
         LOGGER.debug("OSH configuration validated successfully:");
         LOGGER.debug("  Base URL: {}", baseUrl);
-        LOGGER.debug(
-                "  Packages: {}",
-                packageNameSet.isEmpty() || packageNameSet.get().isEmpty()
-                        ? "none (monitoring disabled)"
-                        : packageNameSet.get());
+        LOGGER.debug("  Packages: {}", packageNameSet.isEmpty() ? "none (monitoring disabled)" : packageNameSet);
         LOGGER.debug("  Batch size: {}", batchSize);
         LOGGER.debug("  Poll interval: {}", pollInterval);
         LOGGER.debug("  Start scan ID: {}", startScanId);
@@ -215,17 +237,57 @@ public class OshConfiguration {
     }
 
     /**
+     * Loads package list from the configured packages file.
+     *
+     * File format:
+     * - One package name per line
+     * - Blank lines are ignored
+     * - Lines starting with # are treated as comments
+     * - Leading/trailing whitespace is trimmed
+     *
+     * @return immutable set of package names to monitor
+     */
+    private Set<String> loadPackageListFromFile() {
+        Path path = Path.of(packagesFilePath);
+
+        try {
+            LOGGER.info("Loading package list from file: {}", packagesFilePath);
+            Set<String> packages = Files.readAllLines(path, StandardCharsets.UTF_8).stream()
+                    .map(String::trim)
+                    .filter(line -> !line.isEmpty())
+                    .filter(line -> !line.startsWith("#"))
+                    .collect(Collectors.toUnmodifiableSet());
+
+            LOGGER.info("Successfully loaded {} packages from file: {}", packages.size(), packagesFilePath);
+            return packages;
+        } catch (IOException e) {
+            LOGGER.error("Failed to read package list from file: {}", packagesFilePath, e);
+            throw new IllegalStateException("Cannot load package list from " + packagesFilePath, e);
+        }
+    }
+
+    /**
      * Checks if a package should be monitored based on configuration.
      *
      * @param packageName package name to check (must not be null)
      * @return true if package should be monitored, false otherwise
      */
     public boolean shouldMonitorPackage(@NonNull String packageName) {
-        if (packageNameSet.isEmpty() || packageNameSet.get().isEmpty()) {
+        if (packageNameSet.isEmpty()) {
             return false;
         }
 
-        return packageNameSet.get().contains(packageName);
+        return packageNameSet.contains(packageName);
+    }
+
+    /**
+     * Sets package list directly for testing purposes only.
+     *
+     * @param packages set of packages to monitor (null will be converted to empty set)
+     */
+    void setPackageNameSetForTesting(Set<String> packages) {
+        this.packageNameSet = packages != null ? Set.copyOf(packages) : Set.of();
+        this.packageNameSetOverridden = true;
     }
 
     /**

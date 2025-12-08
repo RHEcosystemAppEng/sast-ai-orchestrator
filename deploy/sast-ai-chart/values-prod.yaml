@@ -80,6 +80,35 @@ monitoring:
 ## ConfigMap - prod-specific package list
 configMap:
   data:
+    application.properties: |
+      # PostgreSQL setup
+      quarkus.datasource.db-kind=postgresql
+      quarkus.datasource.username=${DB_USERNAME}
+      quarkus.datasource.password=${DB_PASSWORD}
+      quarkus.datasource.jdbc.url=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+
+      # Hibernate ORM configuration
+      quarkus.hibernate-orm.database.generation=${QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION}
+      quarkus.hibernate-orm.log.sql=${QUARKUS_HIBERNATE_ORM_LOG_SQL}
+
+      # SAST AI configuration
+      sast.ai.workflow.namespace=${SAST_AI_WORKFLOW_NAMESPACE}
+
+      # Kubernetes client configuration
+      quarkus.kubernetes-client.trust-certs=${QUARKUS_KUBERNETES_CLIENT_TRUST_CERTS}
+
+      # OpenShift Console configuration
+      openshift.console.base.url=${OPENSHIFT_CONSOLE_BASE_URL}
+
+      # Logging configuration
+      quarkus.log.category."org.jboss.logging".level=${QUARKUS_LOG_LEVEL}
+
+      # Package filtering - comma-separated list of packages to monitor
+      # Example: systemd,glibc
+      osh.packages=${OSH_PACKAGES:}
+
+      # GCS configuration - bucket name for uploading SARIF reports
+      gcs.bucket.name=${GCS_BUCKET_NAME:}
     packages.txt: |
       adcli
       audit

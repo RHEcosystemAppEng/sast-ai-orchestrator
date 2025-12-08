@@ -2,6 +2,7 @@ package com.redhat.sast.api.platform;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,8 +29,17 @@ class PipelineParameterMapperTest {
     private PipelineParameterMapper mapper;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         mapper = new PipelineParameterMapper();
+        // Set required config properties via reflection for testing
+        setField(mapper, "gcsBucketName", Optional.of("test-bucket"));
+        setField(mapper, "profile", "test");
+    }
+
+    private void setField(Object target, String fieldName, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
     }
 
     @Test
@@ -53,7 +63,8 @@ class PipelineParameterMapperTest {
 
         Optional<Param> oshTaskIdParam = findParam(params, "OSH_TASK_ID");
         assertTrue(oshTaskIdParam.isPresent(), "OSH_TASK_ID parameter should be present even when null");
-        assertEquals("", oshTaskIdParam.get().getValue().getStringVal(), "Null OSH scan ID should result in empty string");
+        assertEquals(
+                "", oshTaskIdParam.get().getValue().getStringVal(), "Null OSH scan ID should result in empty string");
     }
 
     @Test
@@ -118,8 +129,6 @@ class PipelineParameterMapperTest {
     }
 
     private Optional<Param> findParam(List<Param> params, String name) {
-        return params.stream()
-                .filter(p -> name.equals(p.getName()))
-                .findFirst();
+        return params.stream().filter(p -> name.equals(p.getName())).findFirst();
     }
 }

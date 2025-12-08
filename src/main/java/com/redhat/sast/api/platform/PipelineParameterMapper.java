@@ -126,7 +126,7 @@ public class PipelineParameterMapper {
     /**
      * Adds input source parameters based on the job's input source type.
      * For OSH scans: passes OSH URL and OSH task ID
-     * For Google Sheets: passes Google Sheet URL
+     * For Google Sheets/SARIF: passes input source URL
      */
     private void addInputSourceParameters(List<Param> params, Job job) {
         InputSourceType inputSourceType = job.getInputSourceType();
@@ -138,29 +138,21 @@ public class PipelineParameterMapper {
 
         params.add(createParam(PARAM_INPUT_SOURCE_TYPE, inputSourceType.toString()));
 
-        switch (inputSourceType) {
-            case OSH_SCAN -> {
-                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
-                params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
-                // Inject OSH task ID for OSH pipeline jobs
-                String oshTaskId = job.getOshScanId() != null ? job.getOshScanId() : "";
-                params.add(createParam(PARAM_OSH_TASK_ID, oshTaskId));
-                LOGGER.debug("Job {} using OSH_SCAN input with URL: {}, OSH task ID: {}", 
-                        job.getId(), job.getGSheetUrl(), oshTaskId);
-            }
-            case GOOGLE_SHEET, SARIF -> {
-                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
-                params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
-                LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
-            }
-            default -> {
-                LOGGER.warn(
-                        "Unknown input source type {} for job {}, using GOOGLE_SHEET fallback",
-                        inputSourceType,
-                        job.getId());
-                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
-                params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
-            }
+        // Common parameters for all input source types
+        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+        params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
+
+        // OSH-specific: inject task ID for pipeline traceability
+        if (inputSourceType == InputSourceType.OSH_SCAN) {
+            String oshTaskId = job.getOshScanId() != null ? job.getOshScanId() : "";
+            params.add(createParam(PARAM_OSH_TASK_ID, oshTaskId));
+            LOGGER.debug(
+                    "Job {} using OSH_SCAN input with URL: {}, OSH task ID: {}",
+                    job.getId(),
+                    job.getGSheetUrl(),
+                    oshTaskId);
+        } else {
+            LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
         }
     }
 

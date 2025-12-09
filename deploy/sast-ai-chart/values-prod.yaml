@@ -34,7 +34,7 @@ app:
 
 ## OpenShift Route configuration - production specific
 route:
-  host: "sast-ai"  # Production hostname
+  host: "sast-ai-orchestrator-sast-ai-prod.apps.appeng.clusters.se-apps.redhat.com"
   annotations:
     haproxy.router.openshift.io/timeout: 300s
 

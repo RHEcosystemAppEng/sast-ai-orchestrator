@@ -2,7 +2,6 @@ package com.redhat.sast.api.platform;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,7 +16,6 @@ import io.fabric8.tekton.v1.Param;
 
 /**
  * Unit tests for PipelineParameterMapper.
- *
  * Tests cover:
  * - OSH task ID injection for OSH_SCAN jobs
  * - Input source type parameter handling
@@ -29,17 +27,11 @@ class PipelineParameterMapperTest {
     private PipelineParameterMapper mapper;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         mapper = new PipelineParameterMapper();
-        // Set required config properties via reflection for testing
-        setField(mapper, "gcsBucketName", Optional.of("test-bucket"));
-        setField(mapper, "profile", "test");
-    }
-
-    private void setField(Object target, String fieldName, Object value) throws Exception {
-        Field field = target.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(target, value);
+        // Set required config properties using public setters
+        mapper.setGcsBucketName(Optional.of("test-bucket"));
+        mapper.setProfile("test");
     }
 
     @Test

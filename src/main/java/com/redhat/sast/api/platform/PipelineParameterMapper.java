@@ -19,6 +19,7 @@ import io.fabric8.tekton.v1.ParamBuilder;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -63,9 +64,21 @@ public class PipelineParameterMapper {
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
+    /**
+     * -- SETTER --
+     *  Sets the profile for testing purposes.
+     *
+     */
+    @Setter
     @ConfigProperty(name = "quarkus.profile", defaultValue = "prod")
     String profile;
 
+    /**
+     * -- SETTER --
+     *  Sets the GCS bucket name for testing purposes.
+     *
+     */
+    @Setter
     @ConfigProperty(name = "gcs.bucket.name")
     Optional<String> gcsBucketName;
 

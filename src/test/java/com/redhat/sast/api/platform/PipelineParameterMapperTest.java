@@ -44,7 +44,7 @@ class PipelineParameterMapperTest {
 
     @Test
     @DisplayName("Should include OSH_TASK_ID parameter for OSH_SCAN jobs")
-    void testExtractPipelineParams_includesOshTaskIdForOshScan() {
+    void extractPipelineParams_includesOshTaskIdForOshScan() {
         Job job = createOshScanJob("12345");
 
         List<Param> params = mapper.extractPipelineParams(job);
@@ -56,7 +56,7 @@ class PipelineParameterMapperTest {
 
     @Test
     @DisplayName("Should handle null OSH scan ID gracefully")
-    void testExtractPipelineParams_handlesNullOshScanId() {
+    void extractPipelineParams_handlesNullOshScanId() {
         Job job = createOshScanJob(null);
 
         List<Param> params = mapper.extractPipelineParams(job);
@@ -69,7 +69,7 @@ class PipelineParameterMapperTest {
 
     @Test
     @DisplayName("Should NOT include OSH_TASK_ID parameter for GOOGLE_SHEET jobs")
-    void testExtractPipelineParams_excludesOshTaskIdForGoogleSheet() {
+    void extractPipelineParams_excludesOshTaskIdForGoogleSheet() {
         Job job = createGoogleSheetJob();
 
         List<Param> params = mapper.extractPipelineParams(job);
@@ -80,7 +80,7 @@ class PipelineParameterMapperTest {
 
     @Test
     @DisplayName("Should set INPUT_SOURCE_TYPE to OSH_SCAN for OSH jobs")
-    void testExtractPipelineParams_setsCorrectInputSourceTypeForOsh() {
+    void extractPipelineParams_setsCorrectInputSourceTypeForOsh() {
         Job job = createOshScanJob("12345");
 
         List<Param> params = mapper.extractPipelineParams(job);
@@ -92,7 +92,7 @@ class PipelineParameterMapperTest {
 
     @Test
     @DisplayName("Should set INPUT_SOURCE_TYPE to GOOGLE_SHEET for Google Sheet jobs")
-    void testExtractPipelineParams_setsCorrectInputSourceTypeForGoogleSheet() {
+    void extractPipelineParams_setsCorrectInputSourceTypeForGoogleSheet() {
         Job job = createGoogleSheetJob();
 
         List<Param> params = mapper.extractPipelineParams(job);

@@ -19,6 +19,7 @@ import io.fabric8.tekton.v1.ParamBuilder;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -48,6 +49,7 @@ public class PipelineParameterMapper {
     private static final String PARAM_AGGREGATE_RESULTS_G_SHEET = "AGGREGATE_RESULTS_G_SHEET";
     private static final String PARAM_GCS_BUCKET_NAME = "GCS_BUCKET_NAME";
     private static final String PARAM_GCS_SA_FILE_NAME = "GCS_SA_FILE_NAME";
+    private static final String PARAM_OSH_TASK_ID = "OSH_TASK_ID";
     // MLOps-specific parameter names
     private static final String PARAM_CONTAINER_IMAGE = "CONTAINER_IMAGE";
     private static final String PARAM_PROMPTS_VERSION = "PROMPTS_VERSION";
@@ -62,9 +64,21 @@ public class PipelineParameterMapper {
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
+    /**
+     * -- SETTER --
+     *  Sets the profile for testing purposes.
+     *
+     */
+    @Setter
     @ConfigProperty(name = "quarkus.profile", defaultValue = "prod")
     String profile;
 
+    /**
+     * -- SETTER --
+     *  Sets the GCS bucket name for testing purposes.
+     *
+     */
+    @Setter
     @ConfigProperty(name = "gcs.bucket.name")
     Optional<String> gcsBucketName;
 
@@ -124,8 +138,8 @@ public class PipelineParameterMapper {
 
     /**
      * Adds input source parameters based on the job's input source type.
-     * For OSH scans: passes OSH URL
-     * For Google Sheets: passes Google Sheet URL
+     * For OSH scans: passes OSH URL and OSH task ID
+     * For Google Sheets/SARIF: passes input source URL
      */
     private void addInputSourceParameters(List<Param> params, Job job) {
         InputSourceType inputSourceType = job.getInputSourceType();
@@ -137,20 +151,21 @@ public class PipelineParameterMapper {
 
         params.add(createParam(PARAM_INPUT_SOURCE_TYPE, inputSourceType.toString()));
 
-        switch (inputSourceType) {
-            case OSH_SCAN, GOOGLE_SHEET, SARIF -> {
-                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
-                params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
-                LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
-            }
-            default -> {
-                LOGGER.warn(
-                        "Unknown input source type {} for job {}, using GOOGLE_SHEET fallback",
-                        inputSourceType,
-                        job.getId());
-                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
-                params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
-            }
+        // Common parameters for all input source types
+        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+        params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
+
+        // OSH-specific: inject task ID for pipeline traceability
+        if (inputSourceType == InputSourceType.OSH_SCAN) {
+            String oshTaskId = job.getOshScanId() != null ? job.getOshScanId() : "";
+            params.add(createParam(PARAM_OSH_TASK_ID, oshTaskId));
+            LOGGER.debug(
+                    "Job {} using OSH_SCAN input with URL: {}, OSH task ID: {}",
+                    job.getId(),
+                    job.getGSheetUrl(),
+                    oshTaskId);
+        } else {
+            LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
         }
     }
 

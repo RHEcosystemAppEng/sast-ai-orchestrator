@@ -17,8 +17,12 @@ import jakarta.ws.rs.core.Response;
 @Produces(MediaType.APPLICATION_JSON)
 public class ConfigurationResource {
 
+    private final OshConfiguration oshConfiguration;
+
     @Inject
-    OshConfiguration oshConfiguration;
+    public ConfigurationResource(OshConfiguration oshConfiguration) {
+        this.oshConfiguration = oshConfiguration;
+    }
 
     /**
      * Retrieves the list of packages currently being monitored in OSH (Open Scan Hub).

@@ -30,9 +30,8 @@ class ConfigurationResourceTest {
 
     @BeforeEach
     void setUp() {
-        resource = new ConfigurationResource();
         oshConfiguration = new TestOshConfiguration();
-        resource.oshConfiguration = oshConfiguration;
+        resource = new ConfigurationResource(oshConfiguration);
     }
 
     @Test

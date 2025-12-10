@@ -154,7 +154,7 @@ public class DvcMetadataService {
      * For optional fields, returns defaultValue on validation failure.
      */
     private String validateField(String fieldName, String value, String defaultValue) {
-        boolean isRequired = defaultValue == null;
+        boolean isRequired = (defaultValue == null);
 
         if (value == null || value.isBlank()) {
             if (isRequired) {
@@ -172,10 +172,10 @@ public class DvcMetadataService {
             case "DVC data version" -> validateDataVersion(trimmedValue, isRequired);
             case "Repository URL" -> validateUrl(trimmedValue, defaultValue, isRequired);
             case "Issues count" -> validateIssuesCount(trimmedValue, defaultValue, isRequired);
-            default ->
-                isRequired
-                        ? trimmedValue
-                        : (trimmedValue.length() > 1000 ? trimmedValue.substring(0, 1000) : trimmedValue);
+            default -> {
+                if (!isRequired && trimmedValue.length() > 1000) yield trimmedValue.substring(0, 1000);
+                yield trimmedValue;
+            }
         };
     }
 

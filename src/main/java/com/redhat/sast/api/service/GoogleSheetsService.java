@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.List;
 
@@ -65,7 +66,7 @@ public class GoogleSheetsService {
             }
 
             return values;
-        } catch (Exception e) {
+        } catch (GeneralSecurityException | IOException e) {
             LOGGER.error("Failed to read Google Sheet: {}", e.getMessage(), e);
             if (e.getMessage().contains("authentication")
                     || e.getMessage().contains("credentials")
@@ -108,7 +109,7 @@ public class GoogleSheetsService {
     /**
      * Creates an authenticated Sheets service instance.
      */
-    private Sheets createSheetsService() throws Exception {
+    private Sheets createSheetsService() throws IOException, GeneralSecurityException {
         GoogleCredentials credentials = ServiceAccountCredentials.fromStream(
                         new FileInputStream(serviceAccountSecretPath))
                 .createScoped(SCOPES);

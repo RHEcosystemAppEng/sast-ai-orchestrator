@@ -89,97 +89,123 @@ public class MlOpsNodeFilterEvalService {
     private Optional<MlOpsJobNodeFilterEval> parseFilterEval(String filterResultsJson, MlOpsJob job) {
         try {
             JsonNode root = objectMapper.readTree(filterResultsJson);
-
             MlOpsJobNodeFilterEval filterEval = new MlOpsJobNodeFilterEval();
             filterEval.setMlOpsJob(job);
 
-            // Extract FAISS stratified stats into individual columns
-            JsonNode faissStats = root.path("faiss_stratified_stats");
-            if (!faissStats.isMissingNode() && !faissStats.isNull()) {
-                JsonNode withExpected = faissStats.path("with_expected_matches");
-                if (!withExpected.isMissingNode()) {
-                    int withExpectedTotal = withExpected.path("total").asInt(0);
-                    int withExpectedFaissFound =
-                            withExpected.path("faiss_found_matches").asInt(0);
-
-                    // Validate non-negative totals
-                    if (withExpectedTotal < 0 || withExpectedFaissFound < 0) {
-                        LOGGER.warn(
-                                "Invalid negative values in with_expected_matches for job {}: total={}, faiss_found={}",
-                                job.getId(),
-                                withExpectedTotal,
-                                withExpectedFaissFound);
-                        return Optional.empty();
-                    }
-
-                    filterEval.setWithExpectedTotal(withExpectedTotal);
-                    filterEval.setWithExpectedFaissFound(withExpectedFaissFound);
-                    filterEval.setWithExpectedPercCorrect(extractBigDecimal(withExpected, "perc_correct"));
-                }
-
-                JsonNode withoutExpected = faissStats.path("without_expected_matches");
-                if (!withoutExpected.isMissingNode()) {
-                    int withoutExpectedTotal = withoutExpected.path("total").asInt(0);
-                    int withoutExpectedFaissFound =
-                            withoutExpected.path("faiss_found_matches").asInt(0);
-
-                    // Validate non-negative totals
-                    if (withoutExpectedTotal < 0 || withoutExpectedFaissFound < 0) {
-                        LOGGER.warn(
-                                "Invalid negative values in without_expected_matches for job {}: total={}, faiss_found={}",
-                                job.getId(),
-                                withoutExpectedTotal,
-                                withoutExpectedFaissFound);
-                        return Optional.empty();
-                    }
-
-                    filterEval.setWithoutExpectedTotal(withoutExpectedTotal);
-                    filterEval.setWithoutExpectedFaissFound(withoutExpectedFaissFound);
-                    filterEval.setWithoutExpectedPercCorrect(extractBigDecimal(withoutExpected, "perc_correct"));
-                }
+            // Parse stratified match statistics
+            if (!isValidStratifiedStats(root, filterEval, job)) {
+                return Optional.empty();
             }
 
-            // Extract performance metrics if available
-            JsonNode perf = root.path("perf");
-            if (!perf.isMissingNode()) {
-                int totalTokens = perf.path("total_tokens").asInt(0);
-                int llmCallCount = perf.path("llm_calls").asInt(0);
-
-                // Validate non-negative values
-                if (totalTokens < 0 || llmCallCount < 0) {
-                    LOGGER.warn(
-                            "Invalid negative performance metrics for job {}: tokens={}, llm_calls={}",
-                            job.getId(),
-                            totalTokens,
-                            llmCallCount);
-                    return Optional.empty();
-                }
-
-                filterEval.setTotalTokens(totalTokens);
-                filterEval.setLlmCallCount(llmCallCount);
-            } else {
-                filterEval.setTotalTokens(0);
-                filterEval.setLlmCallCount(0);
+            // Parse LLM token metrics
+            if (!isValidTokenMetrics(root, filterEval, job)) {
+                return Optional.empty();
             }
 
-            LOGGER.debug(
-                    "Parsed filter evaluation for job {}: with_expected_total={}, without_expected_total={}, tokens={}, llm_calls={}",
-                    job.getId(),
-                    filterEval.getWithExpectedTotal(),
-                    filterEval.getWithoutExpectedTotal(),
-                    filterEval.getTotalTokens(),
-                    filterEval.getLlmCallCount());
-
+            logParsedResults(filterEval, job);
             return Optional.of(filterEval);
-
         } catch (JsonProcessingException e) {
             LOGGER.error("Failed to parse filter evaluation JSON for job {}: {}", job.getId(), e.getMessage());
             LOGGER.debug("Problematic JSON: {}", filterResultsJson);
-            return Optional.empty();
         } catch (Exception e) {
             LOGGER.error("Unexpected error parsing filter evaluation for job {}: {}", job.getId(), e.getMessage(), e);
-            return Optional.empty();
         }
+        return Optional.empty();
+    }
+
+    private boolean isValidStratifiedStats(JsonNode root, MlOpsJobNodeFilterEval filterEval, MlOpsJob job) {
+        JsonNode faissStats = root.path("faiss_stratified_stats");
+        if (faissStats.isMissingNode() || faissStats.isNull()) {
+            return true; // Missing stratified stats is OK
+        }
+
+        return isValidExpectedSection(faissStats, filterEval, job)
+                && isValidUnexpectedSection(faissStats, filterEval, job);
+    }
+
+    private boolean isValidExpectedSection(JsonNode faissStats, MlOpsJobNodeFilterEval filterEval, MlOpsJob job) {
+        JsonNode withExpected = faissStats.path("with_expected_matches");
+        if (withExpected.isMissingNode()) {
+            return true; // Missing section is OK
+        }
+
+        int total = withExpected.path("total").asInt(0);
+        int faissFound = withExpected.path("faiss_found_matches").asInt(0);
+
+        if (validateNonNegativeCounts(total, faissFound, "with_expected_matches", job)) {
+            return false;
+        }
+
+        filterEval.setWithExpectedTotal(total);
+        filterEval.setWithExpectedFaissFound(faissFound);
+        filterEval.setWithExpectedPercCorrect(extractBigDecimal(withExpected, "perc_correct"));
+        return true;
+    }
+
+    private boolean isValidUnexpectedSection(JsonNode faissStats, MlOpsJobNodeFilterEval filterEval, MlOpsJob job) {
+        JsonNode withoutExpected = faissStats.path("without_expected_matches");
+        if (withoutExpected.isMissingNode()) {
+            return true; // Missing section is OK
+        }
+
+        int total = withoutExpected.path("total").asInt(0);
+        int faissFound = withoutExpected.path("faiss_found_matches").asInt(0);
+
+        if (validateNonNegativeCounts(total, faissFound, "without_expected_matches", job)) {
+            return false;
+        }
+
+        filterEval.setWithoutExpectedTotal(total);
+        filterEval.setWithoutExpectedFaissFound(faissFound);
+        filterEval.setWithoutExpectedPercCorrect(extractBigDecimal(withoutExpected, "perc_correct"));
+        return true;
+    }
+
+    private boolean isValidTokenMetrics(JsonNode root, MlOpsJobNodeFilterEval filterEval, MlOpsJob job) {
+        JsonNode perf = root.path("perf");
+        if (perf.isMissingNode()) {
+            // Set defaults when token metrics are missing
+            filterEval.setTotalTokens(0);
+            filterEval.setLlmCallCount(0);
+            return true;
+        }
+
+        int totalTokens = perf.path("total_tokens").asInt(0);
+        int llmCallCount = perf.path("llm_calls").asInt(0);
+
+        if (validateNonNegativeCounts(totalTokens, llmCallCount, "token metrics", job)) {
+            return false;
+        }
+
+        filterEval.setTotalTokens(totalTokens);
+        filterEval.setLlmCallCount(llmCallCount);
+        return true;
+    }
+
+    /**
+     * Validates that count values are non-negative.
+     */
+    private boolean validateNonNegativeCounts(int count1, int count2, String section, MlOpsJob job) {
+        if (count1 < 0 || count2 < 0) {
+            LOGGER.warn(
+                    "Invalid negative values in {} for job {}: first={}, second={}",
+                    section,
+                    job.getId(),
+                    count1,
+                    count2);
+            return true;
+        }
+        return false;
+    }
+
+    private void logParsedResults(MlOpsJobNodeFilterEval filterEval, MlOpsJob job) {
+        LOGGER.debug(
+                "Parsed filter evaluation for job {}: with_expected_total={}, without_expected_total={}, tokens={}, llm_calls={}",
+                job.getId(),
+                filterEval.getWithExpectedTotal(),
+                filterEval.getWithoutExpectedTotal(),
+                filterEval.getTotalTokens(),
+                filterEval.getLlmCallCount());
     }
 
     /**

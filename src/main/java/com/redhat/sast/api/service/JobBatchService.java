@@ -9,6 +9,7 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 
 import com.redhat.sast.api.enums.BatchStatus;
 import com.redhat.sast.api.enums.JobStatus;
+import com.redhat.sast.api.exceptions.SastAiConfigException;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.JobBatch;
 import com.redhat.sast.api.platform.PipelineParameterMapper;
@@ -109,7 +110,7 @@ public class JobBatchService {
 
             processJobs(batchId, jobDtos);
 
-        } catch (RuntimeException e) {
+        } catch (SastAiConfigException e) {
             LOGGER.error("Failed to process batch {}: {}", batchId, e.getMessage(), e);
             updateBatchStatusInNewTransaction(batchId, BatchStatus.FAILED, 0, 0, 0);
         }
@@ -123,7 +124,7 @@ public class JobBatchService {
         // Check if Google Service Account is available
         if (!googleSheetsService.isServiceAccountAvailable()) {
             LOGGER.error("Google Service Account authentication is not available for sheet: {}", googleSheetUrl);
-            throw new RuntimeException(
+            throw new SastAiConfigException(
                     "Google Service Account authentication is required but not available. Please check service account configuration.");
         }
 
@@ -133,10 +134,10 @@ public class JobBatchService {
             return csvJobParser.parse(processedInputContent, useKnownFalsePositiveFile);
         } catch (IOException e) {
             LOGGER.error("Google Sheets operation failed: {}", e.getMessage());
-            throw new RuntimeException("Google Sheets operation failed: " + e.getMessage(), e);
+            throw new SastAiConfigException("Google Sheets operation failed: " + e.getMessage(), e);
         } catch (Exception e) {
             LOGGER.error("Failed to read Google Sheet: {}", e.getMessage());
-            throw new RuntimeException("Failed to read Google Sheet: " + e.getMessage(), e);
+            throw new SastAiConfigException("Failed to read Google Sheet: " + e.getMessage(), e);
         }
     }
 

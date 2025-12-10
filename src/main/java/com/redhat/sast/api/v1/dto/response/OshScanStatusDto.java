@@ -61,6 +61,12 @@ public class OshScanStatusDto {
     private Instant processedAt;
 
     /**
+     * URL to the OSH task page.
+     */
+    @JsonProperty("oshTaskUrl")
+    private String oshTaskUrl;
+
+    /**
      * DTO representing retry information for an OSH scan.
      *
      * Contains details about retry attempts, failure reasons, and timing.

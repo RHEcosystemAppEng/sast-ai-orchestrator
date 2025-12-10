@@ -130,6 +130,7 @@ public class StatisticService {
         dto.setAssociatedJob(JobMapper.INSTANCE.jobToJobResponseDto(job));
         dto.setRetryInfo(null);
         dto.setProcessedAt(job.getCreatedAt());
+        dto.setOshTaskUrl(buildOshTaskUrl(job.getOshScanId()));
         return dto;
     }
 
@@ -138,7 +139,8 @@ public class StatisticService {
      */
     private OshScanStatusDto convertUncollectedScanToDto(OshUncollectedScan uncollectedScan) {
         OshScanStatusDto dto = new OshScanStatusDto();
-        dto.setOshScanId(String.valueOf(uncollectedScan.getOshScanId()));
+        String oshScanId = String.valueOf(uncollectedScan.getOshScanId());
+        dto.setOshScanId(oshScanId);
         dto.setPackageName(uncollectedScan.getPackageName());
         dto.setPackageNvr(uncollectedScan.getPackageNvr());
         dto.setStatus(STATUS_UNCOLLECTED);
@@ -152,6 +154,7 @@ public class StatisticService {
         dto.setRetryInfo(retryInfo);
 
         dto.setProcessedAt(uncollectedScan.getCreatedAt());
+        dto.setOshTaskUrl(buildOshTaskUrl(oshScanId));
         return dto;
     }
 
@@ -187,5 +190,15 @@ public class StatisticService {
         }
 
         return dataPoints;
+    }
+
+    /**
+     * Builds the OSH task URL for a given scan ID.
+     *
+     * @param oshScanId the OSH scan ID
+     * @return the full URL to the OSH task page
+     */
+    private String buildOshTaskUrl(String oshScanId) {
+        return String.format("%s/osh/task/%s", oshConfiguration.getBaseUrl(), oshScanId);
     }
 }

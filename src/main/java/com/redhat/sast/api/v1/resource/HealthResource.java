@@ -80,6 +80,7 @@ public class HealthResource {
     }
 
     private HealthResponseDto checkDatabaseHealth() {
+        String databaseLabel = "database";
         try {
             // Test database connectivity with a simple query
             try (var connection = dataSource.getConnection();
@@ -88,23 +89,24 @@ public class HealthResource {
 
                 if (resultSet.next() && resultSet.getInt(1) == 1) {
                     LOGGER.debug("Database health check passed");
-                    return HealthResponseDto.up("database");
+                    return HealthResponseDto.up(databaseLabel);
                 } else {
                     LOGGER.warn("Database health check failed - unexpected result");
-                    return HealthResponseDto.down("database", "Unexpected result from health query");
+                    return HealthResponseDto.down(databaseLabel, "Unexpected result from health query");
                 }
             }
         } catch (SQLException e) {
             LOGGER.error("Database health check failed", e);
-            return HealthResponseDto.down("database", e.getMessage());
+            return HealthResponseDto.down(databaseLabel, e.getMessage());
         } catch (Exception e) {
             LOGGER.error("Unexpected error during database health check", e);
-            return HealthResponseDto.down("database", e.getMessage());
+            return HealthResponseDto.down(databaseLabel, e.getMessage());
         }
     }
 
     private HealthResponseDto checkTektonHealth() {
         String namespace = this.namespace;
+        String tektonLabel = "tekton";
         try {
             // Test basic Tekton connectivity by listing pipelines in the namespace
             PipelineList pipelineList =
@@ -112,7 +114,7 @@ public class HealthResource {
 
             if (pipelineList == null) {
                 LOGGER.warn("Tekton health check: Pipelines list is null in namespace={}", namespace);
-                return HealthResponseDto.down("tekton", "Pipelines list is null");
+                return HealthResponseDto.down(tektonLabel, "Pipelines list is null");
             }
 
             try {
@@ -122,36 +124,37 @@ public class HealthResource {
 
                 if (pipelineRunList == null) {
                     LOGGER.warn("Tekton health check: PipelineRuns list is null in namespace={}", namespace);
-                    return HealthResponseDto.down("tekton", "PipelineRuns list is null");
+                    return HealthResponseDto.down(tektonLabel, "PipelineRuns list is null");
                 }
-                return HealthResponseDto.up("tekton");
+                return HealthResponseDto.up(tektonLabel);
 
             } catch (KubernetesClientException e) {
                 LOGGER.warn("Tekton health check: limited permissions in namespace={}", namespace, e);
-                return HealthResponseDto.up("tekton", "Limited Permissions");
+                return HealthResponseDto.up(tektonLabel, "Limited Permissions");
             }
         } catch (KubernetesClientException e) {
             LOGGER.error("Tekton health check: failed to list pipelines in namespace={}", namespace, e);
-            return HealthResponseDto.down("tekton", e.getMessage());
+            return HealthResponseDto.down(tektonLabel, e.getMessage());
         } catch (Exception e) {
             LOGGER.error("Tekton health check: general failure in namespace={}", namespace, e);
-            return HealthResponseDto.down("tekton", e.getMessage());
+            return HealthResponseDto.down(tektonLabel, e.getMessage());
         }
     }
 
     private HealthResponseDto checkGoogleServiceAccountHealth() {
+        String serviceAccountLabel = "google-service-account";
         try {
             if (googleSheetsService.isServiceAccountAvailable()) {
                 LOGGER.debug("Google service account is available");
-                return HealthResponseDto.up("google-service-account", "Service account available");
+                return HealthResponseDto.up(serviceAccountLabel, "Service account available");
             } else {
                 LOGGER.warn("Google service account is not available - batch functionality will fail");
                 return HealthResponseDto.down(
-                        "google-service-account", "Service account not available - required for batch functionality");
+                        serviceAccountLabel, "Service account not available - required for batch functionality");
             }
         } catch (Exception e) {
             LOGGER.error("Google service account health check failed", e);
-            return HealthResponseDto.down("google-service-account", e.getMessage());
+            return HealthResponseDto.down(serviceAccountLabel, e.getMessage());
         }
     }
 }

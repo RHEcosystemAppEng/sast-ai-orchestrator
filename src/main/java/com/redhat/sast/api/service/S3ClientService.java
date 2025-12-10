@@ -6,6 +6,8 @@ import java.util.Optional;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import com.redhat.sast.api.common.constants.MlOpsConstants;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -71,10 +73,10 @@ public class S3ClientService {
             LOGGER.warn(
                     "S3 configuration incomplete - token metrics download from S3 will be disabled. "
                             + "Endpoint: {}, Bucket: {}, AccessKey: {}, SecretKey: {}",
-                    s3EndpointUrl.orElse("NOT_SET"),
-                    s3BucketName.orElse("NOT_SET"),
-                    s3AccessKey.isPresent() ? "SET" : "NOT_SET",
-                    s3SecretKey.isPresent() ? "SET" : "NOT_SET");
+                    s3EndpointUrl.orElse(MlOpsConstants.VALUE_NOT_SET),
+                    s3BucketName.orElse(MlOpsConstants.VALUE_NOT_SET),
+                    s3AccessKey.isPresent() ? "SET" : MlOpsConstants.VALUE_NOT_SET,
+                    s3SecretKey.isPresent() ? "SET" : MlOpsConstants.VALUE_NOT_SET);
             this.s3Client = null;
         }
     }
@@ -106,7 +108,7 @@ public class S3ClientService {
             return null;
         }
 
-        if (!s3BucketName.isPresent()) {
+        if (s3BucketName.isEmpty()) {
             LOGGER.error("S3 bucket name not configured");
             return null;
         }

@@ -250,35 +250,59 @@ public class OshScheduler {
 
         String message = exception.getMessage() != null ? exception.getMessage().toLowerCase() : "";
 
-        if (exception instanceof java.io.IOException
-                && (message.contains("connection") || message.contains("timeout"))) {
+        if (isNetworkError(exception, message)) {
             return OshFailureReason.OSH_METADATA_NETWORK_ERROR;
         }
 
-        if (exception instanceof JsonProcessingException || message.contains("json") || message.contains("parsing")) {
+        if (isParseError(exception, message)) {
             return OshFailureReason.OSH_METADATA_PARSE_ERROR;
         }
 
-        if ((exception instanceof IllegalArgumentException || exception instanceof IllegalStateException)
-                && (message.contains("invalid") || message.contains("missing"))) {
+        if (isScanDataError(exception, message)) {
             return OshFailureReason.SCAN_DATA_ERROR;
         }
 
-        if (exception instanceof jakarta.persistence.PersistenceException
-                || message.contains("database")
-                || message.contains("constraint")) {
+        if (isDatabaseError(exception, message)) {
             return OshFailureReason.DATABASE_ERROR;
         }
 
-        if (message.contains("http") || message.contains("api") || message.contains("osh")) {
+        if (isOshApiError(message)) {
             return OshFailureReason.OSH_API_ERROR;
         }
 
-        if (message.contains("job") || message.contains("creation")) {
+        if (isJobCreationError(message)) {
             return OshFailureReason.JOB_CREATION_ERROR;
         }
 
         return OshFailureReason.UNKNOWN_ERROR;
+    }
+
+    private boolean isNetworkError(Exception exception, String message) {
+        return exception instanceof java.io.IOException
+                && (message.contains("connection") || message.contains("timeout"));
+    }
+
+    private boolean isParseError(Exception exception, String message) {
+        return exception instanceof JsonProcessingException || message.contains("json") || message.contains("parsing");
+    }
+
+    private boolean isScanDataError(Exception exception, String message) {
+        return (exception instanceof IllegalArgumentException || exception instanceof IllegalStateException)
+                && (message.contains("invalid") || message.contains("missing"));
+    }
+
+    private boolean isDatabaseError(Exception exception, String message) {
+        return exception instanceof jakarta.persistence.PersistenceException
+                || message.contains("database")
+                || message.contains("constraint");
+    }
+
+    private boolean isOshApiError(String message) {
+        return message.contains("http") || message.contains("api") || message.contains("osh");
+    }
+
+    private boolean isJobCreationError(String message) {
+        return message.contains("job") || message.contains("creation");
     }
 
     private void logCombinedResults(ProcessingResults incrementalResults, ProcessingResults retryResults) {

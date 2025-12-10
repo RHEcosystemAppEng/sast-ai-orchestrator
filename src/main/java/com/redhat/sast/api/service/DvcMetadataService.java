@@ -173,9 +173,7 @@ public class DvcMetadataService {
             case "Repository URL" -> validateUrl(trimmedValue, defaultValue, isRequired);
             case "Issues count" -> validateIssuesCount(trimmedValue, defaultValue, isRequired);
             default -> {
-                if (!isRequired) {
-                    if (trimmedValue.length() > 1000) yield trimmedValue.substring(0, 1000);
-                }
+                if (!isRequired && trimmedValue.length() > 1000) yield trimmedValue.substring(0, 1000);
                 yield trimmedValue;
             }
         };

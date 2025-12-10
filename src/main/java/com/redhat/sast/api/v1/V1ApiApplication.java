@@ -3,7 +3,6 @@ package com.redhat.sast.api.v1;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.redhat.sast.api.v1.resource.ConfigurationResource;
 import com.redhat.sast.api.v1.resource.DashboardResource;
 import com.redhat.sast.api.v1.resource.HealthResource;
 import com.redhat.sast.api.v1.resource.JobBatchResource;
@@ -30,7 +29,6 @@ public class V1ApiApplication extends Application {
         resources.add(DashboardResource.class);
         resources.add(OshAdminResource.class);
         resources.add(MlOpsBatchResource.class);
-        resources.add(ConfigurationResource.class);
 
         // Add any v1-specific providers (exception mappers, etc.)
         // resources.add(V1ExceptionMapper.class);

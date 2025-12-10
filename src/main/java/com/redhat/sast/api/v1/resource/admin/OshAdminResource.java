@@ -48,6 +48,7 @@ public class OshAdminResource {
     private static final int MIN_QUEUE_LIMIT = 1;
     private static final int MAX_QUEUE_LIMIT = 200;
     private static final String DEFAULT_SORT_BY = "created";
+    private static final String DATABASE_ERROR_OCCURRED = "Database error occurred";
 
     @Inject
     OshRetryService oshRetryService;
@@ -87,7 +88,7 @@ public class OshAdminResource {
         } catch (jakarta.persistence.PersistenceException e) {
             LOGGER.error("Database error retrieving OSH status: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Database error occurred")
+                    .entity(DATABASE_ERROR_OCCURRED)
                     .build();
         } catch (Exception e) {
             LOGGER.error("Unexpected error retrieving OSH status: {}", e.getMessage(), e);
@@ -125,7 +126,7 @@ public class OshAdminResource {
         } catch (jakarta.persistence.PersistenceException e) {
             LOGGER.error("Database error retrieving OSH scans: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Database error occurred")
+                    .entity(DATABASE_ERROR_OCCURRED)
                     .build();
         } catch (Exception e) {
             LOGGER.error("Unexpected error retrieving OSH scans: {}", e.getMessage(), e);
@@ -152,7 +153,7 @@ public class OshAdminResource {
         } catch (jakarta.persistence.PersistenceException e) {
             LOGGER.error("Database error retrieving retry statistics: {}", e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Database error occurred")
+                    .entity(DATABASE_ERROR_OCCURRED)
                     .build();
         } catch (Exception e) {
             LOGGER.error("Unexpected error retrieving retry statistics: {}", e.getMessage(), e);

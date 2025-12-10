@@ -44,21 +44,9 @@ public class MlOpsJobService {
             job.setStatus(newStatus);
 
             switch (newStatus) {
-                case RUNNING -> {
-                    if (job.getStartedAt() == null) {
-                        job.setStartedAt(LocalDateTime.now());
-                    }
-                }
-                case CANCELLED -> {
-                    if (job.getCancelledAt() == null) {
-                        job.setCancelledAt(LocalDateTime.now());
-                    }
-                }
-                case COMPLETED, FAILED -> {
-                    if (job.getCompletedAt() == null) {
-                        job.setCompletedAt(LocalDateTime.now());
-                    }
-                }
+                case RUNNING -> setStartedTimestamp(job);
+                case CANCELLED -> setCancelledTimestamp(job);
+                case COMPLETED, FAILED -> setCompletedTimestamp(job);
                 case PENDING, SCHEDULED -> {
                     // No timestamp updates needed for these states
                 }
@@ -87,6 +75,24 @@ public class MlOpsJobService {
 
     public MlOpsJob getJobEntityById(@Nonnull Long jobId) {
         return mlOpsJobRepository.findById(jobId);
+    }
+
+    private void setStartedTimestamp(MlOpsJob job) {
+        if (job.getStartedAt() == null) {
+            job.setStartedAt(LocalDateTime.now());
+        }
+    }
+
+    private void setCancelledTimestamp(MlOpsJob job) {
+        if (job.getCancelledAt() == null) {
+            job.setCancelledAt(LocalDateTime.now());
+        }
+    }
+
+    private void setCompletedTimestamp(MlOpsJob job) {
+        if (job.getCompletedAt() == null) {
+            job.setCompletedAt(LocalDateTime.now());
+        }
     }
 
     private boolean isValidStatusTransition(JobStatus from, JobStatus to) {

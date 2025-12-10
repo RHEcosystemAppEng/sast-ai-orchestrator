@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.redhat.sast.api.service.PackageService;
 import com.redhat.sast.api.v1.dto.response.JobResponseDto;
+import com.redhat.sast.api.v1.dto.response.MonitoredPackageWithScansDto;
 import com.redhat.sast.api.v1.dto.response.PackageSummaryDto;
 
 import jakarta.inject.Inject;
@@ -56,6 +57,19 @@ public class PackageResource {
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("Error retrieving package jobs: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/monitored-with-scans")
+    public Response getMonitoredPackagesWithScans() {
+        try {
+            List<MonitoredPackageWithScansDto> packages = packageService.getMonitoredPackagesWithScans();
+            return Response.ok(packages).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Error retrieving monitored packages with scans: " + e.getMessage())
                     .build();
         }
     }

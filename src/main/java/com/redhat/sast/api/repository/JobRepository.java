@@ -1,7 +1,9 @@
 package com.redhat.sast.api.repository;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import com.redhat.sast.api.enums.JobStatus;
@@ -95,5 +97,82 @@ public class JobRepository implements PanacheRepository<Job> {
      */
     public long countByStatusInTimeWindow(JobStatus status, Instant startTime, Instant endTime) {
         return count("status = ?1 AND createdAt >= ?2 AND createdAt < ?3", status, startTime, endTime);
+    }
+
+    /**
+     * Gets OSH scan statistics grouped by package name.
+     * Returns a map with package names as keys and OshScanStats objects containing:
+     * - Total OSH scan count
+     * - Last OSH scan date
+     * - Completed OSH scans count
+     * - Failed OSH scans count
+     *
+     * @return Map of package name to OshScanStats
+     */
+    public Map<String, OshScanStats> getOshScanStatsByPackage() {
+        List<Object[]> results = getEntityManager()
+                .createQuery(
+                        """
+                        SELECT
+                            j.packageName,
+                            COUNT(j),
+                            MAX(j.createdAt),
+                            SUM(CASE WHEN j.status = 'COMPLETED' THEN 1 ELSE 0 END),
+                            SUM(CASE WHEN j.status = 'FAILED' THEN 1 ELSE 0 END)
+                        FROM Job j
+                        WHERE j.oshScanId IS NOT NULL AND j.packageName IS NOT NULL
+                        GROUP BY j.packageName
+                        """,
+                        Object[].class)
+                .getResultList();
+
+        Map<String, OshScanStats> statsMap = new HashMap<>();
+        for (Object[] row : results) {
+            String packageName = (String) row[0];
+            Long scanCount = (Long) row[1];
+            Instant lastScanDate = (Instant) row[2];
+            Long completedScans = (Long) row[3];
+            Long failedScans = (Long) row[4];
+
+            statsMap.put(
+                    packageName,
+                    new OshScanStats(
+                            scanCount.intValue(), lastScanDate, completedScans.intValue(), failedScans.intValue()));
+        }
+
+        return statsMap;
+    }
+
+    /**
+     * Data class to hold OSH scan statistics for a package.
+     */
+    public static class OshScanStats {
+        private final int scanCount;
+        private final Instant lastScanDate;
+        private final int completedScans;
+        private final int failedScans;
+
+        public OshScanStats(int scanCount, Instant lastScanDate, int completedScans, int failedScans) {
+            this.scanCount = scanCount;
+            this.lastScanDate = lastScanDate;
+            this.completedScans = completedScans;
+            this.failedScans = failedScans;
+        }
+
+        public int getScanCount() {
+            return scanCount;
+        }
+
+        public Instant getLastScanDate() {
+            return lastScanDate;
+        }
+
+        public int getCompletedScans() {
+            return completedScans;
+        }
+
+        public int getFailedScans() {
+            return failedScans;
+        }
     }
 }

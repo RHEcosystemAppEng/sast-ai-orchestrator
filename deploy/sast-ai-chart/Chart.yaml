@@ -2,8 +2,8 @@ apiVersion: v2
 name: sast-ai
 description: A Helm chart for SAST AI - Static Application Security Testing with AI
 type: application
-version: 1.0.1
-appVersion: 1.0.1
+version: 1.0.2
+appVersion: 1.0.2
 keywords:
   - sast
   - security

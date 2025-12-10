@@ -131,6 +131,9 @@ public class OshClientService {
                 case "arch" -> response.setArch(value);
                 case "channel" -> response.setChannel(value);
                 case "label" -> parseComponentFromLabel(value, response);
+                default -> {
+                    /* Unknown field - already stored in rawData */
+                }
             }
         });
         response.setRawData(rawData);

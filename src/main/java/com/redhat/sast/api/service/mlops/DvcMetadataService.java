@@ -213,17 +213,16 @@ public class DvcMetadataService {
         }
 
         // Accept semantic versioning (v1.0.0, 1.0.0) or custom formats (dev-123, feature-abc)
-        if (!version.matches(
-                "^(v?\\d+\\.\\d+\\.\\d+(?:-[a-zA-Z0-9]+)?(?:\\+[a-zA-Z0-9]+)?|[a-zA-Z][a-zA-Z0-9_-]{0,49}|\\d{4}-\\d{2}-\\d{2})$")) {
-            String errorMsg = String.format(
-                    "Invalid DVC data version format: '%s' - expected semantic version (v1.0.0) or valid identifier",
-                    version);
-            if (isRequired) {
-                throw new IllegalStateException(errorMsg);
-            }
-            return null;
+        if (isValidDataVersion(version)) {
+            return version;
         }
-        return version;
+        String errorMsg = String.format(
+                "Invalid DVC data version format: '%s' - expected semantic version (v1.0.0) or valid identifier",
+                version);
+        if (isRequired) {
+            throw new IllegalStateException(errorMsg);
+        }
+        return null;
     }
 
     private String validateUrl(String url, String defaultValue, boolean isRequired) {
@@ -254,6 +253,40 @@ public class DvcMetadataService {
             }
             return defaultValue;
         }
+    }
+
+    /**
+     * Validates data version format using simpler, more readable logic
+     * Accepts: semantic versions (v1.0.0, 1.0.0), custom identifiers (dev-123), dates (2024-01-01)
+     */
+    private boolean isValidDataVersion(String version) {
+        // Check for semantic version (v1.0.0 or 1.0.0)
+        if (isSemanticVersion(version)) {
+            return true;
+        }
+
+        // Check for date format (YYYY-MM-DD)
+        if (isDateFormat(version)) {
+            return true;
+        }
+
+        // Check for custom identifier (starts with letter, up to 50 chars)
+        return isCustomIdentifier(version);
+    }
+
+    private boolean isSemanticVersion(String version) {
+        // Simple semantic version: optional 'v' + major.minor.patch + optional pre-release + optional build
+        return version.matches("^v?\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9]+)?(\\+[a-zA-Z0-9]+)?$");
+    }
+
+    private boolean isDateFormat(String version) {
+        // Simple date format: YYYY-MM-DD
+        return version.matches("^\\d{4}-\\d{2}-\\d{2}$");
+    }
+
+    private boolean isCustomIdentifier(String version) {
+        // Custom identifier: starts with letter, contains letters/numbers/underscore/hyphen, max 50 chars
+        return version.matches("^[a-zA-Z][a-zA-Z0-9_-]{0,49}$");
     }
 
     private boolean isValidUrl(@Nonnull String url) {

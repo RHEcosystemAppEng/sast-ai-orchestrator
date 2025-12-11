@@ -1,4 +1,4 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.mlops;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.sast.api.model.MlOpsJob;
 import com.redhat.sast.api.model.MlOpsJobNodeFilterEval;
-import com.redhat.sast.api.repository.MlOpsJobNodeFilterEvalRepository;
+import com.redhat.sast.api.repository.mlops.MlOpsJobNodeFilterEvalRepository;
 
 import io.fabric8.tekton.v1.PipelineRun;
 import jakarta.enterprise.context.ApplicationScoped;

@@ -1,10 +1,10 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.mlops;
 
 import java.time.LocalDateTime;
 
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.MlOpsJob;
-import com.redhat.sast.api.repository.MlOpsJobRepository;
+import com.redhat.sast.api.repository.mlops.MlOpsJobRepository;
 
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;

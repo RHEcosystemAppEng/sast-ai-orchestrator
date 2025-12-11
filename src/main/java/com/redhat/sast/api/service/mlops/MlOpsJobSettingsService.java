@@ -1,4 +1,4 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.mlops;
 
 import java.util.List;
 import java.util.Optional;
@@ -6,7 +6,7 @@ import java.util.Optional;
 import com.redhat.sast.api.common.constants.ApplicationConstants;
 import com.redhat.sast.api.model.MlOpsJob;
 import com.redhat.sast.api.model.MlOpsJobSettings;
-import com.redhat.sast.api.repository.MlOpsJobRepository;
+import com.redhat.sast.api.repository.mlops.MlOpsJobRepository;
 
 import io.fabric8.tekton.v1.Param;
 import io.fabric8.tekton.v1.PipelineRun;

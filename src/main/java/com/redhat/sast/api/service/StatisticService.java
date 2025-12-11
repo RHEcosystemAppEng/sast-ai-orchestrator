@@ -13,7 +13,7 @@ import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.repository.JobBatchRepository;
 import com.redhat.sast.api.repository.JobRepository;
-import com.redhat.sast.api.repository.OshUncollectedScanRepository;
+import com.redhat.sast.api.repository.osh.OshUncollectedScanRepository;
 import com.redhat.sast.api.v1.dto.response.DashboardSummaryDto;
 import com.redhat.sast.api.v1.dto.response.JobActivityDataPointDto;
 import com.redhat.sast.api.v1.dto.response.OshScanStatusDto;

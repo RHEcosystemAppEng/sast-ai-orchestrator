@@ -10,8 +10,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.sast.api.config.OshConfiguration;
 import com.redhat.sast.api.enums.OshFailureReason;
 import com.redhat.sast.api.model.OshUncollectedScan;
-import com.redhat.sast.api.repository.OshRetryStatisticsRepository;
-import com.redhat.sast.api.repository.OshUncollectedScanRepository;
+import com.redhat.sast.api.repository.osh.OshRetryStatisticsRepository;
+import com.redhat.sast.api.repository.osh.OshUncollectedScanRepository;
 import com.redhat.sast.api.v1.dto.osh.OshScanDto;
 
 import io.quarkus.scheduler.Scheduled;

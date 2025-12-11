@@ -1,4 +1,4 @@
-package com.redhat.sast.api.dto;
+package com.redhat.sast.api.v1.dto.request;
 
 /**
  * DTO for DVC artifact metadata

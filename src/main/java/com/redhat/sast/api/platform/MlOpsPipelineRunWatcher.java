@@ -4,15 +4,16 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import com.redhat.sast.api.enums.JobStatus;
-import com.redhat.sast.api.service.MlOpsExcelReportService;
-import com.redhat.sast.api.service.MlOpsJobService;
-import com.redhat.sast.api.service.MlOpsJobSettingsService;
-import com.redhat.sast.api.service.MlOpsMetricsService;
-import com.redhat.sast.api.service.MlOpsNodeFilterEvalService;
-import com.redhat.sast.api.service.MlOpsNodeJudgeEvalService;
-import com.redhat.sast.api.service.MlOpsNodeSummaryEvalService;
-import com.redhat.sast.api.service.MlOpsTokenMetricsService;
+import com.redhat.sast.api.service.mlops.MlOpsExcelReportService;
+import com.redhat.sast.api.service.mlops.MlOpsJobService;
+import com.redhat.sast.api.service.mlops.MlOpsJobSettingsService;
+import com.redhat.sast.api.service.mlops.MlOpsMetricsService;
+import com.redhat.sast.api.service.mlops.MlOpsNodeFilterEvalService;
+import com.redhat.sast.api.service.mlops.MlOpsNodeJudgeEvalService;
+import com.redhat.sast.api.service.mlops.MlOpsNodeSummaryEvalService;
+import com.redhat.sast.api.service.mlops.MlOpsTokenMetricsService;
 
+import com.redhat.sast.api.service.mlops.MlOpsBatchService;
 import io.fabric8.knative.pkg.apis.Condition;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.WatcherException;
@@ -198,7 +199,7 @@ public class MlOpsPipelineRunWatcher implements Watcher<PipelineRun> {
         try {
             mlOpsJobService.updateJobStatus(jobId, JobStatus.COMPLETED);
             // Increment batch completed jobs counter
-            if (mlOpsBatchService instanceof com.redhat.sast.api.service.MlOpsBatchService batchSvc) {
+            if (mlOpsBatchService instanceof MlOpsBatchService batchSvc) {
                 batchSvc.incrementBatchCompletedJobs(batchId);
             }
         } catch (Exception e) {
@@ -223,7 +224,7 @@ public class MlOpsPipelineRunWatcher implements Watcher<PipelineRun> {
             if (condition.getReason() == null || !condition.getReason().equalsIgnoreCase("Cancelled")) {
                 mlOpsJobService.updateJobStatus(jobId, JobStatus.FAILED);
                 // Increment batch failed jobs counter
-                if (mlOpsBatchService instanceof com.redhat.sast.api.service.MlOpsBatchService batchSvc) {
+                if (mlOpsBatchService instanceof MlOpsBatchService batchSvc) {
                     batchSvc.incrementBatchFailedJobs(batchId);
                 }
             }

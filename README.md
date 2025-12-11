@@ -10,7 +10,7 @@
 [![CodeQL](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/codeql.yml/badge.svg)](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/codeql.yml)
 [![Build Dev Image](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/build-dev-image.yml/badge.svg)](https://github.com/RHEcosystemAppEng/sast-ai-orchestrator/actions/workflows/build-dev-image.yml)
 
-Java Quarkus REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosystemAppEng/sast-ai-workflow) security scanning Tekton pipelines.
+Orchestrator REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosystemAppEng/sast-ai-workflow) security scanning Red Hat OpenShift pipelines.
 
 ## API Endpoints
 
@@ -484,11 +484,5 @@ quarkus.datasource.password=quarkus
 sast.ai.workflow.namespace=sast-ai
 quarkus.kubernetes-client.trust-certs=false
 ```
-
----
-
-<div align="center">
-  <sub>Built with ❤️ by the Red Hat Ecosystem App Engineering Team</sub>
-</div>
 
 

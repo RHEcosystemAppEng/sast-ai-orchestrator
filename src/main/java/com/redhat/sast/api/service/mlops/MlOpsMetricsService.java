@@ -1,4 +1,4 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.mlops;
 
 import java.math.BigDecimal;
 
@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.sast.api.model.MlOpsJob;
 import com.redhat.sast.api.model.MlOpsJobMetrics;
-import com.redhat.sast.api.repository.MlOpsJobMetricsRepository;
+import com.redhat.sast.api.repository.mlops.MlOpsJobMetricsRepository;
 
 import io.fabric8.tekton.v1.ParamValue;
 import io.fabric8.tekton.v1.PipelineRun;

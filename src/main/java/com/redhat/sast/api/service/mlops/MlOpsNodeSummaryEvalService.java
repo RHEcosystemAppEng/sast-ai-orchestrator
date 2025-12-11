@@ -1,11 +1,11 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.mlops;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.sast.api.model.MlOpsJob;
 import com.redhat.sast.api.model.MlOpsJobNodeSummaryEval;
-import com.redhat.sast.api.repository.MlOpsJobNodeSummaryEvalRepository;
+import com.redhat.sast.api.repository.mlops.MlOpsJobNodeSummaryEvalRepository;
 import com.redhat.sast.api.util.JsonParsingUtils;
 
 import io.fabric8.tekton.v1.PipelineRun;

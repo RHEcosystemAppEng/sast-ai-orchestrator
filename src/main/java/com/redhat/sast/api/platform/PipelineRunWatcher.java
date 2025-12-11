@@ -3,8 +3,8 @@ package com.redhat.sast.api.platform;
 import java.util.concurrent.CompletableFuture;
 
 import com.redhat.sast.api.enums.JobStatus;
-import com.redhat.sast.api.service.DataArtifactService;
-import com.redhat.sast.api.service.DvcMetadataService;
+import com.redhat.sast.api.service.mlops.DataArtifactService;
+import com.redhat.sast.api.service.mlops.DvcMetadataService;
 import com.redhat.sast.api.service.JobService;
 
 import io.fabric8.knative.pkg.apis.Condition;

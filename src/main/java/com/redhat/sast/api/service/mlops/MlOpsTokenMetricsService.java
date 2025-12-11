@@ -1,4 +1,4 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.mlops;
 
 import java.math.BigDecimal;
 
@@ -6,8 +6,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.sast.api.model.MlOpsJob;
 import com.redhat.sast.api.model.MlOpsJobTokenUsage;
-import com.redhat.sast.api.repository.MlOpsJobTokenUsageRepository;
+import com.redhat.sast.api.repository.mlops.MlOpsJobTokenUsageRepository;
 
+import com.redhat.sast.api.service.S3ClientService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;

@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import com.redhat.sast.api.service.mlops.*;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
@@ -285,7 +286,7 @@ public class PlatformService {
             LOGGER.error("Error watching MLOps PipelineRun {} for job ID: {}", pipelineRunName, jobId, e);
             mlOpsJobService.updateJobStatus(jobId, com.redhat.sast.api.enums.JobStatus.FAILED);
             // Update batch counter if service provided
-            if (mlOpsBatchServiceParam instanceof com.redhat.sast.api.service.MlOpsBatchService batchSvc) {
+            if (mlOpsBatchServiceParam instanceof MlOpsBatchService batchSvc) {
                 batchSvc.incrementBatchFailedJobs(batchId);
             }
         }

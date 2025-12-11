@@ -1,9 +1,10 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.mlops;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.redhat.sast.api.service.S3ClientService;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -12,7 +13,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import com.redhat.sast.api.model.MlOpsJob;
 import com.redhat.sast.api.model.MlOpsJobFinding;
-import com.redhat.sast.api.repository.MlOpsJobFindingRepository;
+import com.redhat.sast.api.repository.mlops.MlOpsJobFindingRepository;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;

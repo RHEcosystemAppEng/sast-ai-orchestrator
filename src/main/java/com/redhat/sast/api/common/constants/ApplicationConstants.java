@@ -7,9 +7,7 @@ import java.util.function.Predicate;
  */
 public final class ApplicationConstants {
 
-    private ApplicationConstants() {
-        // Utility class - prevent instantiation
-    }
+    private ApplicationConstants() {}
 
     public static final String DEFAULT_SECRET_NAME = "sast-ai-default-llm-creds";
 

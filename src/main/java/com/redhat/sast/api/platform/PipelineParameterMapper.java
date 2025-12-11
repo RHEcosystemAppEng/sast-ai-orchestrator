@@ -450,8 +450,7 @@ public class PipelineParameterMapper {
         return ApplicationConstants.DEFAULT_SECRET_NAME;
     }
 
-    private void addMainLlmParameters(
-            List<Param> result, MlOpsJobSettings settings, LlmSecretValues secrets) {
+    private void addMainLlmParameters(List<Param> result, MlOpsJobSettings settings, LlmSecretValues secrets) {
         result.add(createParam(PARAM_LLM_URL, secrets.llmUrl()));
         result.add(createParam(PARAM_LLM_API_KEY, secrets.llmApiKey()));
 

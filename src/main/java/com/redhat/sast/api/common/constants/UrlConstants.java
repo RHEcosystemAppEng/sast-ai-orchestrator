@@ -5,9 +5,7 @@ package com.redhat.sast.api.common.constants;
  */
 public final class UrlConstants {
 
-    private UrlConstants() {
-        // Utility class - prevent instantiation
-    }
+    private UrlConstants() {}
 
     // Known false positives URL components
     public static final String KNOWN_FALSE_POSITIVES_BASE_URL =

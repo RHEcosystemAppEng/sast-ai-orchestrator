@@ -74,9 +74,8 @@ public record RetryConfiguration(
         // Calculate exponential backoff: baseDelay * (multiplier ^ (attempt-1))
         long exponentialDelay = Math.round(baseDelayMs * Math.pow(multiplier, attempt - 1));
 
-        // Add jitter to prevent thundering herd: delay * (1 ± random jitterFactor)
-        // Using ThreadLocalRandom for better performance and Sonar compliance
-        double jitter = 1.0 + ThreadLocalRandom.current().nextDouble(-1.0, 1.0) * jitterFactor;
+        // Add jitter to prevent thundering herd: delay * (1 ± jitterFactor)
+        double jitter = 1.0 + (Math.random() - 0.5) * 2 * jitterFactor; // NOSONAR
         long delayWithJitter = Math.round(exponentialDelay * jitter);
 
         return Math.min(delayWithJitter, maxDelayMs);

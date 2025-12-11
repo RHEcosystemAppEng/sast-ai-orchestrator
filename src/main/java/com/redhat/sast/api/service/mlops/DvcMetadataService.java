@@ -257,7 +257,7 @@ public class DvcMetadataService {
     }
 
     private boolean isValidUrl(@Nonnull String url) {
-        return url.matches("^(https?://|git@)[\\w.-]+[/:][\\w./_-]*$");
+        return url.matches("^(https?://|git@)[\\w-]+(\\.[\\w-]+)*[/:][\\w./_-]*$");
     }
 
     private void saveDataArtifact(@Nonnull DvcMetadata dvcMetadata) {

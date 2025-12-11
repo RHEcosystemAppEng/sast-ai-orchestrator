@@ -83,11 +83,45 @@ public class DvcService {
             throw new IllegalArgumentException("DVC version too long (max 100 characters): " + displayVersion);
         }
 
-        if (!version.matches(
-                "^(v?\\d+\\.\\d+\\.\\d+(?:-[a-zA-Z0-9]+)?(?:\\+[a-zA-Z0-9]+)?|[a-zA-Z][a-zA-Z0-9_-]{0,49}|\\d{4}-\\d{2}-\\d{2})$")) {
-            throw new IllegalArgumentException("Invalid DVC version format: '" + version
-                    + "' - expected semantic version (v1.0.0) or valid identifier");
+        if (isValidDvcVersion(version)) {
+            return;
         }
+        throw new IllegalArgumentException("Invalid DVC version format: '" + version
+                + "' - expected semantic version (v1.0.0) or valid identifier");
+    }
+
+    /**
+     * Validates DVC version format using simpler, more readable logic
+     * Accepts: semantic versions (v1.0.0, 1.0.0), custom identifiers (dev-123), dates (2024-01-01)
+     */
+    private boolean isValidDvcVersion(String version) {
+        // Check for semantic version (v1.0.0 or 1.0.0)
+        if (isSemanticVersionFormat(version)) {
+            return true;
+        }
+
+        // Check for date format (YYYY-MM-DD)
+        if (isDateVersionFormat(version)) {
+            return true;
+        }
+
+        // Check for custom identifier (starts with letter, up to 50 chars)
+        return isCustomVersionIdentifier(version);
+    }
+
+    private boolean isSemanticVersionFormat(String version) {
+        // Simple semantic version: optional 'v' + major.minor.patch + optional pre-release + optional build
+        return version.matches("^v?\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9]+)?(\\+[a-zA-Z0-9]+)?$");
+    }
+
+    private boolean isDateVersionFormat(String version) {
+        // Simple date format: YYYY-MM-DD
+        return version.matches("^\\d{4}-\\d{2}-\\d{2}$");
+    }
+
+    private boolean isCustomVersionIdentifier(String version) {
+        // Custom identifier: starts with letter, contains letters/numbers/underscore/hyphen, max 50 chars
+        return version.matches("^[a-zA-Z][a-zA-Z0-9_-]{0,49}$");
     }
 
     /**

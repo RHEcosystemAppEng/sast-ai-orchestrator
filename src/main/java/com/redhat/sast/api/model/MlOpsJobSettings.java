@@ -28,6 +28,10 @@ public class MlOpsJobSettings {
     @Column(name = "llm_model_name")
     private String llmModelName;
 
+    /**
+     * LLM API provider type (e.g., "openai", "nim", "azure", "anthropic", "google", "bedrock").
+     * Falls back to secret value if not specified, or defaults to "openai" if both are empty.
+     */
     @Column(name = "llm_api_type")
     private String llmApiType;
 

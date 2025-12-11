@@ -1,5 +1,6 @@
 package com.redhat.sast.api.service;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -7,6 +8,7 @@ import java.util.Optional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.sast.api.common.constants.MlOpsConstants;
+import com.redhat.sast.api.config.RetryConfiguration;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -18,7 +20,6 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 /**
  * Service for interacting with S3/MinIO storage.
@@ -83,99 +84,70 @@ public class S3ClientService {
 
     /**
      * Downloads a file from S3 as a String.
-     * Retries up to 3 times with exponential backoff to handle timing issues
-     * where files may not be uploaded yet.
+     * Uses exponential backoff with jitter retry algorithm optimized for file operations.
      *
      * @param s3Key The S3 object key (path)
-     * @return The file content as a String, or null if download failed
+     * @return The file content as a String, or empty string if download failed
      */
     public String downloadFileAsString(String s3Key) {
         byte[] bytes = downloadFileAsBytes(s3Key);
-        return bytes != null ? new String(bytes, StandardCharsets.UTF_8) : null;
+        return bytes.length > 0 ? new String(bytes, StandardCharsets.UTF_8) : "";
     }
 
     /**
      * Downloads a file from S3 as a byte array.
-     * Retries up to 3 times with exponential backoff to handle timing issues
-     * where files may not be uploaded yet.
+     * Uses exponential backoff with jitter retry algorithm optimized for file operations.
      *
      * @param s3Key The S3 object key (path)
-     * @return The file content as a byte array, or null if download failed
+     * @return The file content as a byte array, or empty array if download failed
      */
     public byte[] downloadFileAsBytes(String s3Key) {
+        if (isValidS3Configuration(s3Key)) {
+            return performDownloadWithRetry(s3Key);
+        }
+        return new byte[0];
+    }
+
+    private boolean isValidS3Configuration(String s3Key) {
         if (s3Client == null) {
-            LOGGER.warn("S3 client not initialized - cannot download file: {}", s3Key);
-            return null;
+            LOGGER.error("S3 client not initialized - cannot download file: {}", s3Key);
+            return false;
         }
 
         if (s3BucketName.isEmpty()) {
             LOGGER.error("S3 bucket name not configured");
-            return null;
+            return false;
         }
-
-        int maxRetries = 3;
-        int[] retryDelays = {2000, 5000, 8000}; // Retry delays: 2s, 5s, 8s
-
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                LOGGER.debug(
-                        "Downloading file from S3 (attempt {}/{}): bucket={}, key={}",
-                        attempt,
-                        maxRetries,
-                        s3BucketName.get(),
-                        s3Key);
-
-                GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                        .bucket(s3BucketName.get())
-                        .key(s3Key)
-                        .build();
-
-                try (ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getObjectRequest)) {
-                    byte[] bytes = response.readAllBytes();
-                    LOGGER.info("Successfully downloaded file from S3: {} ({} bytes)", s3Key, bytes.length);
-                    return bytes;
-                }
-
-            } catch (NoSuchKeyException e) {
-                LOGGER.warn(
-                        "File not found in S3 (attempt {}/{}): bucket={}, key={}",
-                        attempt,
-                        maxRetries,
-                        s3BucketName.get(),
-                        s3Key);
-                if (attempt < maxRetries) {
-                    retryWithDelay(retryDelays[attempt - 1]);
-                }
-            } catch (Exception e) {
-                LOGGER.warn(
-                        "Failed to download file from S3 (attempt {}/{}): bucket={}, key={} - {}",
-                        attempt,
-                        maxRetries,
-                        s3BucketName.get(),
-                        s3Key,
-                        e.getMessage());
-                if (attempt < maxRetries) {
-                    retryWithDelay(retryDelays[attempt - 1]);
-                } else {
-                    LOGGER.error("Failed to download file from S3 after {} attempts: {}", maxRetries, s3Key, e);
-                }
-            }
-        }
-        return null;
+        return true;
     }
 
-    /**
-     * Waits for the specified delay before retrying.
-     *
-     * @param delayMs Delay in milliseconds
-     */
-    private void retryWithDelay(int delayMs) {
-        try {
-            LOGGER.debug("Waiting {}ms before retry", delayMs);
-            Thread.sleep(delayMs);
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            LOGGER.warn("Retry interrupted");
+    private byte[] performDownloadWithRetry(String s3Key) {
+
+        return RetryConfiguration.forFileOperations()
+                .executeWithRetryOptional(
+                        () -> {
+                            try {
+                                byte[] result = downloadFromS3(s3Key);
+                                if (result.length == 0) {
+                                    throw new RuntimeException("Downloaded empty file or file not found");
+                                }
+                                return result;
+                            } catch (IOException e) {
+                                throw new RuntimeException("S3 download failed: " + e.getMessage(), e);
+                            }
+                        },
+                        "S3 file download: " + s3Key)
+                .orElse(new byte[0]);
+    }
+
+    private byte[] downloadFromS3(String s3Key) throws IOException {
+        GetObjectRequest request =
+                GetObjectRequest.builder().bucket(s3BucketName.get()).key(s3Key).build();
+
+        try (ResponseInputStream<GetObjectResponse> response = s3Client.getObject(request)) {
+            byte[] bytes = response.readAllBytes();
+            LOGGER.info("Successfully downloaded file from S3: {} ({} bytes)", s3Key, bytes.length);
+            return bytes;
         }
     }
 

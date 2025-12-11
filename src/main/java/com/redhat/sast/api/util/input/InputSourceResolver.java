@@ -12,18 +12,6 @@ public class InputSourceResolver {
     private static final Pattern SHEET_ID_PATTERN = Pattern.compile("/spreadsheets/d/([a-zA-Z0-9-_]+)");
 
     /**
-     * Resolves a Google Sheet URL to its corresponding CSV export URL.
-     *
-     * @param googleSheetsUrl The Google Sheets URL to resolve.
-     * @return The direct CSV export URL for downloading the sheet data.
-     * @throws IllegalArgumentException if the URL format is invalid or sheet ID cannot be extracted.
-     */
-    public String resolve(@Nonnull String googleSheetsUrl) throws IllegalArgumentException {
-        String sheetId = extractSpreadsheetId(googleSheetsUrl);
-        return String.format("https://docs.google.com/spreadsheets/d/%s/export?format=csv", sheetId);
-    }
-
-    /**
      * Extracts the spreadsheet ID from a Google Sheets URL.
      *
      * @param googleSheetsUrl The Google Sheets URL to extract from.

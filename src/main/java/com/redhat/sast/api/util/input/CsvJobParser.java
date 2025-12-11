@@ -2,10 +2,7 @@ package com.redhat.sast.api.util.input;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -52,7 +49,7 @@ public class CsvJobParser {
      */
     public List<JobCreationDto> parse(@Nonnull String csvContent, Boolean useKnownFalsePositiveFile)
             throws IOException {
-        if (csvContent == null || csvContent.isBlank()) {
+        if (csvContent.isBlank()) {
             return new ArrayList<>();
         }
 
@@ -85,7 +82,7 @@ public class CsvJobParser {
                             return null;
                         }
                     })
-                    .filter(job -> job != null)
+                    .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
             LOGGER.info("Successfully parsed {} jobs from CSV content", jobs.size());

@@ -195,7 +195,9 @@ public class PipelineParameterMapper {
                 PARAM_LLM_MODEL_NAME,
                 getModelNameWithFallback(job.getJobSettings().getLlmModelName(), llmSecretValues.llmModelName())));
         params.add(createParam(PARAM_LLM_API_KEY, llmSecretValues.llmApiKey()));
-        params.add(createParam(PARAM_LLM_API_TYPE, llmSecretValues.llmApiType()));
+        params.add(createParam(
+                PARAM_LLM_API_TYPE,
+                getApiTypeWithFallback(job.getJobSettings().getLlmApiType(), llmSecretValues.llmApiType())));
 
         // Embeddings LLM parameters
         params.add(createParam(PARAM_EMBEDDINGS_LLM_URL, llmSecretValues.embeddingsUrl()));
@@ -316,6 +318,16 @@ public class PipelineParameterMapper {
     }
 
     /**
+     * Gets API type with fallback: JobSettings first, then secret value
+     */
+    private String getApiTypeWithFallback(String jobSettingsValue, String secretValue) {
+        if (jobSettingsValue != null && !jobSettingsValue.trim().isEmpty()) {
+            return jobSettingsValue;
+        }
+        return secretValue != null ? secretValue : "";
+    }
+
+    /**
      * Gets the USE_KNOWN_FALSE_POSITIVE_FILE value with fallback to true
      */
     private Boolean getUseKnownFalsePositiveFileValue(Job job) {
@@ -391,16 +403,42 @@ public class PipelineParameterMapper {
         // S3/MinIO bucket name for uploading outputs (Excel reports, token metrics, etc.)
         params.add(createParam(PARAM_S3_BUCKET_NAME, s3BucketName.orElse("")));
 
-        // Add default LLM parameters (can be enhanced later to support custom secrets)
-        String llmSecretName = "sast-ai-default-llm-creds";
+        // Add LLM parameters with support for custom secrets and overrides
+        String llmSecretName = (mlOpsJob.getMlOpsJobSettings() != null
+                        && mlOpsJob.getMlOpsJobSettings().getSecretName() != null
+                        && !mlOpsJob.getMlOpsJobSettings()
+                                .getSecretName()
+                                .trim()
+                                .isEmpty())
+                ? mlOpsJob.getMlOpsJobSettings().getSecretName()
+                : "sast-ai-default-llm-creds";
+
         LlmSecretValues llmSecretValues = getLlmSecretValues(llmSecretName);
 
         params.add(createParam(PARAM_LLM_URL, llmSecretValues.llmUrl()));
-        params.add(createParam(PARAM_LLM_MODEL_NAME, llmSecretValues.llmModelName()));
+        params.add(createParam(
+                PARAM_LLM_MODEL_NAME,
+                getModelNameWithFallback(
+                        mlOpsJob.getMlOpsJobSettings() != null
+                                ? mlOpsJob.getMlOpsJobSettings().getLlmModelName()
+                                : null,
+                        llmSecretValues.llmModelName())));
         params.add(createParam(PARAM_LLM_API_KEY, llmSecretValues.llmApiKey()));
-        params.add(createParam(PARAM_LLM_API_TYPE, llmSecretValues.llmApiType()));
+        params.add(createParam(
+                PARAM_LLM_API_TYPE,
+                getApiTypeWithFallback(
+                        mlOpsJob.getMlOpsJobSettings() != null
+                                ? mlOpsJob.getMlOpsJobSettings().getLlmApiType()
+                                : null,
+                        llmSecretValues.llmApiType())));
         params.add(createParam(PARAM_EMBEDDINGS_LLM_URL, llmSecretValues.embeddingsUrl()));
-        params.add(createParam(PARAM_EMBEDDINGS_LLM_MODEL_NAME, llmSecretValues.embeddingsModelName()));
+        params.add(createParam(
+                PARAM_EMBEDDINGS_LLM_MODEL_NAME,
+                getModelNameWithFallback(
+                        mlOpsJob.getMlOpsJobSettings() != null
+                                ? mlOpsJob.getMlOpsJobSettings().getEmbeddingLlmModelName()
+                                : null,
+                        llmSecretValues.embeddingsModelName())));
         params.add(createParam(PARAM_EMBEDDINGS_LLM_API_KEY, llmSecretValues.embeddingsApiKey()));
 
         LOGGER.debug(

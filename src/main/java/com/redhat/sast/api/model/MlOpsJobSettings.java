@@ -28,6 +28,9 @@ public class MlOpsJobSettings {
     @Column(name = "llm_model_name")
     private String llmModelName;
 
+    @Column(name = "llm_api_type")
+    private String llmApiType;
+
     @Column(name = "embedding_llm_url")
     private String embeddingLlmUrl;
 

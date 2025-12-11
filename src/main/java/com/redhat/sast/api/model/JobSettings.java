@@ -28,6 +28,9 @@ public class JobSettings {
     @Column(name = "llm_model_name")
     private String llmModelName;
 
+    @Column(name = "llm_api_type")
+    private String llmApiType;
+
     @Column(name = "llm_api_key")
     private String llmApiKey;
 

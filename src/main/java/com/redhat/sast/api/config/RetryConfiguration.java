@@ -1,6 +1,7 @@
 package com.redhat.sast.api.config;
 
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
@@ -37,28 +38,6 @@ public record RetryConfiguration(
     }
 
     /**
-     * Creates a retry configuration with common defaults.
-     *
-     * @param maxAttempts Maximum number of retry attempts
-     * @param baseDelayMs Base delay in milliseconds
-     */
-    public RetryConfiguration(int maxAttempts, long baseDelayMs) {
-        this(maxAttempts, baseDelayMs, 2.0, 0.1, 30_000);
-    }
-
-    /**
-     * Creates a default retry configuration suitable for most scenarios.
-     * - 3 attempts
-     * - 1 second base delay
-     * - 2x exponential backoff
-     * - 10% jitter
-     * - 30 second max delay
-     */
-    public static RetryConfiguration defaultConfig() {
-        return new RetryConfiguration(3, 1000);
-    }
-
-    /**
      * Creates a retry configuration optimized for file operations.
      * - 5 attempts (files may take time to appear)
      * - 2 second base delay
@@ -68,30 +47,6 @@ public record RetryConfiguration(
      */
     public static RetryConfiguration forFileOperations() {
         return new RetryConfiguration(5, 2000, 1.5, 0.15, 60_000);
-    }
-
-    /**
-     * Creates a retry configuration optimized for HTTP requests.
-     * - 3 attempts
-     * - 500ms base delay
-     * - 2x exponential backoff
-     * - 20% jitter (more randomness for distributed systems)
-     * - 10 second max delay
-     */
-    public static RetryConfiguration forHttpRequests() {
-        return new RetryConfiguration(3, 500, 2.0, 0.2, 10_000);
-    }
-
-    /**
-     * Creates a retry configuration for database operations.
-     * - 2 attempts (usually quick to resolve)
-     * - 100ms base delay
-     * - 3x exponential backoff
-     * - 5% jitter
-     * - 5 second max delay
-     */
-    public static RetryConfiguration forDatabaseOperations() {
-        return new RetryConfiguration(2, 100, 3.0, 0.05, 5_000);
     }
 
     /**
@@ -119,8 +74,9 @@ public record RetryConfiguration(
         // Calculate exponential backoff: baseDelay * (multiplier ^ (attempt-1))
         long exponentialDelay = Math.round(baseDelayMs * Math.pow(multiplier, attempt - 1));
 
-        // Add jitter to prevent thundering herd: delay * (1 ± jitterFactor)
-        double jitter = 1.0 + (Math.random() - 0.5) * 2 * jitterFactor;
+        // Add jitter to prevent thundering herd: delay * (1 ± random jitterFactor)
+        // Using ThreadLocalRandom for better performance and Sonar compliance
+        double jitter = 1.0 + ThreadLocalRandom.current().nextDouble(-1.0, 1.0) * jitterFactor;
         long delayWithJitter = Math.round(exponentialDelay * jitter);
 
         return Math.min(delayWithJitter, maxDelayMs);

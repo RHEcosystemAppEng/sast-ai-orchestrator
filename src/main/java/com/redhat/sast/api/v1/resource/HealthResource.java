@@ -14,7 +14,6 @@ import io.fabric8.tekton.client.TektonClient;
 import io.fabric8.tekton.v1.PipelineList;
 import io.fabric8.tekton.v1.PipelineRunList;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -28,20 +27,24 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class HealthResource {
 
-    @Inject
-    DataSource dataSource;
+    private final DataSource dataSource;
+    private final TektonClient tektonClient;
+    private final GoogleSheetsService googleSheetsService;
+    private final String applicationVersion;
+    private final String namespace;
 
-    @Inject
-    TektonClient tektonClient;
-
-    @Inject
-    GoogleSheetsService googleSheetsService;
-
-    @ConfigProperty(name = "quarkus.application.version", defaultValue = "unknown")
-    String applicationVersion;
-
-    @ConfigProperty(name = "sast.ai.workflow.namespace")
-    String namespace;
+    public HealthResource(
+            DataSource dataSource,
+            TektonClient tektonClient,
+            GoogleSheetsService googleSheetsService,
+            @ConfigProperty(name = "quarkus.application.version", defaultValue = "unknown") String applicationVersion,
+            @ConfigProperty(name = "sast.ai.workflow.namespace") String namespace) {
+        this.dataSource = dataSource;
+        this.tektonClient = tektonClient;
+        this.googleSheetsService = googleSheetsService;
+        this.applicationVersion = applicationVersion;
+        this.namespace = namespace;
+    }
 
     @GET
     public Response getHealth() {

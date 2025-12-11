@@ -309,14 +309,14 @@ public class DvcMetadataService {
         // Simple validation for HTTP(S) URLs without nested quantifiers
         // Remove protocol prefix and validate the rest
         String withoutProtocol = url.substring(url.indexOf("://") + 3);
-        return withoutProtocol.matches("^[\\w.-]+[/:][\\w./_-]*$");
+        return withoutProtocol.matches("^[\\w.-]+[/:][\\w./-]*$");
     }
 
     private boolean isValidGitUrl(String url) {
         // Simple validation for Git URLs (git@host:path format)
         // Remove git@ prefix and validate the rest
         String withoutPrefix = url.substring(4); // Remove "git@"
-        return withoutPrefix.matches("^[\\w.-]+:[\\w./_-]+$");
+        return withoutPrefix.matches("^[\\w.-]+:[\\w./-]+$");
     }
 
     private void saveDataArtifact(@Nonnull DvcMetadata dvcMetadata) {

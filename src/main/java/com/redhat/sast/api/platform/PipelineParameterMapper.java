@@ -318,13 +318,17 @@ public class PipelineParameterMapper {
     }
 
     /**
-     * Gets API type with fallback: JobSettings first, then secret value
+     * Gets API type with fallback: JobSettings first, then secret value, then default to "openai"
      */
     private String getApiTypeWithFallback(String jobSettingsValue, String secretValue) {
         if (jobSettingsValue != null && !jobSettingsValue.trim().isEmpty()) {
             return jobSettingsValue;
         }
-        return secretValue != null ? secretValue : "";
+        if (secretValue != null && !secretValue.trim().isEmpty()) {
+            return secretValue;
+        }
+        // Default to "openai" if both DTO and secret are empty
+        return "openai";
     }
 
     /**

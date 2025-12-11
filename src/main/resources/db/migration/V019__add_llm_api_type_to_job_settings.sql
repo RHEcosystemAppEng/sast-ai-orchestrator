@@ -6,3 +6,7 @@ ADD COLUMN llm_api_type VARCHAR(50);
 -- Add llm_api_type column to job_settings table for consistency
 ALTER TABLE job_settings
 ADD COLUMN llm_api_type VARCHAR(50);
+
+-- Add column comments for schema documentation
+COMMENT ON COLUMN mlops_job_settings.llm_api_type IS 'LLM API provider type override (e.g., openai, nim, azure). Falls back to secret value if not specified.';
+COMMENT ON COLUMN job_settings.llm_api_type IS 'LLM API provider type override (e.g., openai, nim, azure). Falls back to secret value if not specified.';

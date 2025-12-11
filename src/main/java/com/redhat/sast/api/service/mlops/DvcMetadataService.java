@@ -290,7 +290,33 @@ public class DvcMetadataService {
     }
 
     private boolean isValidUrl(@Nonnull String url) {
-        return url.matches("^(https?://|git@)[\\w-]+(\\.[\\w-]+)*[/:][\\w./_-]*$");
+        // Prevent ReDoS by limiting input length
+        if (url.length() > 2000) {
+            return false;
+        }
+
+        // Check basic URL structure without nested quantifiers
+        if (url.startsWith("https://") || url.startsWith("http://")) {
+            return isValidHttpUrl(url);
+        } else if (url.startsWith("git@")) {
+            return isValidGitUrl(url);
+        }
+
+        return false;
+    }
+
+    private boolean isValidHttpUrl(String url) {
+        // Simple validation for HTTP(S) URLs without nested quantifiers
+        // Remove protocol prefix and validate the rest
+        String withoutProtocol = url.substring(url.indexOf("://") + 3);
+        return withoutProtocol.matches("^[\\w.-]+[/:][\\w./_-]*$");
+    }
+
+    private boolean isValidGitUrl(String url) {
+        // Simple validation for Git URLs (git@host:path format)
+        // Remove git@ prefix and validate the rest
+        String withoutPrefix = url.substring(4); // Remove "git@"
+        return withoutPrefix.matches("^[\\w.-]+:[\\w./_-]+$");
     }
 
     private void saveDataArtifact(@Nonnull DvcMetadata dvcMetadata) {

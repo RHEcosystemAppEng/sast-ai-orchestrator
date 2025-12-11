@@ -10,7 +10,7 @@ import com.redhat.sast.api.enums.OshFailureReason;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.OshSchedulerCursor;
 import com.redhat.sast.api.model.OshUncollectedScan;
-import com.redhat.sast.api.repository.OshSchedulerCursorRepository;
+import com.redhat.sast.api.repository.osh.OshSchedulerCursorRepository;
 import com.redhat.sast.api.service.EventBroadcastService;
 import com.redhat.sast.api.service.osh.OshClientService;
 import com.redhat.sast.api.service.osh.OshJobCreationService;

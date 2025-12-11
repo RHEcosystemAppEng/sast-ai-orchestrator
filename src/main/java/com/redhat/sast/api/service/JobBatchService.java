@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.eclipse.microprofile.context.ManagedExecutor;
 
+import com.redhat.sast.api.common.constants.ApplicationConstants;
 import com.redhat.sast.api.enums.BatchStatus;
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.exceptions.SastAiConfigException;
@@ -99,7 +100,7 @@ public class JobBatchService {
 
             jobDtos.forEach(dto -> {
                 dto.setSubmittedBy(submittedBy);
-                if (aggregateResultsGSheet != null && !aggregateResultsGSheet.isBlank()) {
+                if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(aggregateResultsGSheet)) {
                     dto.setAggregateResultsGSheet(aggregateResultsGSheet);
                 }
             });

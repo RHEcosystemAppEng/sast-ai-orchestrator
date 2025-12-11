@@ -3,6 +3,7 @@ package com.redhat.sast.api.service;
 import java.util.List;
 import java.util.Optional;
 
+import com.redhat.sast.api.common.constants.ApplicationConstants;
 import com.redhat.sast.api.model.MlOpsJob;
 import com.redhat.sast.api.model.MlOpsJobSettings;
 import com.redhat.sast.api.repository.MlOpsJobRepository;
@@ -102,7 +103,7 @@ public class MlOpsJobSettingsService {
 
         if (param.isPresent() && param.get().getValue() != null) {
             String value = param.get().getValue().getStringVal();
-            return (value != null && !value.trim().isEmpty()) ? value : null;
+            return ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(value) ? value : null;
         }
 
         return null;

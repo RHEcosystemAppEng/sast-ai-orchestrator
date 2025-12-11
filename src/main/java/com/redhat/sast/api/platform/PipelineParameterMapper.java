@@ -1,5 +1,7 @@
 package com.redhat.sast.api.platform;
 
+import static com.redhat.sast.api.common.constants.ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -197,7 +199,7 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_LLM_API_KEY, llmSecretValues.llmApiKey()));
         params.add(createParam(
                 PARAM_LLM_API_TYPE,
-                getApiTypeWithFallback(job.getJobSettings().getLlmApiType(), llmSecretValues.llmApiType())));
+                getLlmApiTypeWithFallback(job.getJobSettings().getLlmApiType(), llmSecretValues.llmApiType())));
 
         // Embeddings LLM parameters
         params.add(createParam(PARAM_EMBEDDINGS_LLM_URL, llmSecretValues.embeddingsUrl()));
@@ -311,20 +313,17 @@ public class PipelineParameterMapper {
      * Gets model name with fallback: JobSettings first, then secret value
      */
     private String getModelNameWithFallback(String jobSettingsValue, String secretValue) {
-        if (jobSettingsValue != null && !jobSettingsValue.trim().isEmpty()) {
+        if (IS_NOT_NULL_AND_NOT_BLANK.test(jobSettingsValue)) {
             return jobSettingsValue;
         }
         return secretValue != null ? secretValue : "";
     }
 
-    /**
-     * Gets API type with fallback: JobSettings first, then secret value, then default to "openai"
-     */
-    private String getApiTypeWithFallback(String jobSettingsValue, String secretValue) {
-        if (jobSettingsValue != null && !jobSettingsValue.trim().isEmpty()) {
+    private String getLlmApiTypeWithFallback(String jobSettingsValue, String secretValue) {
+        if (IS_NOT_NULL_AND_NOT_BLANK.test(jobSettingsValue)) {
             return jobSettingsValue;
         }
-        if (secretValue != null && !secretValue.trim().isEmpty()) {
+        if (IS_NOT_NULL_AND_NOT_BLANK.test(secretValue)) {
             return secretValue;
         }
         // Default to "openai" if both DTO and secret are empty
@@ -430,7 +429,7 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_LLM_API_KEY, llmSecretValues.llmApiKey()));
         params.add(createParam(
                 PARAM_LLM_API_TYPE,
-                getApiTypeWithFallback(
+                getLlmApiTypeWithFallback(
                         mlOpsJob.getMlOpsJobSettings() != null
                                 ? mlOpsJob.getMlOpsJobSettings().getLlmApiType()
                                 : null,

@@ -9,9 +9,11 @@ import java.util.Optional;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import com.redhat.sast.api.common.constants.ApplicationConstants;
 import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.model.Job;
 import com.redhat.sast.api.model.MlOpsJob;
+import com.redhat.sast.api.model.MlOpsJobSettings;
 
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -366,83 +368,18 @@ public class PipelineParameterMapper {
             @Nonnull String promptsVersion,
             @Nonnull String knownNonIssuesVersion,
             @Nonnull String containerImage) {
-        List<Param> params = new ArrayList<>();
+        List<Param> result = new ArrayList<>();
 
-        // Basic job parameters
-        params.add(createParam(PARAM_REPO_REMOTE_URL, mlOpsJob.getPackageSourceCodeUrl()));
+        addBasicParameters(result, mlOpsJob);
+        addMlOpsInputReportParameters(result, mlOpsJob);
 
-        Boolean useKnownFalsePositiveFile = getUseKnownFalsePositiveFileValueFromMlOpsJob(mlOpsJob);
-        String falsePositivesUrl =
-                Boolean.TRUE.equals(useKnownFalsePositiveFile) ? mlOpsJob.getKnownFalsePositivesUrl() : "";
-        params.add(createParam(PARAM_FALSE_POSITIVES_URL, falsePositivesUrl));
+        result.add(createParam(PARAM_CONTAINER_IMAGE, containerImage));
+        result.add(createParam(PARAM_PROMPTS_VERSION, promptsVersion));
+        result.add(createParam(PARAM_KNOWN_NON_ISSUES_VERSION, knownNonIssuesVersion));
 
-        params.add(createParam(PARAM_PROJECT_NAME, mlOpsJob.getProjectName()));
-        params.add(createParam(PARAM_PROJECT_VERSION, mlOpsJob.getProjectVersion()));
-        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
-
-        // Input report file path - ground truth sheet for this NVR
-        String groundTruthUrl = String.format(
-                "http://minio-api-minio.apps.appeng.clusters.se-apps.redhat.com/test/ground_truth_sheets/%s.xlsx",
-                mlOpsJob.getPackageNvr());
-        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, groundTruthUrl));
-        params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
-
-        // MLOps-specific parameters
-        params.add(createParam(PARAM_CONTAINER_IMAGE, containerImage));
-        params.add(createParam(PARAM_PROMPTS_VERSION, promptsVersion));
-        params.add(createParam(PARAM_KNOWN_NON_ISSUES_VERSION, knownNonIssuesVersion));
-
-        // Evaluation mode parameter - defaults to "all" if not set
-        String evaluateSpecificNode = "all";
-        if (mlOpsJob.getMlOpsJobSettings() != null
-                && mlOpsJob.getMlOpsJobSettings().getEvaluateSpecificNode() != null) {
-            evaluateSpecificNode = mlOpsJob.getMlOpsJobSettings().getEvaluateSpecificNode();
-        }
-        params.add(createParam(PARAM_EVALUATE_SPECIFIC_NODE, evaluateSpecificNode));
-
-        // S3/MinIO endpoint for DVC and evaluation data
-        params.add(createParam(PARAM_S3_ENDPOINT_URL, s3EndpointUrl.orElse("")));
-
-        // S3/MinIO bucket name for uploading outputs (Excel reports, token metrics, etc.)
-        params.add(createParam(PARAM_S3_BUCKET_NAME, s3BucketName.orElse("")));
-
-        // Add LLM parameters with support for custom secrets and overrides
-        String llmSecretName = (mlOpsJob.getMlOpsJobSettings() != null
-                        && mlOpsJob.getMlOpsJobSettings().getSecretName() != null
-                        && !mlOpsJob.getMlOpsJobSettings()
-                                .getSecretName()
-                                .trim()
-                                .isEmpty())
-                ? mlOpsJob.getMlOpsJobSettings().getSecretName()
-                : "sast-ai-default-llm-creds";
-
-        LlmSecretValues llmSecretValues = getLlmSecretValues(llmSecretName);
-
-        params.add(createParam(PARAM_LLM_URL, llmSecretValues.llmUrl()));
-        params.add(createParam(
-                PARAM_LLM_MODEL_NAME,
-                getModelNameWithFallback(
-                        mlOpsJob.getMlOpsJobSettings() != null
-                                ? mlOpsJob.getMlOpsJobSettings().getLlmModelName()
-                                : null,
-                        llmSecretValues.llmModelName())));
-        params.add(createParam(PARAM_LLM_API_KEY, llmSecretValues.llmApiKey()));
-        params.add(createParam(
-                PARAM_LLM_API_TYPE,
-                getLlmApiTypeWithFallback(
-                        mlOpsJob.getMlOpsJobSettings() != null
-                                ? mlOpsJob.getMlOpsJobSettings().getLlmApiType()
-                                : null,
-                        llmSecretValues.llmApiType())));
-        params.add(createParam(PARAM_EMBEDDINGS_LLM_URL, llmSecretValues.embeddingsUrl()));
-        params.add(createParam(
-                PARAM_EMBEDDINGS_LLM_MODEL_NAME,
-                getModelNameWithFallback(
-                        mlOpsJob.getMlOpsJobSettings() != null
-                                ? mlOpsJob.getMlOpsJobSettings().getEmbeddingLlmModelName()
-                                : null,
-                        llmSecretValues.embeddingsModelName())));
-        params.add(createParam(PARAM_EMBEDDINGS_LLM_API_KEY, llmSecretValues.embeddingsApiKey()));
+        addMlOpsEvaluationParameter(result, mlOpsJob);
+        addS3StorageParameters(result);
+        addLlmParameters(result, mlOpsJob);
 
         LOGGER.debug(
                 "Generated MLOps pipeline parameters for job {} (NVR: {}) with prompts={}, knownNonIssues={}, image={}, groundTruth={}",
@@ -451,8 +388,99 @@ public class PipelineParameterMapper {
                 promptsVersion,
                 knownNonIssuesVersion,
                 containerImage,
-                groundTruthUrl);
+                buildGroundTruthUrl(mlOpsJob.getPackageNvr()));
+        return result;
+    }
 
-        return params;
+    private void addBasicParameters(List<Param> params, MlOpsJob mlOpsJob) {
+        params.add(createParam(PARAM_REPO_REMOTE_URL, mlOpsJob.getPackageSourceCodeUrl()));
+        params.add(createParam(PARAM_PROJECT_NAME, mlOpsJob.getProjectName()));
+        params.add(createParam(PARAM_PROJECT_VERSION, mlOpsJob.getProjectVersion()));
+
+        Boolean useKnownFalsePositiveFile = getUseKnownFalsePositiveFileValueFromMlOpsJob(mlOpsJob);
+        var url = useKnownFalsePositiveFile ? mlOpsJob.getKnownFalsePositivesUrl() : "";
+
+        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
+        params.add(createParam(PARAM_FALSE_POSITIVES_URL, url));
+    }
+
+    private void addMlOpsInputReportParameters(List<Param> params, MlOpsJob mlOpsJob) {
+        String groundTruthUrl = buildGroundTruthUrl(mlOpsJob.getPackageNvr());
+        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, groundTruthUrl));
+        params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
+    }
+
+    private String buildGroundTruthUrl(String packageNvr) {
+        return String.format(
+                "http://minio-api-minio.apps.appeng.clusters.se-apps.redhat.com/test/ground_truth_sheets/%s.xlsx",
+                packageNvr);
+    }
+
+    private void addMlOpsEvaluationParameter(List<Param> result, MlOpsJob mlOpsJob) {
+        String evaluateSpecificNode = getEvaluateSpecificNodeValue(mlOpsJob);
+        result.add(createParam(PARAM_EVALUATE_SPECIFIC_NODE, evaluateSpecificNode));
+    }
+
+    private String getEvaluateSpecificNodeValue(MlOpsJob mlOpsJob) {
+        var settings = mlOpsJob.getMlOpsJobSettings();
+        if (settings != null && settings.getEvaluateSpecificNode() != null) {
+            return settings.getEvaluateSpecificNode();
+        }
+        return "all";
+    }
+
+    private void addS3StorageParameters(List<Param> result) {
+        result.add(createParam(PARAM_S3_ENDPOINT_URL, s3EndpointUrl.orElse("")));
+        result.add(createParam(PARAM_S3_BUCKET_NAME, s3BucketName.orElse("")));
+    }
+
+    private void addLlmParameters(List<Param> result, MlOpsJob mlOpsJob) {
+        var settings = mlOpsJob.getMlOpsJobSettings();
+        String llmSecretName = getLlmSecretNameForMlOps(settings);
+        LlmSecretValues secrets = getLlmSecretValues(llmSecretName);
+
+        addMainLlmParameters(result, settings, secrets);
+        addEmbeddingsLlmParameters(result, settings, secrets);
+    }
+
+    private String getLlmSecretNameForMlOps(MlOpsJobSettings settings) {
+        if (settings != null && IS_NOT_NULL_AND_NOT_BLANK.test(settings.getSecretName())) {
+            return settings.getSecretName();
+        }
+        return ApplicationConstants.DEFAULT_SECRET_NAME;
+    }
+
+    private void addMainLlmParameters(
+            List<Param> result, MlOpsJobSettings settings, LlmSecretValues secrets) {
+        result.add(createParam(PARAM_LLM_URL, secrets.llmUrl()));
+        result.add(createParam(PARAM_LLM_API_KEY, secrets.llmApiKey()));
+
+        String modelName = getModelNameWithFallback(getLlmModelName(settings), secrets.llmModelName());
+        result.add(createParam(PARAM_LLM_MODEL_NAME, modelName));
+
+        String apiType = getLlmApiTypeWithFallback(getLlmApiType(settings), secrets.llmApiType());
+        result.add(createParam(PARAM_LLM_API_TYPE, apiType));
+    }
+
+    private void addEmbeddingsLlmParameters(
+            List<Param> result, MlOpsJobSettings mlOpsJobSettings, LlmSecretValues llmSecretValues) {
+        result.add(createParam(PARAM_EMBEDDINGS_LLM_URL, llmSecretValues.embeddingsUrl()));
+        result.add(createParam(PARAM_EMBEDDINGS_LLM_API_KEY, llmSecretValues.embeddingsApiKey()));
+
+        String embeddingsModelName = getModelNameWithFallback(
+                getEmbeddingLlmModelName(mlOpsJobSettings), llmSecretValues.embeddingsModelName());
+        result.add(createParam(PARAM_EMBEDDINGS_LLM_MODEL_NAME, embeddingsModelName));
+    }
+
+    private String getLlmModelName(MlOpsJobSettings settings) {
+        return settings != null ? settings.getLlmModelName() : null;
+    }
+
+    private String getLlmApiType(MlOpsJobSettings settings) {
+        return settings != null ? settings.getLlmApiType() : null;
+    }
+
+    private String getEmbeddingLlmModelName(MlOpsJobSettings settings) {
+        return settings != null ? settings.getEmbeddingLlmModelName() : null;
     }
 }

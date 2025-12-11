@@ -332,9 +332,6 @@ public class PipelineParameterMapper {
         return "openai";
     }
 
-    /**
-     * Gets the USE_KNOWN_FALSE_POSITIVE_FILE value with fallback to true
-     */
     private Boolean getUseKnownFalsePositiveFileValue(Job job) {
         if (job.getJobSettings() != null && job.getJobSettings().getUseKnownFalsePositiveFile() != null) {
             return job.getJobSettings().getUseKnownFalsePositiveFile();
@@ -342,10 +339,7 @@ public class PipelineParameterMapper {
         return true;
     }
 
-    /**
-     * Gets the USE_KNOWN_FALSE_POSITIVE_FILE value from MlOpsJob with fallback to true
-     */
-    private Boolean getUseKnownFalsePositiveFileValueFromMlOpsJob(MlOpsJob mlOpsJob) {
+    private boolean getUseKnownFalsePositiveFileValue(MlOpsJob mlOpsJob) {
         if (mlOpsJob.getMlOpsJobSettings() != null
                 && mlOpsJob.getMlOpsJobSettings().getUseKnownFalsePositiveFile() != null) {
             return mlOpsJob.getMlOpsJobSettings().getUseKnownFalsePositiveFile();
@@ -397,10 +391,10 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_PROJECT_NAME, mlOpsJob.getProjectName()));
         params.add(createParam(PARAM_PROJECT_VERSION, mlOpsJob.getProjectVersion()));
 
-        Boolean useKnownFalsePositiveFile = getUseKnownFalsePositiveFileValueFromMlOpsJob(mlOpsJob);
+        boolean useKnownFalsePositiveFile = getUseKnownFalsePositiveFileValue(mlOpsJob);
         var url = useKnownFalsePositiveFile ? mlOpsJob.getKnownFalsePositivesUrl() : "";
 
-        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
+        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, String.valueOf(useKnownFalsePositiveFile)));
         params.add(createParam(PARAM_FALSE_POSITIVES_URL, url));
     }
 

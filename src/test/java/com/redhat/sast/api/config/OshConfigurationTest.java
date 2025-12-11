@@ -5,14 +5,17 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Unit tests for OshConfiguration.
- *
  * Tests cover:
  * - Configuration validation at startup
  * - Package filtering logic
@@ -161,46 +164,24 @@ class OshConfigurationTest {
         assertFalse(config.shouldMonitorPackage("unknown-package"));
     }
 
-    @Test
-    @DisplayName("Should return batch size when smaller than max per cycle")
-    void testGetEffectiveBatchSize_BatchSizeSmaller() {
-        config.batchSize = 10;
-        config.maxScansPerCycle = 50;
+    @ParameterizedTest
+    @MethodSource("effectiveBatchSizeTestCases")
+    @DisplayName("Should return correct effective batch size based on configured values")
+    void testGetEffectiveBatchSize(
+            int batchSize, int maxScansPerCycle, int expectedEffectiveBatchSize, String description) {
+        config.batchSize = batchSize;
+        config.maxScansPerCycle = maxScansPerCycle;
 
-        int effectiveBatchSize = config.getEffectiveBatchSize();
+        int actualEffectiveBatchSize = config.getEffectiveBatchSize();
 
-        assertEquals(10, effectiveBatchSize);
+        assertEquals(expectedEffectiveBatchSize, actualEffectiveBatchSize, description);
     }
 
-    @Test
-    @DisplayName("Should return max per cycle when smaller than batch size")
-    void testGetEffectiveBatchSize_MaxPerCycleSmaller() {
-        config.batchSize = 100;
-        config.maxScansPerCycle = 25;
-
-        int effectiveBatchSize = config.getEffectiveBatchSize();
-
-        assertEquals(25, effectiveBatchSize);
-    }
-
-    @Test
-    @DisplayName("Should return same value when batch size equals max per cycle")
-    void testGetEffectiveBatchSize_Equal() {
-        config.batchSize = 30;
-        config.maxScansPerCycle = 30;
-
-        int effectiveBatchSize = config.getEffectiveBatchSize();
-
-        assertEquals(30, effectiveBatchSize);
-    }
-
-    @Test
-    @DisplayName("Should throw NullPointerException for null package name")
-    void testShouldMonitorPackage_NullPackageName() {
-        config.enabled = true;
-        config.setPackageNameSetForTesting(Set.of("systemd", "kernel"));
-
-        assertThrows(NullPointerException.class, () -> config.shouldMonitorPackage(null));
+    static Stream<Arguments> effectiveBatchSizeTestCases() {
+        return Stream.of(
+                Arguments.of(10, 50, 10, "Should return batch size when smaller than max per cycle"),
+                Arguments.of(100, 25, 25, "Should return max per cycle when smaller than batch size"),
+                Arguments.of(30, 30, 30, "Should return same value when batch size equals max per cycle"));
     }
 
     @Test

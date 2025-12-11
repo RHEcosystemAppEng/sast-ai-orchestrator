@@ -1,4 +1,4 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.mlops;
 
 import java.util.AbstractMap.SimpleEntry;
 import java.util.HashMap;
@@ -7,8 +7,9 @@ import java.util.stream.Stream;
 
 import com.redhat.sast.api.common.constants.ApplicationConstants;
 import com.redhat.sast.api.common.constants.DvcTaskResults;
-import com.redhat.sast.api.dto.DvcMetadata;
 import com.redhat.sast.api.model.DataArtifact;
+import com.redhat.sast.api.service.JobService;
+import com.redhat.sast.api.v1.dto.request.DvcMetadata;
 
 import io.fabric8.tekton.v1.ParamValue;
 import io.fabric8.tekton.v1.PipelineRun;
@@ -40,8 +41,8 @@ public class DvcMetadataService {
 
     /***
      * Extracts DVC metadata from completed Tekton PipelineRun and updates the job.
-     * @param jobId
-     * @param pipelineRun
+     * @param jobId Job ID
+     * @param pipelineRun PipelineRun obj
      */
     public void updateDvcMetadata(Long jobId, PipelineRun pipelineRun) {
         LOGGER.debug(

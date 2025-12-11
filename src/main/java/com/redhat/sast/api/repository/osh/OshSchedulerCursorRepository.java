@@ -1,4 +1,4 @@
-package com.redhat.sast.api.repository;
+package com.redhat.sast.api.repository.osh;
 
 import java.time.Instant;
 import java.util.Optional;

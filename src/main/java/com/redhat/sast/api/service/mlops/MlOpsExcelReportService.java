@@ -1,4 +1,4 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.mlops;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
@@ -12,7 +12,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import com.redhat.sast.api.model.MlOpsJob;
 import com.redhat.sast.api.model.MlOpsJobFinding;
-import com.redhat.sast.api.repository.MlOpsJobFindingRepository;
+import com.redhat.sast.api.repository.mlops.MlOpsJobFindingRepository;
+import com.redhat.sast.api.service.S3ClientService;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -67,13 +68,12 @@ public class MlOpsExcelReportService {
                 return;
             }
 
-            String s3Key = constructExcelS3Key(packageName, pipelineRunId);
-            String s3FileUrl = s3Key; // Store the S3 path for reference
+            String s3FileUrl = constructExcelS3Key(packageName, pipelineRunId);
 
-            LOGGER.debug("Fetching Excel report from S3 for job {}: {}", jobId, s3Key);
+            LOGGER.debug("Fetching Excel report from S3 for job {}: {}", jobId, s3FileUrl);
 
             // Download Excel file from S3
-            byte[] excelBytes = s3ClientService.downloadFileAsBytes(s3Key);
+            byte[] excelBytes = s3ClientService.downloadFileAsBytes(s3FileUrl);
             if (excelBytes == null || excelBytes.length == 0) {
                 LOGGER.info("No Excel report found in S3 for job {} - file may not have been uploaded yet", jobId);
                 return;
@@ -106,7 +106,6 @@ public class MlOpsExcelReportService {
 
     /**
      * Parses Excel file and extracts findings from "AI report" sheet.
-     *
      * Expected columns:
      * 0: Finding ID
      * 1: Finding Name

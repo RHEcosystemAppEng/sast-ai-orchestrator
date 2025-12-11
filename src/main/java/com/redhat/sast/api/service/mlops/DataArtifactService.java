@@ -1,4 +1,4 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.mlops;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.sast.api.exceptions.DataArtifactCreationException;
 import com.redhat.sast.api.model.DataArtifact;
 import com.redhat.sast.api.model.Job;
-import com.redhat.sast.api.repository.DataArtifactRepository;
+import com.redhat.sast.api.repository.mlops.DataArtifactRepository;
 
 import io.fabric8.tekton.v1.PipelineRun;
 import jakarta.enterprise.context.ApplicationScoped;

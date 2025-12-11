@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.redhat.sast.api.model.OshSchedulerCursor;
+import com.redhat.sast.api.repository.osh.OshSchedulerCursorRepository;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;

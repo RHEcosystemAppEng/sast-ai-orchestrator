@@ -1,4 +1,4 @@
-package com.redhat.sast.api.repository;
+package com.redhat.sast.api.repository.mlops;
 
 import com.redhat.sast.api.model.MlOpsJobNodeFilterEval;
 

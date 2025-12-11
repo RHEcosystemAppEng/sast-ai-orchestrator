@@ -1,4 +1,4 @@
-package com.redhat.sast.api.service;
+package com.redhat.sast.api.service.mlops;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,8 +17,11 @@ import com.redhat.sast.api.model.MlOpsBatch;
 import com.redhat.sast.api.model.MlOpsJob;
 import com.redhat.sast.api.model.MlOpsJobSettings;
 import com.redhat.sast.api.platform.PipelineParameterMapper;
-import com.redhat.sast.api.repository.MlOpsBatchRepository;
-import com.redhat.sast.api.repository.MlOpsJobRepository;
+import com.redhat.sast.api.repository.mlops.MlOpsBatchRepository;
+import com.redhat.sast.api.repository.mlops.MlOpsJobRepository;
+import com.redhat.sast.api.service.BatchOperationsHelper;
+import com.redhat.sast.api.service.NvrResolutionService;
+import com.redhat.sast.api.service.PlatformService;
 import com.redhat.sast.api.v1.dto.request.JobSettingsDto;
 import com.redhat.sast.api.v1.dto.request.MlOpsBatchSubmissionDto;
 import com.redhat.sast.api.v1.dto.response.MlOpsBatchResponseDto;

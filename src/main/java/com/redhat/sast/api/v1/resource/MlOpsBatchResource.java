@@ -2,7 +2,7 @@ package com.redhat.sast.api.v1.resource;
 
 import java.util.List;
 
-import com.redhat.sast.api.service.MlOpsBatchService;
+import com.redhat.sast.api.service.mlops.MlOpsBatchService;
 import com.redhat.sast.api.v1.dto.request.MlOpsBatchSubmissionDto;
 import com.redhat.sast.api.v1.dto.response.MlOpsBatchResponseDto;
 

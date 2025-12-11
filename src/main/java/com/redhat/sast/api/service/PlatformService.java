@@ -11,6 +11,7 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 import com.redhat.sast.api.platform.KubernetesResourceManager;
 import com.redhat.sast.api.platform.MlOpsPipelineRunWatcher;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
+import com.redhat.sast.api.service.mlops.*;
 
 import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
 import io.fabric8.tekton.client.TektonClient;
@@ -130,10 +131,9 @@ public class PlatformService {
 
             // Construct OpenShift Console URL for PipelineRun
             // Format: https://console-openshift-console.apps.../k8s/ns/{namespace}/tekton.dev~v1~PipelineRun/{name}/
-            String pipelineRunUrl = String.format(
-                    "%s/k8s/ns/%s/tekton.dev~v1~PipelineRun/%s/", consoleUrl, pipelineRunNamespace, pipelineRunName);
 
-            return pipelineRunUrl;
+            return String.format(
+                    "%s/k8s/ns/%s/tekton.dev~v1~PipelineRun/%s/", consoleUrl, pipelineRunNamespace, pipelineRunName);
         } catch (Exception e) {
             LOGGER.error(
                     "Failed to construct OpenShift Console URL for PipelineRun: {}",
@@ -285,7 +285,7 @@ public class PlatformService {
             LOGGER.error("Error watching MLOps PipelineRun {} for job ID: {}", pipelineRunName, jobId, e);
             mlOpsJobService.updateJobStatus(jobId, com.redhat.sast.api.enums.JobStatus.FAILED);
             // Update batch counter if service provided
-            if (mlOpsBatchServiceParam instanceof com.redhat.sast.api.service.MlOpsBatchService batchSvc) {
+            if (mlOpsBatchServiceParam instanceof MlOpsBatchService batchSvc) {
                 batchSvc.incrementBatchFailedJobs(batchId);
             }
         }
@@ -295,7 +295,8 @@ public class PlatformService {
      * Cancels a running pipeline for the given job.
      * Uses proper Tekton cancellation to preserve execution history.
      *
-     * @param job the job whose pipeline should be cancelled
+     * @param tektonUrl Tekton URL
+     * @param jobId the job whose pipeline should be cancelled
      * @return true if cancellation was successful, false if pipeline was already completed/failed
      */
     public boolean cancelTektonPipelineRun(@Nonnull String tektonUrl, @Nonnull Long jobId) {

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import com.redhat.sast.api.config.OshConfiguration;
 import com.redhat.sast.api.enums.OshFailureReason;
 import com.redhat.sast.api.model.OshUncollectedScan;
-import com.redhat.sast.api.repository.OshUncollectedScanRepository;
+import com.redhat.sast.api.repository.osh.OshUncollectedScanRepository;
 import com.redhat.sast.api.service.osh.OshRetryService;
 import com.redhat.sast.api.service.osh.OshRetryService.RetryQueueStatistics;
 import com.redhat.sast.api.v1.dto.osh.OshScanDto;

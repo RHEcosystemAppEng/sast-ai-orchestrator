@@ -7,9 +7,7 @@ package com.redhat.sast.api.common.constants;
  */
 public final class DvcTaskResults {
 
-    private DvcTaskResults() {
-        // Utility class - prevent instantiation
-    }
+    private DvcTaskResults() {}
 
     // Core DVC metadata fields (required)
     public static final String DATA_VERSION = "dvc-data-version";

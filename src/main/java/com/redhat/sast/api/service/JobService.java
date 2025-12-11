@@ -204,7 +204,7 @@ public class JobService {
         }
 
         // Google Sheets or SARIF
-        if (inputSourceUrl != null && !inputSourceUrl.trim().isEmpty()) {
+        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(inputSourceUrl)) {
             job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
             job.setGSheetUrl(inputSourceUrl);
             LOGGER.debug("Configured job as GOOGLE_SHEET with URL: {}", inputSourceUrl);

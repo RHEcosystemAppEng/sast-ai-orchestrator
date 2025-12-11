@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import com.redhat.sast.api.common.constants.ApplicationConstants;
 import com.redhat.sast.api.common.constants.DvcTaskResults;
 import com.redhat.sast.api.dto.DvcMetadata;
 import com.redhat.sast.api.model.DataArtifact;
@@ -75,7 +76,7 @@ public class DvcMetadataService {
                 if (name != null && value != null) {
                     String stringVal = value.getStringVal();
 
-                    if (stringVal != null && !stringVal.isBlank()) {
+                    if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(stringVal)) {
                         results.put(name, stringVal.trim());
                     }
                 }

@@ -5,6 +5,8 @@ import java.util.Map;
 
 import org.apache.commons.csv.CSVRecord;
 
+import com.redhat.sast.api.common.constants.ApplicationConstants;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -41,7 +43,7 @@ public class CsvFieldMapper {
             Integer index = headerMap.get(variation);
             if (index != null && index < record.size()) {
                 String value = record.get(index);
-                if (value != null && !value.trim().isEmpty()) {
+                if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(value)) {
                     return value.trim();
                 }
             }

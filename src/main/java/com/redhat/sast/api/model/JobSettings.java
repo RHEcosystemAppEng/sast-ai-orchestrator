@@ -28,6 +28,13 @@ public class JobSettings {
     @Column(name = "llm_model_name")
     private String llmModelName;
 
+    /**
+     * LLM API provider type (e.g., "openai", "nim", "azure", "anthropic", "google", "bedrock").
+     * Falls back to secret value if not specified, or defaults to "openai" if both are empty.
+     */
+    @Column(name = "llm_api_type")
+    private String llmApiType;
+
     @Column(name = "llm_api_key")
     private String llmApiKey;
 

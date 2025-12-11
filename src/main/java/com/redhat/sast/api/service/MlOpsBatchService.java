@@ -234,7 +234,17 @@ public class MlOpsBatchService {
             // Generate pipeline parameters
             final List<Param> pipelineParams = parameterMapper.extractMlOpsPipelineParams(
                     createdJob, promptsVersion, knownNonIssuesVersion, containerImage);
-            final String llmSecretName = "sast-ai-default-llm-creds";
+
+            // Extract LLM secret name from job settings, or use default
+            final String llmSecretName = (createdJob.getMlOpsJobSettings() != null
+                            && createdJob.getMlOpsJobSettings().getSecretName() != null
+                            && !createdJob
+                                    .getMlOpsJobSettings()
+                                    .getSecretName()
+                                    .trim()
+                                    .isEmpty())
+                    ? createdJob.getMlOpsJobSettings().getSecretName()
+                    : "sast-ai-default-llm-creds";
 
             LOGGER.info("Batch {}: Starting pipeline for job {} (NVR: {})", batchId, jobId, nvr);
 

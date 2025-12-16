@@ -41,37 +41,69 @@ public class StatisticService {
     private final OshConfiguration oshConfiguration;
 
     /**
-     * Gets dashboard summary statistics.
+     * Gets dashboard summary statistics for a specific time period.
      *
-     * @return aggregated dashboard statistics
+     * @param timePeriod the time period to filter by (null = all time)
+     * @return aggregated dashboard statistics for the time period
      */
-    public DashboardSummaryDto getSummary() {
-        return calculateSummary();
+    public DashboardSummaryDto getSummary(TimePeriod timePeriod) {
+        return calculateSummary(timePeriod);
     }
 
-    private DashboardSummaryDto calculateSummary() {
+    private DashboardSummaryDto calculateSummary(TimePeriod timePeriod) {
         DashboardSummaryDto dto = new DashboardSummaryDto();
 
-        // Job statistics
-        dto.setTotalJobs(jobRepository.count());
-        dto.setPendingJobs(jobRepository.count(STATUS_FIELD, JobStatus.PENDING));
-        dto.setRunningJobs(jobRepository.count(STATUS_FIELD, JobStatus.RUNNING));
-        dto.setCompletedJobs(jobRepository.count(STATUS_FIELD, JobStatus.COMPLETED));
-        dto.setFailedJobs(jobRepository.count(STATUS_FIELD, JobStatus.FAILED));
-        dto.setCancelledJobs(jobRepository.count(STATUS_FIELD, JobStatus.CANCELLED));
+        if (timePeriod == null) {
+            // No time filtering - count all records
+            // Job statistics
+            dto.setTotalJobs(jobRepository.count());
+            dto.setPendingJobs(jobRepository.count(STATUS_FIELD, JobStatus.PENDING));
+            dto.setRunningJobs(jobRepository.count(STATUS_FIELD, JobStatus.RUNNING));
+            dto.setCompletedJobs(jobRepository.count(STATUS_FIELD, JobStatus.COMPLETED));
+            dto.setFailedJobs(jobRepository.count(STATUS_FIELD, JobStatus.FAILED));
+            dto.setCancelledJobs(jobRepository.count(STATUS_FIELD, JobStatus.CANCELLED));
 
-        // Batch statistics
-        dto.setTotalBatches(jobBatchRepository.count());
-        dto.setProcessingBatches(jobBatchRepository.count(STATUS_FIELD, BatchStatus.PROCESSING));
-        dto.setCompletedBatches(jobBatchRepository.count(STATUS_FIELD, BatchStatus.COMPLETED));
+            // Batch statistics
+            dto.setTotalBatches(jobBatchRepository.count());
+            dto.setProcessingBatches(jobBatchRepository.count(STATUS_FIELD, BatchStatus.PROCESSING));
+            dto.setCompletedBatches(jobBatchRepository.count(STATUS_FIELD, BatchStatus.COMPLETED));
 
-        // OSH scan statistics
-        long collectedOshScans = jobRepository.countJobsWithOshScanId();
-        long uncollectedOshScans = oshUncollectedScanRepository.count();
+            // OSH scan statistics
+            long collectedOshScans = jobRepository.countJobsWithOshScanId();
+            long uncollectedOshScans = oshUncollectedScanRepository.count();
 
-        dto.setCollectedOshScans(collectedOshScans);
-        dto.setUncollectedOshScans(uncollectedOshScans);
-        dto.setTotalOshScans(collectedOshScans + uncollectedOshScans);
+            dto.setCollectedOshScans(collectedOshScans);
+            dto.setUncollectedOshScans(uncollectedOshScans);
+            dto.setTotalOshScans(collectedOshScans + uncollectedOshScans);
+        } else {
+            // Time filtering - use time range queries
+            Instant now = Instant.now();
+            Instant startTime = now.minusSeconds(timePeriod.getTotalSeconds());
+            Instant endTime = now;
+
+            // Job statistics (filtered by createdAt)
+            dto.setTotalJobs(jobRepository.countInTimeRange(startTime, endTime));
+            dto.setPendingJobs(jobRepository.countByStatusInTimeRange(JobStatus.PENDING, startTime, endTime));
+            dto.setRunningJobs(jobRepository.countByStatusInTimeRange(JobStatus.RUNNING, startTime, endTime));
+            dto.setCompletedJobs(jobRepository.countByStatusInTimeRange(JobStatus.COMPLETED, startTime, endTime));
+            dto.setFailedJobs(jobRepository.countByStatusInTimeRange(JobStatus.FAILED, startTime, endTime));
+            dto.setCancelledJobs(jobRepository.countByStatusInTimeRange(JobStatus.CANCELLED, startTime, endTime));
+
+            // Batch statistics (filtered by submittedAt)
+            dto.setTotalBatches(jobBatchRepository.countInTimeRange(startTime, endTime));
+            dto.setProcessingBatches(
+                    jobBatchRepository.countByStatusInTimeRange(BatchStatus.PROCESSING, startTime, endTime));
+            dto.setCompletedBatches(
+                    jobBatchRepository.countByStatusInTimeRange(BatchStatus.COMPLETED, startTime, endTime));
+
+            // OSH scan statistics (filtered by createdAt)
+            long collectedOshScans = jobRepository.countJobsWithOshScanIdInTimeRange(startTime, endTime);
+            long uncollectedOshScans = oshUncollectedScanRepository.countInTimeRange(startTime, endTime);
+
+            dto.setCollectedOshScans(collectedOshScans);
+            dto.setUncollectedOshScans(uncollectedOshScans);
+            dto.setTotalOshScans(collectedOshScans + uncollectedOshScans);
+        }
 
         dto.setTimestamp(Instant.now());
 

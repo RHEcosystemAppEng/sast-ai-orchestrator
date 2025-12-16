@@ -100,6 +100,43 @@ public class JobRepository implements PanacheRepository<Job> {
     }
 
     /**
+     * Counts jobs with a specific status within a time range.
+     * Used for time-filtered dashboard summaries.
+     *
+     * @param status the job status to count
+     * @param startTime the start of the time range (inclusive)
+     * @param endTime the end of the time range (inclusive)
+     * @return count of jobs with the given status in the time range
+     */
+    public long countByStatusInTimeRange(JobStatus status, Instant startTime, Instant endTime) {
+        return count("status = ?1 AND createdAt >= ?2 AND createdAt <= ?3", status, startTime, endTime);
+    }
+
+    /**
+     * Counts all jobs within a time range.
+     * Used for time-filtered dashboard summaries.
+     *
+     * @param startTime the start of the time range (inclusive)
+     * @param endTime the end of the time range (inclusive)
+     * @return count of all jobs in the time range
+     */
+    public long countInTimeRange(Instant startTime, Instant endTime) {
+        return count("createdAt >= ?1 AND createdAt <= ?2", startTime, endTime);
+    }
+
+    /**
+     * Counts jobs with OSH scan IDs within a time range.
+     * Used for time-filtered dashboard OSH scan statistics.
+     *
+     * @param startTime the start of the time range (inclusive)
+     * @param endTime the end of the time range (inclusive)
+     * @return count of jobs with OSH scan IDs in the time range
+     */
+    public long countJobsWithOshScanIdInTimeRange(Instant startTime, Instant endTime) {
+        return count("oshScanId IS NOT NULL AND createdAt >= ?1 AND createdAt <= ?2", startTime, endTime);
+    }
+
+    /**
      * Gets OSH scan statistics grouped by package name.
      * Returns a map with package names as keys and OshScanStats objects containing:
      * - Total OSH scan count

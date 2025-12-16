@@ -188,4 +188,17 @@ public class OshUncollectedScanRepository implements PanacheRepository<OshUncoll
                 .page(io.quarkus.panache.common.Page.of(page, size))
                 .list();
     }
+
+    /**
+     * Counts all uncollected scans within a time range.
+     * Used for time-filtered dashboard summaries.
+     * Filters by createdAt timestamp.
+     *
+     * @param startTime the start of the time range (inclusive)
+     * @param endTime the end of the time range (inclusive)
+     * @return count of uncollected scans in the time range
+     */
+    public long countInTimeRange(Instant startTime, Instant endTime) {
+        return count("createdAt >= ?1 AND createdAt <= ?2", startTime, endTime);
+    }
 }

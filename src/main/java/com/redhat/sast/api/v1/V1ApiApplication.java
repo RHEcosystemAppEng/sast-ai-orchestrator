@@ -9,6 +9,7 @@ import com.redhat.sast.api.v1.resource.JobBatchResource;
 import com.redhat.sast.api.v1.resource.JobResource;
 import com.redhat.sast.api.v1.resource.MlOpsBatchResource;
 import com.redhat.sast.api.v1.resource.PackageResource;
+import com.redhat.sast.api.v1.resource.admin.ConfigAdminResource;
 import com.redhat.sast.api.v1.resource.admin.OshAdminResource;
 
 import jakarta.ws.rs.ApplicationPath;
@@ -28,6 +29,7 @@ public class V1ApiApplication extends Application {
         resources.add(HealthResource.class);
         resources.add(DashboardResource.class);
         resources.add(OshAdminResource.class);
+        resources.add(ConfigAdminResource.class);
         resources.add(MlOpsBatchResource.class);
 
         // Add any v1-specific providers (exception mappers, etc.)

@@ -99,6 +99,7 @@ public class JobRecoveryService {
     /**
      * Performs full recovery of orphaned jobs and batches.
      */
+    @Transactional
     public void performFullRecovery() {
         try {
             List<Job> orphanedJobs = findOrphanedJobs();

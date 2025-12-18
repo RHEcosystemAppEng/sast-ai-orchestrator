@@ -137,6 +137,32 @@ public class JobRepository implements PanacheRepository<Job> {
     }
 
     /**
+     * Finds potentially orphaned jobs that may need recovery.
+     * A (potentially) orphaned job will be in a non-terminal state (PENDING, SCHEDULED, RUNNING)
+     * but hasn't been updated recently, suggesting its watcher may have been lost.
+     *
+     * @param threshold jobs with lastUpdatedAt before this instant are potentially orphaned
+     * @param maxResults maximum number of jobs to return
+     * @return list of potentially orphaned jobs, ordered by lastUpdatedAt ascending (oldest
+     *         first)
+     */
+    public List<Job> findOrphanedJobs(Instant threshold, int maxResults) {
+        return getEntityManager()
+                .createQuery(
+                        """
+                        SELECT j FROM Job j
+                        WHERE j.status IN ('PENDING', 'SCHEDULED', 'RUNNING')
+                        AND j.lastUpdatedAt < :threshold
+                        AND j.tektonUrl IS NOT NULL
+                        ORDER BY j.lastUpdatedAt ASC
+                        """,
+                        Job.class)
+                .setParameter("threshold", threshold)
+                .setMaxResults(maxResults)
+                .getResultList();
+    }
+
+    /**
      * Gets OSH scan statistics grouped by package name.
      * Returns a map with package names as keys and OshScanStats objects containing:
      * - Total OSH scan count

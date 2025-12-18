@@ -160,7 +160,7 @@ public class JobRecoveryService {
      */
     private List<JobBatch> findStuckJobBatches() {
         // Use 2x threshold for batches as they take longer to process
-        Instant threshold = Instant.now().minus(orphanedJobThresholdMinutes * 2, ChronoUnit.MINUTES);
+        Instant threshold = Instant.now().minus((long) orphanedJobThresholdMinutes * 2, ChronoUnit.MINUTES);
         return jobBatchRepository.findStuckBatches(threshold);
     }
 
@@ -169,7 +169,7 @@ public class JobRecoveryService {
      */
     private List<MlOpsBatch> findStuckMlOpsBatches() {
         // Use 2x threshold for batches as they take longer to process
-        LocalDateTime threshold = LocalDateTime.now().minus(orphanedJobThresholdMinutes * 2, ChronoUnit.MINUTES);
+        LocalDateTime threshold = LocalDateTime.now().minus((long) orphanedJobThresholdMinutes * 2, ChronoUnit.MINUTES);
         return mlOpsBatchRepository.findStuckBatches(threshold);
     }
 

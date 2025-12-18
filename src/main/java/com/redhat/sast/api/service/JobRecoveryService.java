@@ -166,7 +166,7 @@ public class JobRecoveryService {
      * @param stuckBatches list of batches to recover
      */
     private void recoverStuckJobBatchesSafely(List<JobBatch> stuckBatches) {
-        LOGGER.debug("Found {} potentially stuck job batches", stuckBatches.size());
+        LOGGER.info("Found {} potentially stuck job batches", stuckBatches.size());
         for (JobBatch batch : stuckBatches) {
             try {
                 recoverJobBatch(batch);
@@ -182,7 +182,7 @@ public class JobRecoveryService {
      * @param stuckBatches list of MLOps batches to recover
      */
     private void recoverStuckMlOpsBatchesSafely(List<MlOpsBatch> stuckBatches) {
-        LOGGER.debug("Found {} potentially stuck MLOps batches", stuckBatches.size());
+        LOGGER.info("Found {} potentially stuck MLOps batches", stuckBatches.size());
         for (MlOpsBatch batch : stuckBatches) {
             try {
                 recoverMlOpsBatch(batch);
@@ -343,6 +343,7 @@ public class JobRecoveryService {
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void recoverJobBatch(JobBatch batch) {
         Long batchId = batch.getId();
+        LOGGER.info("Recovering job batch {}", batchId);
 
         List<Job> jobs = batch.getJobs();
         if (jobs.isEmpty()) {
@@ -389,6 +390,7 @@ public class JobRecoveryService {
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void recoverMlOpsBatch(MlOpsBatch batch) {
         Long batchId = batch.getId();
+        LOGGER.info("Recovering MLOps batch {}", batchId);
 
         List<MlOpsJob> jobs = batch.getJobs();
         if (jobs.isEmpty()) {

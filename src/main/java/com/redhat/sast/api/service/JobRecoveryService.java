@@ -103,59 +103,91 @@ public class JobRecoveryService {
         try {
             List<Job> orphanedJobs = findOrphanedJobs();
             if (!orphanedJobs.isEmpty()) {
-                LOGGER.debug("Found {} potentially orphaned regular jobs", orphanedJobs.size());
-                for (Job job : orphanedJobs) {
-                    try {
-                        recoverJob(job);
-                    } catch (Exception e) {
-                        LOGGER.error("Failed to recover job {}, continuing with remaining jobs", job.getId(), e);
-                    }
-                }
+                recoverOrphanedJobsSafely(orphanedJobs);
             }
 
             List<MlOpsJob> orphanedMlOpsJobs = findOrphanedMlOpsJobs();
             if (!orphanedMlOpsJobs.isEmpty()) {
-                LOGGER.debug("Found {} potentially orphaned MLOps jobs", orphanedMlOpsJobs.size());
-                for (MlOpsJob job : orphanedMlOpsJobs) {
-                    try {
-                        recoverMlOpsJob(job);
-                    } catch (Exception e) {
-                        LOGGER.error("Failed to recover MLOps job {}, continuing with remaining jobs", job.getId(), e);
-                    }
-                }
+                recoverOrphanedMlOpsJobsSafely(orphanedMlOpsJobs);
             }
 
             List<JobBatch> stuckBatches = findStuckJobBatches();
             if (!stuckBatches.isEmpty()) {
-                LOGGER.debug("Found {} potentially stuck job batches", stuckBatches.size());
-                for (JobBatch batch : stuckBatches) {
-                    try {
-                        recoverJobBatch(batch);
-                    } catch (Exception e) {
-                        LOGGER.error(
-                                "Failed to recover job batch {}, continuing with remaining batches", batch.getId(), e);
-                    }
-                }
+                recoverStuckJobBatchesSafely(stuckBatches);
             }
 
             List<MlOpsBatch> stuckMlOpsBatches = findStuckMlOpsBatches();
             if (!stuckMlOpsBatches.isEmpty()) {
-                LOGGER.debug("Found {} potentially stuck MLOps batches", stuckMlOpsBatches.size());
-                for (MlOpsBatch batch : stuckMlOpsBatches) {
-                    try {
-                        recoverMlOpsBatch(batch);
-                    } catch (Exception e) {
-                        LOGGER.error(
-                                "Failed to recover MLOps batch {}, continuing with remaining batches",
-                                batch.getId(),
-                                e);
-                    }
-                }
+                recoverStuckMlOpsBatchesSafely(stuckMlOpsBatches);
             }
 
             LOGGER.debug("Full recovery cycle completed");
         } catch (Exception e) {
             LOGGER.error("Error during full recovery", e);
+        }
+    }
+
+    /**
+     * Recovers a list of orphaned jobs with isolated error handling.
+     *
+     * @param orphanedJobs list of jobs to recover
+     */
+    private void recoverOrphanedJobsSafely(List<Job> orphanedJobs) {
+        LOGGER.debug("Found {} potentially orphaned regular jobs", orphanedJobs.size());
+        for (Job job : orphanedJobs) {
+            try {
+                recoverJob(job);
+            } catch (Exception e) {
+                LOGGER.error("Failed to recover job {}, continuing with remaining jobs", job.getId(), e);
+            }
+        }
+    }
+
+    /**
+     * Recovers a list of orphaned MLOps jobs with isolated error handling.
+     *
+     * @param orphanedJobs list of MLOps jobs to recover
+     */
+    private void recoverOrphanedMlOpsJobsSafely(List<MlOpsJob> orphanedJobs) {
+        LOGGER.debug("Found {} potentially orphaned MLOps jobs", orphanedJobs.size());
+        for (MlOpsJob job : orphanedJobs) {
+            try {
+                recoverMlOpsJob(job);
+            } catch (Exception e) {
+                LOGGER.error("Failed to recover MLOps job {}, continuing with remaining jobs", job.getId(), e);
+            }
+        }
+    }
+
+    /**
+     * Recovers a list of stuck job batches with isolated error handling.
+     *
+     * @param stuckBatches list of batches to recover
+     */
+    private void recoverStuckJobBatchesSafely(List<JobBatch> stuckBatches) {
+        LOGGER.debug("Found {} potentially stuck job batches", stuckBatches.size());
+        for (JobBatch batch : stuckBatches) {
+            try {
+                recoverJobBatch(batch);
+            } catch (Exception e) {
+                LOGGER.error("Failed to recover job batch {}, continuing with remaining batches", batch.getId(), e);
+            }
+        }
+    }
+
+    /**
+     * Recovers a list of stuck MLOps batches with isolated error handling.
+     *
+     * @param stuckBatches list of MLOps batches to recover
+     */
+    private void recoverStuckMlOpsBatchesSafely(List<MlOpsBatch> stuckBatches) {
+        LOGGER.debug("Found {} potentially stuck MLOps batches", stuckBatches.size());
+        for (MlOpsBatch batch : stuckBatches) {
+            try {
+                recoverMlOpsBatch(batch);
+            } catch (Exception e) {
+                LOGGER.error("Failed to recover MLOps batch {}, continuing with remaining batches", batch.getId(), e);
+            }
         }
     }
 

@@ -105,7 +105,11 @@ public class JobRecoveryService {
             if (!orphanedJobs.isEmpty()) {
                 LOGGER.debug("Found {} potentially orphaned regular jobs", orphanedJobs.size());
                 for (Job job : orphanedJobs) {
-                    recoverJob(job);
+                    try {
+                        recoverJob(job);
+                    } catch (Exception e) {
+                        LOGGER.error("Failed to recover job {}, continuing with remaining jobs", job.getId(), e);
+                    }
                 }
             }
 
@@ -113,7 +117,11 @@ public class JobRecoveryService {
             if (!orphanedMlOpsJobs.isEmpty()) {
                 LOGGER.debug("Found {} potentially orphaned MLOps jobs", orphanedMlOpsJobs.size());
                 for (MlOpsJob job : orphanedMlOpsJobs) {
-                    recoverMlOpsJob(job);
+                    try {
+                        recoverMlOpsJob(job);
+                    } catch (Exception e) {
+                        LOGGER.error("Failed to recover MLOps job {}, continuing with remaining jobs", job.getId(), e);
+                    }
                 }
             }
 
@@ -121,7 +129,12 @@ public class JobRecoveryService {
             if (!stuckBatches.isEmpty()) {
                 LOGGER.debug("Found {} potentially stuck job batches", stuckBatches.size());
                 for (JobBatch batch : stuckBatches) {
-                    recoverJobBatch(batch);
+                    try {
+                        recoverJobBatch(batch);
+                    } catch (Exception e) {
+                        LOGGER.error(
+                                "Failed to recover job batch {}, continuing with remaining batches", batch.getId(), e);
+                    }
                 }
             }
 
@@ -129,7 +142,14 @@ public class JobRecoveryService {
             if (!stuckMlOpsBatches.isEmpty()) {
                 LOGGER.debug("Found {} potentially stuck MLOps batches", stuckMlOpsBatches.size());
                 for (MlOpsBatch batch : stuckMlOpsBatches) {
-                    recoverMlOpsBatch(batch);
+                    try {
+                        recoverMlOpsBatch(batch);
+                    } catch (Exception e) {
+                        LOGGER.error(
+                                "Failed to recover MLOps batch {}, continuing with remaining batches",
+                                batch.getId(),
+                                e);
+                    }
                 }
             }
 
@@ -223,6 +243,7 @@ public class JobRecoveryService {
                 reestablishWatcher(jobId, pipelineRunName, false);
             }
             case ERROR -> LOGGER.error("Error checking PipelineRun status for job {}, will retry next cycle", jobId);
+            default -> LOGGER.error("Unexpected PipelineRunStatus {} for job {}, cannot recover", prStatus, jobId);
         }
     }
 
@@ -278,6 +299,8 @@ public class JobRecoveryService {
                 reestablishWatcher(jobId, pipelineRunName, true);
             }
             case ERROR -> LOGGER.error("Error checking PipelineRun for MLOps job {}", jobId);
+            default ->
+                LOGGER.error("Unexpected PipelineRunStatus {} for MLOps job {}, cannot recover", prStatus, jobId);
         }
     }
 
@@ -409,7 +432,7 @@ public class JobRecoveryService {
             return PipelineRunStatus.RUNNING;
 
         } catch (KubernetesClientException e) {
-            LOGGER.error("Kubernetes error checking PipelineRun {}: {}", pipelineRunName, e.getMessage());
+            LOGGER.error("Kubernetes error checking PipelineRun {}", pipelineRunName, e);
             return PipelineRunStatus.ERROR;
         } catch (Exception e) {
             LOGGER.error("Error getting PipelineRun status for {}", pipelineRunName, e);

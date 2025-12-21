@@ -87,6 +87,8 @@ public class JobRecoveryService {
     private final MlOpsNodeJudgeEvalService mlOpsNodeJudgeEvalService;
     private final MlOpsNodeSummaryEvalService mlOpsNodeSummaryEvalService;
 
+    private final LeaderElectionService leaderElectionService;
+
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
 
@@ -98,24 +100,33 @@ public class JobRecoveryService {
 
     /**
      * Performs full recovery of orphaned jobs and batches.
+     * Includes leadership checks to abort gracefully if leadership is lost during recovery.
      */
     @Transactional
     public void performFullRecovery() {
         try {
+            if (shouldAbortRecovery()) return;
+
             List<Job> orphanedJobs = findOrphanedJobs();
             if (!orphanedJobs.isEmpty()) {
                 recoverOrphanedJobsSafely(orphanedJobs);
             }
+
+            if (shouldAbortRecovery()) return;
 
             List<MlOpsJob> orphanedMlOpsJobs = findOrphanedMlOpsJobs();
             if (!orphanedMlOpsJobs.isEmpty()) {
                 recoverOrphanedMlOpsJobsSafely(orphanedMlOpsJobs);
             }
 
+            if (shouldAbortRecovery()) return;
+
             List<JobBatch> stuckBatches = findStuckJobBatches();
             if (!stuckBatches.isEmpty()) {
                 recoverStuckJobBatchesSafely(stuckBatches);
             }
+
+            if (shouldAbortRecovery()) return;
 
             List<MlOpsBatch> stuckMlOpsBatches = findStuckMlOpsBatches();
             if (!stuckMlOpsBatches.isEmpty()) {
@@ -126,6 +137,34 @@ public class JobRecoveryService {
         } catch (Exception e) {
             LOGGER.error("Error during full recovery", e);
         }
+    }
+
+    /**
+     * Checks if this pod still has leadership. If not, logs and returns true to signal abort.
+     *
+     * @return true if recovery should abort (not leader), false if should continue (is leader)
+     */
+    private boolean shouldAbortRecovery() {
+        if (!leaderElectionService.isCurrentlyLeader()) {
+            LOGGER.info("Leadership lost during recovery, aborting");
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Checks leadership before watcher creation with a checkpoint label for debugging.
+     *
+     * @param jobId The job ID for logging
+     * @param checkpoint Description of which check this is (for debugging)
+     * @return true if should skip watcher creation (not leader), false if should continue
+     */
+    private boolean shouldSkipWatcherCreation(Long jobId, String checkpoint) {
+        if (!leaderElectionService.isCurrentlyLeader()) {
+            LOGGER.debug("Not leader ({}), skipping watcher for job {}", checkpoint, jobId);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -477,10 +516,26 @@ public class JobRecoveryService {
 
     /**
      * Re-establishes a watcher for a still-running PipelineRun.
+     * Includes leadership checks to prevent duplicate watchers.
      */
     private void reestablishWatcher(Long jobId, String pipelineRunName, boolean isMlOps) {
         managedExecutor.execute(() -> {
             try {
+                if (shouldSkipWatcherCreation(jobId, "initial check")) return;
+
+                PipelineRun pr = resourceManager.getPipelineRun(pipelineRunName);
+                if (pr == null) {
+                    LOGGER.warn("PipelineRun {} not found, skipping watcher", pipelineRunName);
+                    return;
+                }
+
+                if (resourceManager.isPipelineCompleted(pr)) {
+                    LOGGER.info("PipelineRun {} already completed, skipping watcher", pipelineRunName);
+                    return;
+                }
+
+                if (shouldSkipWatcherCreation(jobId, "pre-creation check")) return;
+
                 if (isMlOps) {
                     watchMlOpsPipelineRunForRecovery(jobId, pipelineRunName);
                 } else {
@@ -505,7 +560,13 @@ public class JobRecoveryService {
                 .inNamespace(namespace)
                 .withName(pipelineRunName)
                 .watch(new PipelineRunWatcher(
-                        pipelineRunName, jobId, future, jobService, dvcMetadataService, dataArtifactService))) {
+                        pipelineRunName,
+                        jobId,
+                        future,
+                        jobService,
+                        dvcMetadataService,
+                        dataArtifactService,
+                        leaderElectionService))) {
             future.join();
             LOGGER.info("Recovery watcher for PipelineRun {} completed", pipelineRunName);
         } catch (Exception e) {
@@ -546,7 +607,8 @@ public class JobRecoveryService {
                         mlOpsNodeFilterEvalService,
                         mlOpsNodeJudgeEvalService,
                         mlOpsNodeSummaryEvalService,
-                        mlOpsBatchService))) {
+                        mlOpsBatchService,
+                        leaderElectionService))) {
             future.join();
             LOGGER.info("Recovery watcher for MLOps PipelineRun {} completed", pipelineRunName);
         } catch (Exception e) {

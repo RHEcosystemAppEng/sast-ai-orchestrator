@@ -1,6 +1,7 @@
 package com.redhat.sast.api.service;
 
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -33,7 +34,7 @@ public class LeaderElectionService {
     @ConfigProperty(name = "quarkus.application.name", defaultValue = "sast-ai-orchestrator")
     String applicationName;
 
-    private volatile boolean isLeader = false;
+    private final AtomicBoolean isLeader = new AtomicBoolean(false);
     private LeaderElector leaderElector;
 
     /**
@@ -62,12 +63,12 @@ public class LeaderElectionService {
         var callbacks = new LeaderCallbacks(
                 () -> {
                     LOGGER.info("Pod {} acquired leadership for recovery", podName);
-                    isLeader = true;
+                    isLeader.set(true);
                     onLeadershipAcquired.run();
                 },
                 () -> {
                     LOGGER.info("Pod {} lost leadership for recovery", podName);
-                    isLeader = false;
+                    isLeader.set(false);
                     onLeadershipLost.run();
                 },
                 (identity) -> {
@@ -88,7 +89,12 @@ public class LeaderElectionService {
         leaderElector.run();
     }
 
-    public boolean isLeader() {
-        return isLeader;
+    /**
+     * Checks if this pod currently holds leadership.
+     *
+     * @return true if this pod is the current leader, false otherwise
+     */
+    public boolean isCurrentlyLeader() {
+        return isLeader.get();
     }
 }

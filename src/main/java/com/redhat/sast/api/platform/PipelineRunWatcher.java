@@ -4,6 +4,7 @@ import java.util.concurrent.CompletableFuture;
 
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.service.JobService;
+import com.redhat.sast.api.service.LeaderElectionService;
 import com.redhat.sast.api.service.mlops.DataArtifactService;
 import com.redhat.sast.api.service.mlops.DvcMetadataService;
 
@@ -16,17 +17,16 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Watcher implementation for monitoring Tekton PipelineRun status changes.
  * Updates job status in the database based on pipeline execution results.
+ * Extends AbstractLeaderAwareWatcher to avoid duplicate processing when leadership changes.
  */
 @Slf4j
-public class PipelineRunWatcher implements Watcher<PipelineRun> {
+public class PipelineRunWatcher extends AbstractLeaderAwareWatcher implements Watcher<PipelineRun> {
 
     private static final String SUCCEEDED_CONDITION = "Succeeded";
     private static final String STATUS_TRUE = "True";
     private static final String STATUS_FALSE = "False";
 
     private final String pipelineRunName;
-    private final long jobId;
-    private final CompletableFuture<Void> future;
     private final JobService jobService;
     private final DvcMetadataService dvcMetadataService;
     private final DataArtifactService dataArtifactService;
@@ -37,10 +37,10 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
             CompletableFuture<Void> future,
             JobService jobService,
             DvcMetadataService dvcMetadataService,
-            DataArtifactService dataArtifactService) {
+            DataArtifactService dataArtifactService,
+            LeaderElectionService leaderElectionService) {
+        super(leaderElectionService, future, jobId);
         this.pipelineRunName = pipelineRunName;
-        this.jobId = jobId;
-        this.future = future;
         this.jobService = jobService;
         this.dvcMetadataService = dvcMetadataService;
         this.dataArtifactService = dataArtifactService;
@@ -95,6 +95,8 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
      * Handles successful pipeline completion
      */
     private void handleSuccessfulPipeline(PipelineRun pipelineRun) {
+        if (shouldSkipDueToLeadership("completion")) return;
+
         LOGGER.info("PipelineRun {} succeeded.", pipelineRunName);
 
         executeWithErrorHandling(
@@ -112,6 +114,8 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
                 "Data artifacts successfully created for job {}",
                 "Failed to create data artifacts for job {}, but job will still be marked as completed");
 
+        if (shouldSkipDueToLeadership("status update")) return;
+
         jobService.updateJobStatus(jobId, JobStatus.COMPLETED);
         future.complete(null);
     }
@@ -120,6 +124,8 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
      * Handles failed pipeline execution
      */
     private void handleFailedPipeline(Condition condition) {
+        if (shouldSkipDueToLeadership("failure processing")) return;
+
         LOGGER.error(
                 "PipelineRun {} failed. Reason: {}, Message: {}",
                 pipelineRunName,
@@ -136,6 +142,8 @@ public class PipelineRunWatcher implements Watcher<PipelineRun> {
      * Handles pipeline in running state
      */
     private void handleRunningPipeline(Condition condition) {
+        if (shouldSkipDueToLeadership("running status update")) return;
+
         if ("Unknown".equalsIgnoreCase(condition.getStatus())
                 && condition.getReason() != null
                 && condition.getReason().contains("Running")) {

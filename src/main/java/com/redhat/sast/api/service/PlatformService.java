@@ -55,6 +55,7 @@ public class PlatformService {
     private final KubernetesResourceManager resourceManager;
     private final DvcMetadataService dvcMetadataService;
     private final DataArtifactService dataArtifactService;
+    private final LeaderElectionService leaderElectionService;
 
     @ConfigProperty(name = "sast.ai.workflow.namespace")
     String namespace;
@@ -111,7 +112,13 @@ public class PlatformService {
                 .inNamespace(namespace)
                 .withName(pipelineRunName)
                 .watch(new PipelineRunWatcher(
-                        pipelineRunName, jobId, future, jobService, dvcMetadataService, dataArtifactService))) {
+                        pipelineRunName,
+                        jobId,
+                        future,
+                        jobService,
+                        dvcMetadataService,
+                        dataArtifactService,
+                        leaderElectionService))) {
             future.join();
             LOGGER.info("Watcher for PipelineRun {} is closing.", pipelineRunName);
         } catch (Exception e) {
@@ -279,7 +286,8 @@ public class PlatformService {
                         mlOpsNodeFilterEvalService,
                         mlOpsNodeJudgeEvalService,
                         mlOpsNodeSummaryEvalService,
-                        mlOpsBatchServiceParam))) {
+                        mlOpsBatchServiceParam,
+                        leaderElectionService))) {
             future.join();
         } catch (Exception e) {
             LOGGER.error("Error watching MLOps PipelineRun {} for job ID: {}", pipelineRunName, jobId, e);

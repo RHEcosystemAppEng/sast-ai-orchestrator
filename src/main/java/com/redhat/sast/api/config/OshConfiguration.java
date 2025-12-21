@@ -281,6 +281,33 @@ public class OshConfiguration {
     }
 
     /**
+     * Reloads the package list from the packages file.
+     *
+     * @return number of packages loaded
+     * @throws IllegalStateException if the file cannot be read
+     */
+    public synchronized int reloadPackageList() {
+        if (packageNameSetOverridden) {
+            LOGGER.warn("Package set was overridden for testing - reload skipped");
+            return packageNameSet.size();
+        }
+
+        int previousCount = packageNameSet.size();
+        LOGGER.debug("Reloading package list from file: {}", packagesFilePath);
+
+        Set<String> newPackageSet = loadPackageListFromFile();
+        packageNameSet = newPackageSet;
+
+        LOGGER.debug(
+                "Package list reloaded successfully. Previous count: {}, New count: {}",
+                previousCount,
+                packageNameSet.size());
+        LOGGER.debug("Updated packages to monitor: {}", packageNameSet);
+
+        return packageNameSet.size();
+    }
+
+    /**
      * Sets package list directly for testing purposes only.
      *
      * @param packages set of packages to monitor (null will be converted to empty set)

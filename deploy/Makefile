@@ -96,8 +96,6 @@ deploy-prod: ## Deploy to production environment (sast-ai-prod namespace)
 
 .PHONY: _deploy
 _deploy: ## Internal deployment target
-	@helm repo add bitnami https://charts.bitnami.com/bitnami >/dev/null 2>&1 || true
-	@helm repo update >/dev/null 2>&1
 	@cd $(CHART_PATH) && helm dependency update
 	@helm install $(RELEASE_NAME) $(CHART_PATH) \
 		-f $(CHART_PATH)/values.yaml \
@@ -129,8 +127,6 @@ upgrade-prod: ## Upgrade production deployment
 
 .PHONY: _upgrade
 _upgrade: ## Internal upgrade target
-	@helm repo add bitnami https://charts.bitnami.com/bitnami >/dev/null 2>&1 || true
-	@helm repo update >/dev/null 2>&1
 	@cd $(CHART_PATH) && helm dependency update
 	@helm upgrade $(RELEASE_NAME) $(CHART_PATH) \
 		-f $(CHART_PATH)/values.yaml \
@@ -182,8 +178,9 @@ status: ## Show deployment status
 .PHONY: wait-pods
 wait-pods: ## Wait for pods to be ready
 	@echo "Waiting for SAST AI to be ready..."
-	@echo "Checking PostgreSQL database..."
-	@$(KUBECTL_CMD) wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n $(NAMESPACE) --timeout=300s
+	@echo "Checking CloudNativePG PostgreSQL cluster..."
+	@$(KUBECTL_CMD) wait --for=condition=ready cluster $(RELEASE_NAME)-db -n $(NAMESPACE) --timeout=300s 2>/dev/null || \
+		$(KUBECTL_CMD) wait --for=condition=ready pod -l cnpg.io/cluster=$(RELEASE_NAME)-db -n $(NAMESPACE) --timeout=300s
 	@echo "Database is ready!"
 	@echo "Checking SAST AI application..."
 	@$(KUBECTL_CMD) wait --for=condition=ready pod -l app.kubernetes.io/name=sast-ai -n $(NAMESPACE) --timeout=300s

@@ -74,50 +74,38 @@ route:
     insecureEdgeTerminationPolicy: Redirect
   annotations: {}
 
-## PostgreSQL configuration (base settings)
-postgresql:
+## PostgreSQL configuration (CloudNativePG)
+## Requires CloudNativePG operator to be installed in the cluster
+## See: https://cloudnative-pg.io/
+postgres:
+  # Enable/disable PostgreSQL deployment
   enabled: true
-  # Pin PostgreSQL image version for stability and reproducibility
-  # Prevents unexpected version changes during deployments
-  image:
-    registry: docker.io
-    repository: bitnamilegacy/postgresql
-    tag: "16.4.0-debian-12-r14"
-  # Inherit labels from parent chart for proper cleanup
-  commonLabels:
-    app.kubernetes.io/name: "{{ include \"sast-ai.name\" . }}"
-    app.kubernetes.io/instance: "{{ .Release.Name }}"
-    app.kubernetes.io/version: "{{ .Chart.AppVersion }}"
-    app.kubernetes.io/managed-by: "{{ .Release.Service }}"
-  primary:
-    persistence:
-      enabled: true
-      size: 8Gi
-      storageClass: ""
-    resources:
-      limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 250m
-        memory: 256Mi
-    # OpenShift compatibility
-    podSecurityContext:
-      enabled: false
-    containerSecurityContext:
-      enabled: false
-  # Use dedicated service account for PostgreSQL with anyuid SCC
-  serviceAccount:
-    create: false
-    name: ""  # Will be overridden in the postgresql template
-  # OpenShift compatibility settings
-  volumePermissions:
-    enabled: false
-  shmVolume:
-    chmod:
-      enabled: false
+  
+  # PostgreSQL version
+  version: "16.4"
+  
+  # Number of instances (1 = standalone, 2+ = HA with streaming replication)
+  instances: 1
+  
+  # Database and user configuration
+  database: "sast-ai"
+  username: "quarkus"
+  
+  # Storage size
+  storage:
+    size: 8Gi
+    storageClass: ""  # Use default storage class if empty
+  
+  # Resource configuration
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
 
-## External PostgreSQL configuration (when postgresql.enabled is false)
+## External PostgreSQL configuration (when postgres.enabled is false)
 externalDatabase:
   host: ""
   port: 5432

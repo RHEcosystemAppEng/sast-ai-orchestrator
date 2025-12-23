@@ -76,11 +76,29 @@ Create the name of the configmap to use
 {{- end }}
 
 {{/*
-PostgreSQL hostname
+PostgreSQL cluster name
+*/}}
+{{- define "sast-ai.postgres.clusterName" -}}
+{{- printf "%s-db" (include "sast-ai.fullname" .) }}
+{{- end }}
+
+{{/*
+PostgreSQL hostname - CloudNativePG creates a service with -rw suffix for read-write access
 */}}
 {{- define "sast-ai.postgresql.host" -}}
-{{- if .Values.postgresql.enabled }}
-{{- printf "%s-postgresql" .Release.Name }}
+{{- if .Values.postgres.enabled }}
+{{- printf "%s-rw" (include "sast-ai.postgres.clusterName" .) }}
+{{- else }}
+{{- .Values.externalDatabase.host }}
+{{- end }}
+{{- end }}
+
+{{/*
+PostgreSQL read-only hostname - CloudNativePG creates a service with -ro suffix for read-only access
+*/}}
+{{- define "sast-ai.postgresql.hostReadOnly" -}}
+{{- if .Values.postgres.enabled }}
+{{- printf "%s-ro" (include "sast-ai.postgres.clusterName" .) }}
 {{- else }}
 {{- .Values.externalDatabase.host }}
 {{- end }}
@@ -90,7 +108,7 @@ PostgreSQL hostname
 PostgreSQL port
 */}}
 {{- define "sast-ai.postgresql.port" -}}
-{{- if .Values.postgresql.enabled }}
+{{- if .Values.postgres.enabled }}
 {{- 5432 }}
 {{- else }}
 {{- .Values.externalDatabase.port }}
@@ -101,8 +119,8 @@ PostgreSQL port
 PostgreSQL database name
 */}}
 {{- define "sast-ai.postgresql.database" -}}
-{{- if .Values.postgresql.enabled }}
-{{- .Values.postgresql.auth.database }}
+{{- if .Values.postgres.enabled }}
+{{- .Values.postgres.database }}
 {{- else }}
 {{- .Values.externalDatabase.database }}
 {{- end }}
@@ -112,8 +130,8 @@ PostgreSQL database name
 PostgreSQL username
 */}}
 {{- define "sast-ai.postgresql.username" -}}
-{{- if .Values.postgresql.enabled }}
-{{- .Values.postgresql.auth.username }}
+{{- if .Values.postgres.enabled }}
+{{- .Values.postgres.username }}
 {{- else }}
 {{- .Values.externalDatabase.username }}
 {{- end }}
@@ -121,10 +139,11 @@ PostgreSQL username
 
 {{/*
 PostgreSQL password secret name
+CloudNativePG creates a secret named {cluster-name}-app with all connection details
 */}}
 {{- define "sast-ai.postgresql.secretName" -}}
-{{- if .Values.postgresql.enabled }}
-{{- printf "%s-postgresql" .Release.Name }}
+{{- if .Values.postgres.enabled }}
+{{- printf "%s-app" (include "sast-ai.postgres.clusterName" .) }}
 {{- else }}
 {{- if .Values.externalDatabase.existingSecret }}
 {{- .Values.externalDatabase.existingSecret }}
@@ -136,9 +155,10 @@ PostgreSQL password secret name
 
 {{/*
 PostgreSQL password secret key
+CloudNativePG uses 'password' as the key in the app secret
 */}}
 {{- define "sast-ai.postgresql.secretKey" -}}
-{{- if .Values.postgresql.enabled }}
+{{- if .Values.postgres.enabled }}
 {{- "password" }}
 {{- else }}
 {{- if .Values.externalDatabase.existingSecretPasswordKey }}
@@ -157,10 +177,3 @@ Common annotations
 {{ toYaml . }}
 {{- end }}
 {{- end }}
-
-{{/*
-PostgreSQL service account name
-*/}}
-{{- define "sast-ai.postgresql.serviceAccountName" -}}
-{{- printf "%s-postgresql" (include "sast-ai.fullname" .) }}
-{{- end }} 

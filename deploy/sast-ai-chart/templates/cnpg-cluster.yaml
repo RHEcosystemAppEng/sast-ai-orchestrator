@@ -1,0 +1,41 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "sast-ai.fullname" . }}-db
+  labels:
+    {{- include "sast-ai.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+  {{- with (include "sast-ai.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  description: "PostgreSQL database for SAST AI Orchestrator"
+  imageName: ghcr.io/cloudnative-pg/postgresql:{{ .Values.postgres.version }}
+  instances: {{ .Values.postgres.instances }}
+  
+  # Primary update strategy
+  primaryUpdateStrategy: unsupervised
+  primaryUpdateMethod: switchover
+  
+  # Bootstrap configuration
+  bootstrap:
+    initdb:
+      database: {{ .Values.postgres.database }}
+      owner: {{ .Values.postgres.username }}
+  
+  # Storage configuration
+  storage:
+    size: {{ .Values.postgres.storage.size }}
+    {{- if .Values.postgres.storage.storageClass }}
+    storageClass: {{ .Values.postgres.storage.storageClass }}
+    {{- end }}
+  
+  # Resource configuration
+  resources:
+    {{- toYaml .Values.postgres.resources | nindent 4 }}
+  
+  # OpenShift specific: Let the operator handle security contexts
+  enableSuperuserAccess: false
+{{- end }}

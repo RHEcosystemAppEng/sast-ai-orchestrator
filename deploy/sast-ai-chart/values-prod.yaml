@@ -39,23 +39,17 @@ route:
     haproxy.router.openshift.io/timeout: 300s
 
 ## PostgreSQL configuration - production sizing
-postgresql:
-  auth:
-    postgresPassword: "postgres-prod-secure"
-    username: "quarkus"
-    password: "quarkus-prod-secure"
-    database: "sast-ai-prod"
-  primary:
-    persistence:
-      enabled: true
-      size: 20Gi  # Larger storage for prod
-    resources:
-      limits:
-        cpu: 1000m
-        memory: 1Gi
-      requests:
-        cpu: 500m
-        memory: 512Mi
+postgres:
+  database: "sast-ai-prod"
+  storage:
+    size: 20Gi
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
 
 ## Horizontal Pod Autoscaler - enabled for prod
 hpa:

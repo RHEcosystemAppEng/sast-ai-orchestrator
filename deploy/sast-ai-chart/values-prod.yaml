@@ -22,6 +22,7 @@ app:
     OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com"
     # OSH Integration - Production Configuration
     OSH_INTEGRATION_ENABLED: "true"
+    OSH_POLL_INTERVAL: "1h"
 
   # Resource limits and requests - production sizing
   resources:

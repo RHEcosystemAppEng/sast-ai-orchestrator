@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import com.redhat.sast.api.enums.JobStatus;
+import com.redhat.sast.api.service.LeaderElectionService;
 import com.redhat.sast.api.service.mlops.MlOpsBatchService;
 import com.redhat.sast.api.service.mlops.MlOpsExcelReportService;
 import com.redhat.sast.api.service.mlops.MlOpsJobService;
@@ -18,21 +19,18 @@ import io.fabric8.knative.pkg.apis.Condition;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.WatcherException;
 import io.fabric8.tekton.v1.PipelineRun;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * Watches Tekton PipelineRun execution and updates MLOps job status accordingly.
  * Also extracts and stores workflow metrics when pipeline completes successfully.
+ * Extends AbstractLeaderAwareWatcher to avoid duplicate processing when leadership changes.
  */
-@RequiredArgsConstructor
 @Slf4j
-public class MlOpsPipelineRunWatcher implements Watcher<PipelineRun> {
+public class MlOpsPipelineRunWatcher extends AbstractLeaderAwareWatcher implements Watcher<PipelineRun> {
 
     private final String pipelineRunName;
-    private final Long jobId;
     private final Long batchId;
-    private final CompletableFuture<Void> future;
     private final MlOpsJobService mlOpsJobService;
     private final MlOpsJobSettingsService mlOpsJobSettingsService;
     private final MlOpsMetricsService mlOpsMetricsService;
@@ -41,10 +39,38 @@ public class MlOpsPipelineRunWatcher implements Watcher<PipelineRun> {
     private final MlOpsNodeFilterEvalService mlOpsNodeFilterEvalService;
     private final MlOpsNodeJudgeEvalService mlOpsNodeJudgeEvalService;
     private final MlOpsNodeSummaryEvalService mlOpsNodeSummaryEvalService;
-    private final Object mlOpsBatchService; // Object to avoid circular dependency
+    private final Object mlOpsBatchService;
 
-    // Flag to prevent duplicate processing of completion event
     private volatile boolean completionProcessed = false;
+
+    public MlOpsPipelineRunWatcher(
+            String pipelineRunName,
+            Long jobId,
+            Long batchId,
+            CompletableFuture<Void> future,
+            MlOpsJobService mlOpsJobService,
+            MlOpsJobSettingsService mlOpsJobSettingsService,
+            MlOpsMetricsService mlOpsMetricsService,
+            MlOpsTokenMetricsService mlOpsTokenMetricsService,
+            MlOpsExcelReportService mlOpsExcelReportService,
+            MlOpsNodeFilterEvalService mlOpsNodeFilterEvalService,
+            MlOpsNodeJudgeEvalService mlOpsNodeJudgeEvalService,
+            MlOpsNodeSummaryEvalService mlOpsNodeSummaryEvalService,
+            Object mlOpsBatchService,
+            LeaderElectionService leaderElectionService) {
+        super(leaderElectionService, future, jobId);
+        this.pipelineRunName = pipelineRunName;
+        this.batchId = batchId;
+        this.mlOpsJobService = mlOpsJobService;
+        this.mlOpsJobSettingsService = mlOpsJobSettingsService;
+        this.mlOpsMetricsService = mlOpsMetricsService;
+        this.mlOpsTokenMetricsService = mlOpsTokenMetricsService;
+        this.mlOpsExcelReportService = mlOpsExcelReportService;
+        this.mlOpsNodeFilterEvalService = mlOpsNodeFilterEvalService;
+        this.mlOpsNodeJudgeEvalService = mlOpsNodeJudgeEvalService;
+        this.mlOpsNodeSummaryEvalService = mlOpsNodeSummaryEvalService;
+        this.mlOpsBatchService = mlOpsBatchService;
+    }
 
     @Override
     public void eventReceived(Action action, PipelineRun pipelineRun) {
@@ -114,6 +140,8 @@ public class MlOpsPipelineRunWatcher implements Watcher<PipelineRun> {
             return;
         }
         completionProcessed = true;
+
+        if (shouldSkipDueToLeadership("completion")) return;
 
         LOGGER.info("MLOps PipelineRun {} succeeded for job {}", pipelineRunName, jobId);
 
@@ -195,10 +223,10 @@ public class MlOpsPipelineRunWatcher implements Watcher<PipelineRun> {
                     e);
         }
 
-        // Update job status - wrapped in try-catch to prevent watcher from crashing
+        if (shouldSkipDueToLeadership("status update")) return;
+
         try {
             mlOpsJobService.updateJobStatus(jobId, JobStatus.COMPLETED);
-            // Increment batch completed jobs counter
             if (mlOpsBatchService instanceof MlOpsBatchService batchSvc) {
                 batchSvc.incrementBatchCompletedJobs(batchId);
             }
@@ -213,6 +241,8 @@ public class MlOpsPipelineRunWatcher implements Watcher<PipelineRun> {
      * Handles failed pipeline execution
      */
     private void handleFailedPipeline(Condition condition) {
+        if (shouldSkipDueToLeadership("failure processing")) return;
+
         LOGGER.error(
                 "MLOps PipelineRun {} failed for job {}. Reason: {}, Message: {}",
                 pipelineRunName,
@@ -223,7 +253,6 @@ public class MlOpsPipelineRunWatcher implements Watcher<PipelineRun> {
         try {
             if (condition.getReason() == null || !condition.getReason().equalsIgnoreCase("Cancelled")) {
                 mlOpsJobService.updateJobStatus(jobId, JobStatus.FAILED);
-                // Increment batch failed jobs counter
                 if (mlOpsBatchService instanceof MlOpsBatchService batchSvc) {
                     batchSvc.incrementBatchFailedJobs(batchId);
                 }
@@ -239,6 +268,8 @@ public class MlOpsPipelineRunWatcher implements Watcher<PipelineRun> {
      * Handles pipeline in running state
      */
     private void handleRunningPipeline(Condition condition) {
+        if (shouldSkipDueToLeadership("running status update")) return;
+
         if ("Unknown".equalsIgnoreCase(condition.getStatus())
                 && condition.getReason() != null
                 && condition.getReason().contains("Running")) {

@@ -39,24 +39,17 @@ route:
   annotations:
     haproxy.router.openshift.io/timeout: 60s
 
-## PostgreSQL configuration - smaller resources for dev
-postgresql:
-  auth:
-    postgresPassword: "postgres-dev"
-    username: "quarkus"
-    password: "quarkus"
-    database: "sast-ai"
-  primary:
-    persistence:
-      enabled: true
-      size: 4Gi  # Smaller storage for dev
-    resources:
-      limits:
-        cpu: 250m
-        memory: 256Mi
-      requests:
-        cpu: 100m
-        memory: 128Mi
+## PostgreSQL configuration - dev sizing
+postgres:
+  storage:
+    size: 4Gi
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
 
 ## Horizontal Pod Autoscaler - disabled for dev
 hpa:

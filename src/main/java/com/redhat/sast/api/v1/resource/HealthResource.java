@@ -11,8 +11,6 @@ import com.redhat.sast.api.v1.dto.response.HealthResponseDto;
 
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.tekton.client.TektonClient;
-import io.fabric8.tekton.v1.PipelineList;
-import io.fabric8.tekton.v1.PipelineRunList;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -108,32 +106,25 @@ public class HealthResource {
         String namespace = this.namespace;
         String tektonLabel = "tekton";
         try {
-            // Test basic Tekton connectivity by listing pipelines in the namespace
-            PipelineList pipelineList =
-                    tektonClient.v1().pipelines().inNamespace(namespace).list();
+            // Check if the specific pipeline we use exists (single resource fetch, not list)
+            var pipeline = tektonClient
+                    .v1()
+                    .pipelines()
+                    .inNamespace(namespace)
+                    .withName("sast-ai-workflow-pipeline")
+                    .get();
 
-            if (pipelineList == null) {
-                LOGGER.warn("Tekton health check: Pipelines list is null in namespace={}", namespace);
-                return HealthResponseDto.down(tektonLabel, "Pipelines list is null");
-            }
-
-            try {
-                // Test access to pipeline runs (which is what we actually create)
-                PipelineRunList pipelineRunList =
-                        tektonClient.v1().pipelineRuns().inNamespace(namespace).list();
-
-                if (pipelineRunList == null) {
-                    LOGGER.warn("Tekton health check: PipelineRuns list is null in namespace={}", namespace);
-                    return HealthResponseDto.down(tektonLabel, "PipelineRuns list is null");
-                }
+            if (pipeline != null) {
+                LOGGER.debug("Tekton health check: sast-ai-workflow-pipeline found in namespace={}", namespace);
                 return HealthResponseDto.up(tektonLabel);
-
-            } catch (KubernetesClientException e) {
-                LOGGER.warn("Tekton health check: limited permissions in namespace={}", namespace, e);
-                return HealthResponseDto.up(tektonLabel, "Limited Permissions");
+            } else {
+                // Pipeline not found but API is accessible - still healthy, just needs setup
+                LOGGER.warn("Tekton health check: sast-ai-workflow-pipeline not found in namespace={}", namespace);
+                return HealthResponseDto.up(tektonLabel, "Pipeline not deployed yet");
             }
+
         } catch (KubernetesClientException e) {
-            LOGGER.error("Tekton health check: failed to list pipelines in namespace={}", namespace, e);
+            LOGGER.error("Tekton health check: failed to access Tekton API in namespace={}", namespace, e);
             return HealthResponseDto.down(tektonLabel, e.getMessage());
         } catch (Exception e) {
             LOGGER.error("Tekton health check: general failure in namespace={}", namespace, e);

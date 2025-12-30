@@ -37,19 +37,19 @@ app:
     httpGet:
       path: /api/v1/health
       port: 8080
-    initialDelaySeconds: 10
-    periodSeconds: 5
+    initialDelaySeconds: 15
+    periodSeconds: 30
     timeoutSeconds: 10
-    failureThreshold: 5
+    failureThreshold: 3
     
   readinessProbe:
     httpGet:
       path: /api/v1/health
       port: 8080
-    initialDelaySeconds: 10
-    periodSeconds: 5
+    initialDelaySeconds: 15
+    periodSeconds: 30
     timeoutSeconds: 10
-    failureThreshold: 15
+    failureThreshold: 5
   
   # Node selector, tolerations, and affinity (can be overridden)
   nodeSelector: {}

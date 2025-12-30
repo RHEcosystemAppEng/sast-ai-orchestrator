@@ -156,6 +156,10 @@ rbac:
     - apiGroups: [""]
       resources: ["persistentvolumeclaims"]
       verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    # Leases (for leader election / distributed coordination)
+    - apiGroups: ["coordination.k8s.io"]
+      resources: ["leases"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   
   # Cluster-level rules (only used when useClusterRole: true)
   clusterRules:

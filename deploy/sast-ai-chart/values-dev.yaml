@@ -27,7 +27,7 @@ app:
   # Resource limits and requests - lower for dev
   resources:
     limits:
-      cpu: 1000m
+      cpu: "1"
       memory: 1Gi
     requests:
       cpu: 250m

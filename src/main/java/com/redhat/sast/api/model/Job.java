@@ -55,7 +55,7 @@ public class Job {
     private String knownFalsePositivesUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "input_source_type")
+    @Column(name = "input_source_type", length = 50)
     private InputSourceType inputSourceType;
 
     @Column(name = "google_sheet_url")
@@ -65,7 +65,7 @@ public class Job {
     private String aggregateResultsGSheet;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 50)
     protected JobStatus status;
 
     @Column(name = "created_at", nullable = false)

@@ -33,7 +33,7 @@ public class JobBatch {
     private Instant submittedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 50)
     private BatchStatus status;
 
     @Column(name = "total_jobs")

@@ -49,7 +49,7 @@ public class MlOpsJob {
     private String knownFalsePositivesUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 50)
     private JobStatus status;
 
     @Column(name = "created_at", nullable = false)

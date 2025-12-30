@@ -65,7 +65,7 @@ public class Job {
     private String aggregateResultsGSheet;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 50)
     protected JobStatus status;
 
     @Column(name = "created_at", nullable = false)

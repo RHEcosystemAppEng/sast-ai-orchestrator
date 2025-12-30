@@ -27,10 +27,10 @@ app:
   # Resource limits and requests - production sizing
   resources:
     limits:
-      cpu: 2000m
+      cpu: "2"
       memory: 2Gi
     requests:
-      cpu: 1000m
+      cpu: "1"
       memory: 1Gi
 
 ## OpenShift Route configuration - production specific
@@ -46,7 +46,7 @@ postgres:
     size: 20Gi
   resources:
     limits:
-      cpu: 1000m
+      cpu: "1"
       memory: 1Gi
     requests:
       cpu: 500m

@@ -43,9 +43,8 @@ public class JobService {
         String packageNvr = jobCreationDto.getPackageNvr();
         String oshScanId = jobCreationDto.getOshScanId();
         String inputSourceUrl = jobCreationDto.getInputSourceUrl();
-        boolean forceRescan = Boolean.TRUE.equals(jobCreationDto.getForceRescan());
+        boolean forceRescan = jobCreationDto.getForceRescan();
 
-        // Determine input source type based on request parameters
         InputSourceType inputSourceType = determineInputSourceType(oshScanId, inputSourceUrl);
 
         // Check for existing scans only if not forcing a rescan
@@ -95,7 +94,8 @@ public class JobService {
      * OSH scans have both oshScanId and inputSourceUrl, Google Sheets only have inputSourceUrl.
      */
     private InputSourceType determineInputSourceType(String oshScanId, String inputSourceUrl) {
-        if (oshScanId != null && !oshScanId.isBlank() && inputSourceUrl != null && !inputSourceUrl.isBlank()) {
+        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(oshScanId)
+                && ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(inputSourceUrl)) {
             return InputSourceType.OSH_SCAN;
         }
         return InputSourceType.GOOGLE_SHEET;

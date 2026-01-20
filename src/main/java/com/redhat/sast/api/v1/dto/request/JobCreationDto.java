@@ -36,7 +36,7 @@ public class JobCreationDto {
      * Default is false, meaning cached results will be returned when available.
      */
     @JsonProperty("forceRescan")
-    private Boolean forceRescan;
+    private Boolean forceRescan = false;
 
     /**
      * Constructor for URL-based input sources (Google Sheets, SARIF, OSH URLs).

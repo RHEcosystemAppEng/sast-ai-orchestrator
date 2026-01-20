@@ -53,9 +53,23 @@ public class JobResource {
 
     @POST
     @Path("/simple")
-    public Response createJobSimple(@Valid JobCreationDto jobCreationDto) {
+    public Response createJobSimple(
+            @Valid JobCreationDto jobCreationDto,
+            @QueryParam("forceRescan") @DefaultValue("false") boolean forceRescan) {
         try {
+            // Allow forceRescan via query param as well as request body
+            if (forceRescan && !Boolean.TRUE.equals(jobCreationDto.getForceRescan())) {
+                jobCreationDto.setForceRescan(true);
+            }
+
             JobResponseDto response = jobService.createJob(jobCreationDto);
+
+            // Return appropriate HTTP status based on result type:
+            // - 201 Created: New job was created
+            // - 200 OK: Cached result or existing running job returned
+            if (response.isCachedResult() || response.isExistingRun()) {
+                return Response.status(Response.Status.OK).entity(response).build();
+            }
             return Response.status(Response.Status.CREATED).entity(response).build();
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.model.Job;
 
@@ -204,6 +205,54 @@ public class JobRepository implements PanacheRepository<Job> {
         }
 
         return statsMap;
+    }
+
+    // =====================================================
+    // NVR-based duplicate detection methods (APPENG-4112)
+    // =====================================================
+
+    /**
+     * Finds a COMPLETED job by package NVR and input source type for returning cached results.
+     * Duplicate detection is based on NVR + InputSourceType (not specific URLs/IDs):
+     * - Same NVR scanned via OSH before → duplicate (regardless of which oshScanId)
+     * - Same NVR scanned via Google Sheet before → duplicate (regardless of which URL)
+     * - Same NVR but different source types (OSH vs GSheet) → NOT duplicate
+     *
+     * @param packageNvr the NVR to search for (e.g., "systemd-257-9.el10")
+     * @param inputSourceType the input source type (OSH_SCAN or GOOGLE_SHEET)
+     * @return Optional containing the completed Job if found
+     */
+    public Optional<Job> findCompletedByNvrAndInputSourceType(String packageNvr, InputSourceType inputSourceType) {
+        if (packageNvr == null || packageNvr.isBlank() || inputSourceType == null) {
+            return Optional.empty();
+        }
+        return find(
+                        "packageNvr = ?1 AND inputSourceType = ?2 AND status = ?3 ORDER BY completedAt DESC",
+                        packageNvr,
+                        inputSourceType,
+                        JobStatus.COMPLETED)
+                .firstResultOptional();
+    }
+
+    /**
+     * Finds active (non-terminal) jobs by NVR and input source type.
+     * Used to check if there's already a running/pending job for the same NVR + source type.
+     *
+     * @param packageNvr the NVR to search for
+     * @param inputSourceType the input source type to match
+     * @param status the job status to filter by
+     * @return list of jobs matching the criteria
+     */
+    public List<Job> findByNvrInputSourceTypeAndStatus(
+            String packageNvr, InputSourceType inputSourceType, JobStatus status) {
+        if (packageNvr == null || packageNvr.isBlank() || inputSourceType == null) {
+            return List.of();
+        }
+        return list(
+                "packageNvr = ?1 AND inputSourceType = ?2 AND status = ?3 ORDER BY createdAt DESC",
+                packageNvr,
+                inputSourceType,
+                status);
     }
 
     /**

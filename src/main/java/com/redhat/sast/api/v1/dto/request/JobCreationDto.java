@@ -32,6 +32,13 @@ public class JobCreationDto {
     private String aggregateResultsGSheet;
 
     /**
+     * Forces a new scan even if a completed scan exists for this NVR.
+     * Default is false, meaning cached results will be returned when available.
+     */
+    @JsonProperty("forceRescan")
+    private Boolean forceRescan = false;
+
+    /**
      * Constructor for URL-based input sources (Google Sheets, SARIF, OSH URLs).
      *
      * @param packageNvr package NVR

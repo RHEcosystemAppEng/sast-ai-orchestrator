@@ -40,6 +40,31 @@ public class JobService {
     private final EventBroadcastService eventBroadcastService;
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
+        String packageNvr = jobCreationDto.getPackageNvr();
+        String oshScanId = jobCreationDto.getOshScanId();
+        String inputSourceUrl = jobCreationDto.getInputSourceUrl();
+        boolean forceRescan = jobCreationDto.getForceRescan();
+
+        InputSourceType inputSourceType = determineInputSourceType(oshScanId, inputSourceUrl);
+
+        // Check for existing scans only if not forcing a rescan
+        if (!forceRescan) {
+            // Check for existing completed scan (return cached result)
+            var cachedJobResult = checkForCompletedScan(packageNvr, inputSourceType);
+            if (cachedJobResult != null) {
+                return cachedJobResult;
+            }
+
+            // Check for existing running/pending scan (return existing job info)
+            var existingRunResult = checkForActiveScan(packageNvr, inputSourceType);
+            if (existingRunResult != null) {
+                return existingRunResult;
+            }
+        } else {
+            LOGGER.info("Force rescan requested for NVR: {}, bypassing cache check", packageNvr);
+        }
+
+        // No cached result found or force rescan requested - create new job
         final Job job = createJobEntity(jobCreationDto);
 
         final Long jobId = job.getId();
@@ -62,6 +87,64 @@ public class JobService {
         });
 
         return convertToResponseDto(job);
+    }
+
+    /**
+     * Determines the input source type based on the request parameters.
+     * OSH scans have both oshScanId and inputSourceUrl, Google Sheets only have inputSourceUrl.
+     */
+    private InputSourceType determineInputSourceType(String oshScanId, String inputSourceUrl) {
+        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(oshScanId)
+                && ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(inputSourceUrl)) {
+            return InputSourceType.OSH_SCAN;
+        }
+        return InputSourceType.GOOGLE_SHEET;
+    }
+
+    /**
+     * Checks if there's a completed scan for the given NVR and input source type.
+     * Duplicate detection is based on NVR + InputSourceType:
+     * - Same NVR + same source type (OSH or GSheet) = duplicate → return cached
+     * - Same NVR + different source type = NOT duplicate → allow new scan
+     *
+     * Returns cached result if found, null otherwise.
+     */
+    private JobResponseDto checkForCompletedScan(String packageNvr, InputSourceType inputSourceType) {
+        return jobRepository
+                .findCompletedByNvrAndInputSourceType(packageNvr, inputSourceType)
+                .map(completedJob -> {
+                    LOGGER.info(
+                            "Found existing completed {} scan for NVR: {} (job ID: {}), returning cached result",
+                            inputSourceType,
+                            packageNvr,
+                            completedJob.getId());
+                    return JobMapper.INSTANCE.jobToJobResponseDto(completedJob, true, false);
+                })
+                .orElse(null);
+    }
+
+    /**
+     * Checks if there's an active (running, pending, or scheduled) scan for the given NVR and input source type.
+     * Returns existing job info if found, null otherwise.
+     */
+    private JobResponseDto checkForActiveScan(String packageNvr, InputSourceType inputSourceType) {
+        // Check statuses in order of priority: RUNNING, PENDING, SCHEDULED
+        for (JobStatus status : List.of(JobStatus.RUNNING, JobStatus.PENDING, JobStatus.SCHEDULED)) {
+            List<Job> activeJobs = jobRepository.findByNvrInputSourceTypeAndStatus(packageNvr, inputSourceType, status);
+
+            if (!activeJobs.isEmpty()) {
+                Job activeJob = activeJobs.get(0);
+                LOGGER.info(
+                        "Found existing {} {} scan for NVR: {} (job ID: {}), returning job info",
+                        status,
+                        inputSourceType,
+                        packageNvr,
+                        activeJob.getId());
+                return JobMapper.INSTANCE.jobToJobResponseDto(activeJob, false, true);
+            }
+        }
+
+        return null;
     }
 
     public void cancelJob(@Nonnull Long jobId) {

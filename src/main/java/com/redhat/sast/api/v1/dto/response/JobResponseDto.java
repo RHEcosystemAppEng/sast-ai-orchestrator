@@ -64,4 +64,34 @@ public class JobResponseDto {
 
     @JsonProperty("submittedBy")
     private String submittedBy;
+
+    // =====================================================
+    // NVR duplicate detection fields (APPENG-4112)
+    // =====================================================
+
+    /**
+     * Indicates if this response is from a cached/previously completed scan
+     * rather than a newly created job.
+     */
+    @JsonProperty("isCachedResult")
+    private boolean cachedResult;
+
+    /**
+     * Indicates if there's already a running scan for this NVR.
+     * When true, the response contains info about the existing running job.
+     */
+    @JsonProperty("isExistingRun")
+    private boolean existingRun;
+
+    /**
+     * When the original scan was completed (only set for cached results).
+     */
+    @JsonProperty("originalScanDate")
+    private Instant originalScanDate;
+
+    /**
+     * Google Sheet URL containing the analysis results (for cached results).
+     */
+    @JsonProperty("resultGoogleSheetUrl")
+    private String resultGoogleSheetUrl;
 }

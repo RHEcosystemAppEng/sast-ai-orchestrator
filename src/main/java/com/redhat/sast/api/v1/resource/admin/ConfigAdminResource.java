@@ -2,6 +2,11 @@ package com.redhat.sast.api.v1.resource.admin;
 
 import java.time.Instant;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
 import com.redhat.sast.api.config.OshConfiguration;
 
 import jakarta.ws.rs.Consumes;
@@ -23,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 @Path("/admin/config")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Tag(name = "Config Admin", description = "Configuration management admin operations")
 @RequiredArgsConstructor
 @Slf4j
 public class ConfigAdminResource {
@@ -36,6 +42,14 @@ public class ConfigAdminResource {
      */
     @POST
     @Path("/reload-packages")
+    @Operation(
+            summary = "Reload Packages",
+            description = "Reloads the monitored package list from the configuration file")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Packages reloaded successfully"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response reloadPackages() {
         try {
             LOGGER.info("Package reload requested via admin endpoint");

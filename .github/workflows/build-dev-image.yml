@@ -73,7 +73,7 @@ jobs:
 
     - name: Build JVM application
       run: |
-        ./mvnw clean package -DskipTests
+        ENABLE_SWAGGER_UI=true ./mvnw clean package -DskipTests
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3

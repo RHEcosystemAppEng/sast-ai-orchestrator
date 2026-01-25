@@ -4,6 +4,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.service.StatisticService;
 import com.redhat.sast.api.service.osh.OshClientService;
@@ -41,6 +46,7 @@ import lombok.extern.slf4j.Slf4j;
 @Path("/admin/osh")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Tag(name = "OSH Admin", description = "OSH (Open Scan Hub) integration admin operations")
 @Slf4j
 public class OshAdminResource {
 
@@ -72,6 +78,14 @@ public class OshAdminResource {
      */
     @GET
     @Path("/status")
+    @Operation(
+            summary = "Get OSH Status",
+            description = "Get overall OSH integration status including retry queue and cursor information")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "OSH status retrieved successfully"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response getOshStatus() {
         try {
             OshStatusResponseDto status = new OshStatusResponseDto();
@@ -293,6 +307,14 @@ public class OshAdminResource {
      */
     @POST
     @Path("/polling/trigger")
+    @Operation(
+            summary = "Trigger Manual OSH Poll",
+            description = "Manually trigger OSH polling cycle for testing purposes")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Poll triggered successfully"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response triggerManualPoll() {
         try {
             String result = oshScheduler.manualPollOsh();

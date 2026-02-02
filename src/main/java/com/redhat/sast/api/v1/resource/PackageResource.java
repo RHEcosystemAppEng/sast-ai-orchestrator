@@ -24,6 +24,7 @@ import jakarta.ws.rs.core.Response;
 @Path("/packages")
 @Produces(MediaType.APPLICATION_JSON)
 @Tag(name = "Packages", description = "Package management and statistics")
+@SuppressWarnings("java:S1192")
 public class PackageResource {
 
     @Inject

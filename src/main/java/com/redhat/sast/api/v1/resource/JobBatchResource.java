@@ -19,6 +19,7 @@ import jakarta.ws.rs.core.Response;
 
 @Path("/job-batches")
 @Tag(name = "Job Batches", description = "Job batch management operations")
+@SuppressWarnings("java:S1192")
 public class JobBatchResource extends BaseBatchResource<JobBatchSubmissionDto, JobBatchResponseDto, JobBatchService> {
 
     @Inject

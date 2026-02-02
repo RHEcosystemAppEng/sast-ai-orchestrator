@@ -19,6 +19,7 @@ import jakarta.ws.rs.core.Response;
 
 @Path("/mlops-batch")
 @Tag(name = "MLOps Batches", description = "MLOps batch management operations")
+@SuppressWarnings("java:S1192")
 public class MlOpsBatchResource
         extends BaseBatchResource<MlOpsBatchSubmissionDto, MlOpsBatchResponseDto, MlOpsBatchService> {
 

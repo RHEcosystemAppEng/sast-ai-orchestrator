@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
+@SuppressWarnings("java:S1192")
 public abstract class BaseBatchResource<SubmissionDto, ResponseDto, Service> {
 
     /**

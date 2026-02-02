@@ -32,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 @Tag(name = "Dashboard", description = "Dashboard statistics and summaries")
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("java:S1192")
 public class DashboardResource {
 
     private final StatisticService statisticService;

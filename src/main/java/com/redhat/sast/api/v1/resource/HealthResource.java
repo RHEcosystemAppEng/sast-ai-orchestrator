@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 @Produces(MediaType.APPLICATION_JSON)
 @Tag(name = "Health", description = "Application health check endpoints")
 @Slf4j
+@SuppressWarnings("java:S1192")
 public class HealthResource {
 
     @Inject

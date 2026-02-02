@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 @Tag(name = "Config Admin", description = "Configuration management admin operations")
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("java:S1192")
 public class ConfigAdminResource {
 
     private final OshConfiguration oshConfiguration;

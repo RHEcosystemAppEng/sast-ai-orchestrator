@@ -48,6 +48,7 @@ import lombok.extern.slf4j.Slf4j;
 @Consumes(MediaType.APPLICATION_JSON)
 @Tag(name = "OSH Admin", description = "OSH (Open Scan Hub) integration admin operations")
 @Slf4j
+@SuppressWarnings("java:S1192")
 public class OshAdminResource {
 
     private static final String DEFAULT_QUEUE_LIMIT = "50";

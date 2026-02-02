@@ -29,6 +29,7 @@ import jakarta.ws.rs.core.Response;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Tag(name = "Jobs", description = "SAST AI job management operations")
+@SuppressWarnings("java:S1192")
 public class JobResource {
 
     private final JobService jobService;

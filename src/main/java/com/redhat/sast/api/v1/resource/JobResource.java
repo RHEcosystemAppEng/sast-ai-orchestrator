@@ -204,6 +204,13 @@ public class JobResource {
 
     @GET
     @Path("/activity/{timePeriod}")
+    @Operation(summary = "Get Job Activity", description = "Get job activity statistics for a specified time period")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Activity data retrieved successfully"),
+                @APIResponse(responseCode = "400", description = "Invalid time period"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response getJobActivity(@PathParam("timePeriod") String timePeriodCode) {
         try {
             TimePeriod timePeriod = TimePeriod.fromCode(timePeriodCode);

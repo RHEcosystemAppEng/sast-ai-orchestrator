@@ -3,6 +3,15 @@ package com.redhat.sast.api.v1.resource;
 import java.util.List;
 import java.util.Locale;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
 import com.redhat.sast.api.enums.JobStatus;
 import com.redhat.sast.api.enums.TimePeriod;
 import com.redhat.sast.api.service.JobService;
@@ -19,6 +28,8 @@ import jakarta.ws.rs.core.Response;
 @Path("/jobs")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Tag(name = "Jobs", description = "SAST AI job management operations")
+@SuppressWarnings("java:S1192")
 public class JobResource {
 
     private final JobService jobService;
@@ -53,9 +64,27 @@ public class JobResource {
 
     @POST
     @Path("/simple")
+    @Operation(
+            summary = "Create a new SAST job",
+            description = "Creates a new SAST analysis job or returns cached/running job")
+    @APIResponses(
+            value = {
+                @APIResponse(
+                        responseCode = "201",
+                        description = "Job created successfully",
+                        content = @Content(schema = @Schema(implementation = JobResponseDto.class))),
+                @APIResponse(
+                        responseCode = "200",
+                        description = "Cached result or existing running job returned",
+                        content = @Content(schema = @Schema(implementation = JobResponseDto.class))),
+                @APIResponse(responseCode = "400", description = "Invalid request")
+            })
     public Response createJobSimple(
             @Valid JobCreationDto jobCreationDto,
-            @QueryParam("forceRescan") @DefaultValue("false") boolean forceRescan) {
+            @Parameter(description = "Force rescan even if cached result exists")
+                    @QueryParam("forceRescan")
+                    @DefaultValue("false")
+                    boolean forceRescan) {
         try {
             // Allow forceRescan via query param as well as request body
             if (forceRescan && !Boolean.TRUE.equals(jobCreationDto.getForceRescan())) {
@@ -79,11 +108,26 @@ public class JobResource {
     }
 
     @GET
+    @Operation(summary = "Get all jobs", description = "Retrieves all jobs with optional filtering and pagination")
+    @APIResponses(
+            value = {
+                @APIResponse(
+                        responseCode = "200",
+                        description = "Jobs retrieved successfully",
+                        content =
+                                @Content(
+                                        schema =
+                                                @Schema(
+                                                        implementation = JobResponseDto.class,
+                                                        type = SchemaType.ARRAY))),
+                @APIResponse(responseCode = "400", description = "Invalid parameters"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response getAllJobs(
-            @QueryParam("packageName") String packageName,
-            @QueryParam("status") String statusStr,
-            @QueryParam("page") @DefaultValue("0") int page,
-            @QueryParam("size") @DefaultValue("20") int size) {
+            @Parameter(description = "Filter by package name") @QueryParam("packageName") String packageName,
+            @Parameter(description = "Filter by job status") @QueryParam("status") String statusStr,
+            @Parameter(description = "Page number (0-based)") @QueryParam("page") @DefaultValue("0") int page,
+            @Parameter(description = "Page size") @QueryParam("size") @DefaultValue("20") int size) {
         try {
             JobStatus status = null;
             if (statusStr != null && !statusStr.isEmpty()) {
@@ -105,7 +149,17 @@ public class JobResource {
 
     @GET
     @Path("/{jobId}")
-    public Response getJobById(@PathParam("jobId") Long jobId) {
+    @Operation(summary = "Get job by ID", description = "Retrieves a specific job by its ID")
+    @APIResponses(
+            value = {
+                @APIResponse(
+                        responseCode = "200",
+                        description = "Job retrieved successfully",
+                        content = @Content(schema = @Schema(implementation = JobResponseDto.class))),
+                @APIResponse(responseCode = "404", description = "Job not found"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
+    public Response getJobById(@Parameter(description = "Job ID", required = true) @PathParam("jobId") Long jobId) {
         try {
             JobResponseDto job = jobService.getJobDtoByJobId(jobId);
             return Response.ok(job).build();
@@ -122,7 +176,15 @@ public class JobResource {
 
     @POST
     @Path("/{jobId}/cancel")
-    public Response cancelJob(@PathParam("jobId") Long jobId) {
+    @Operation(summary = "Cancel a job", description = "Cancels a running job")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Job cancellation requested"),
+                @APIResponse(responseCode = "404", description = "Job not found"),
+                @APIResponse(responseCode = "400", description = "Job cannot be cancelled"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
+    public Response cancelJob(@Parameter(description = "Job ID", required = true) @PathParam("jobId") Long jobId) {
         try {
             jobService.cancelJob(jobId);
             return Response.ok("Job cancellation requested").build();
@@ -143,6 +205,13 @@ public class JobResource {
 
     @GET
     @Path("/activity/{timePeriod}")
+    @Operation(summary = "Get Job Activity", description = "Get job activity statistics for a specified time period")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Activity data retrieved successfully"),
+                @APIResponse(responseCode = "400", description = "Invalid time period"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response getJobActivity(@PathParam("timePeriod") String timePeriodCode) {
         try {
             TimePeriod timePeriod = TimePeriod.fromCode(timePeriodCode);

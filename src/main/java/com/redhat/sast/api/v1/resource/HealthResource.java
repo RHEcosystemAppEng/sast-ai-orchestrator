@@ -5,6 +5,12 @@ import java.sql.SQLException;
 import javax.sql.DataSource;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import com.redhat.sast.api.service.GoogleSheetsService;
 import com.redhat.sast.api.v1.dto.response.HealthResponseDto;
@@ -23,7 +29,9 @@ import lombok.extern.slf4j.Slf4j;
 @ApplicationScoped
 @Path("/health")
 @Produces(MediaType.APPLICATION_JSON)
+@Tag(name = "Health", description = "Application health check endpoints")
 @Slf4j
+@SuppressWarnings("java:S1192")
 public class HealthResource {
 
     @Inject
@@ -42,6 +50,20 @@ public class HealthResource {
     String namespace;
 
     @GET
+    @Operation(
+            summary = "Get application health",
+            description = "Returns health status including database, Tekton, and Google service account checks")
+    @APIResponses(
+            value = {
+                @APIResponse(
+                        responseCode = "200",
+                        description = "Application is healthy",
+                        content = @Content(schema = @Schema(implementation = HealthResponseDto.class))),
+                @APIResponse(
+                        responseCode = "503",
+                        description = "Application or dependencies are unhealthy",
+                        content = @Content(schema = @Schema(implementation = HealthResponseDto.class)))
+            })
     public Response getHealth() {
         try {
             // Create overall health response

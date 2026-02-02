@@ -4,6 +4,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
 import com.redhat.sast.api.model.OshUncollectedScan;
 import com.redhat.sast.api.service.StatisticService;
 import com.redhat.sast.api.service.osh.OshClientService;
@@ -41,7 +46,9 @@ import lombok.extern.slf4j.Slf4j;
 @Path("/admin/osh")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Tag(name = "OSH Admin", description = "OSH (Open Scan Hub) integration admin operations")
 @Slf4j
+@SuppressWarnings("java:S1192")
 public class OshAdminResource {
 
     private static final String DEFAULT_QUEUE_LIMIT = "50";
@@ -72,6 +79,14 @@ public class OshAdminResource {
      */
     @GET
     @Path("/status")
+    @Operation(
+            summary = "Get OSH Status",
+            description = "Get overall OSH integration status including retry queue and cursor information")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "OSH status retrieved successfully"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response getOshStatus() {
         try {
             OshStatusResponseDto status = new OshStatusResponseDto();
@@ -108,6 +123,15 @@ public class OshAdminResource {
      */
     @GET
     @Path("/scans/all")
+    @Operation(
+            summary = "Get All OSH Scans",
+            description = "Get all OSH scans (both collected and uncollected) with pagination and filtering")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Scans retrieved successfully"),
+                @APIResponse(responseCode = "400", description = "Invalid status parameter"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response getAllOshScans(
             @QueryParam("page") @DefaultValue("0") Integer page,
             @QueryParam("size") @DefaultValue("20") Integer size,
@@ -143,6 +167,14 @@ public class OshAdminResource {
      */
     @GET
     @Path("/retry/statistics")
+    @Operation(
+            summary = "Get Retry Statistics",
+            description = "Get detailed retry queue statistics including counts and configuration")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Statistics retrieved successfully"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response getRetryStatistics() {
         try {
             OshRetryStatisticsResponseDto stats = buildRetryStatistics();
@@ -172,6 +204,15 @@ public class OshAdminResource {
      */
     @GET
     @Path("/retry/queue")
+    @Operation(
+            summary = "Get Retry Queue",
+            description = "Get retry queue contents with pagination and sorting options")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Retry queue retrieved successfully"),
+                @APIResponse(responseCode = "400", description = "Invalid parameters"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response getRetryQueue(
             @QueryParam("limit") @DefaultValue(DEFAULT_QUEUE_LIMIT) int limit,
             @QueryParam("sortBy") @DefaultValue(DEFAULT_SORT_BY) String sortBy) {
@@ -207,6 +248,14 @@ public class OshAdminResource {
      */
     @GET
     @Path("/retry/scan/{scanId}")
+    @Operation(summary = "Get Retry Info for Scan", description = "Get retry information for a specific OSH scan ID")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Retry info retrieved successfully"),
+                @APIResponse(responseCode = "400", description = "Invalid scan ID"),
+                @APIResponse(responseCode = "404", description = "No retry information found"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response getRetryInfo(@PathParam("scanId") Integer scanId) {
         try {
             if (scanId == null || scanId <= 0) {
@@ -241,6 +290,12 @@ public class OshAdminResource {
      */
     @POST
     @Path("/retry/cleanup-expired")
+    @Operation(summary = "Cleanup Expired Retries", description = "Manually trigger cleanup of expired retry records")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Cleanup completed successfully"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response cleanupExpiredRetries() {
         try {
             oshRetryService.cleanupExpiredRetries();
@@ -267,6 +322,14 @@ public class OshAdminResource {
      */
     @POST
     @Path("/retry/cleanup-exceeded")
+    @Operation(
+            summary = "Cleanup Exceeded Retries",
+            description = "Manually trigger cleanup of retries that exceeded maximum attempts")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Cleanup completed successfully"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response cleanupExceededRetries() {
         try {
             int deletedCount = oshRetryService.cleanupExceededRetries();
@@ -293,6 +356,14 @@ public class OshAdminResource {
      */
     @POST
     @Path("/polling/trigger")
+    @Operation(
+            summary = "Trigger Manual OSH Poll",
+            description = "Manually trigger OSH polling cycle for testing purposes")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Poll triggered successfully"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response triggerManualPoll() {
         try {
             String result = oshScheduler.manualPollOsh();
@@ -321,6 +392,16 @@ public class OshAdminResource {
      */
     @POST
     @Path("/test/collect-scan/{scanId}")
+    @Operation(
+            summary = "Test Collect OSH Scan",
+            description = "Test endpoint to collect a specific OSH scan by ID and create a workflow job")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Scan collected and processed"),
+                @APIResponse(responseCode = "400", description = "Invalid scan ID"),
+                @APIResponse(responseCode = "404", description = "Scan not found"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response testCollectScan(@PathParam("scanId") Integer scanId) {
         try {
             if (scanId == null || scanId <= 0) {

@@ -1,5 +1,13 @@
 package com.redhat.sast.api.v1.resource;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
 import com.redhat.sast.api.enums.TimePeriod;
 import com.redhat.sast.api.service.StatisticService;
 import com.redhat.sast.api.v1.dto.response.DashboardSummaryDto;
@@ -21,8 +29,10 @@ import lombok.extern.slf4j.Slf4j;
 @Path("/dashboard")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Tag(name = "Dashboard", description = "Dashboard statistics and summaries")
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("java:S1192")
 public class DashboardResource {
 
     private final StatisticService statisticService;
@@ -38,7 +48,22 @@ public class DashboardResource {
      */
     @GET
     @Path("/summary")
-    public Response getDashboardSummary(@QueryParam("timePeriod") String timePeriodCode) {
+    @Operation(
+            summary = "Get dashboard summary",
+            description = "Returns aggregated counts for jobs, batches, and OSH scans within the specified time period")
+    @APIResponses(
+            value = {
+                @APIResponse(
+                        responseCode = "200",
+                        description = "Dashboard summary retrieved successfully",
+                        content = @Content(schema = @Schema(implementation = DashboardSummaryDto.class))),
+                @APIResponse(responseCode = "400", description = "Invalid time period parameter"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
+    public Response getDashboardSummary(
+            @Parameter(description = "Time period code (1h, 6h, 12h, 24h, 7d, 30d). Defaults to 24h")
+                    @QueryParam("timePeriod")
+                    String timePeriodCode) {
         try {
             TimePeriod timePeriod = null;
 

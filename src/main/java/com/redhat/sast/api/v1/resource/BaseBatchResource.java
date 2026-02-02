@@ -2,6 +2,11 @@ package com.redhat.sast.api.v1.resource;
 
 import java.util.List;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
+
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -19,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
+@SuppressWarnings("java:S1192")
 public abstract class BaseBatchResource<SubmissionDto, ResponseDto, Service> {
 
     /**
@@ -47,6 +53,12 @@ public abstract class BaseBatchResource<SubmissionDto, ResponseDto, Service> {
     protected abstract ResponseDto getBatchByIdFromService(Long batchId);
 
     @POST
+    @Operation(summary = "Submit a new batch", description = "Creates and submits a new batch of jobs")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "201", description = "Batch created successfully"),
+                @APIResponse(responseCode = "400", description = "Invalid request")
+            })
     public Response submitBatch(@Valid SubmissionDto submissionDto) {
         try {
             ResponseDto response = submitBatchToService(submissionDto);
@@ -60,8 +72,15 @@ public abstract class BaseBatchResource<SubmissionDto, ResponseDto, Service> {
     }
 
     @GET
+    @Operation(summary = "Get all batches", description = "Retrieves all batches with pagination")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Batches retrieved successfully"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response getAllBatches(
-            @QueryParam("page") @DefaultValue("0") int page, @QueryParam("size") @DefaultValue("20") int size) {
+            @Parameter(description = "Page number (0-based)") @QueryParam("page") @DefaultValue("0") int page,
+            @Parameter(description = "Page size") @QueryParam("size") @DefaultValue("20") int size) {
         try {
             List<ResponseDto> batches = getAllBatchesFromService(page, size);
             return Response.ok(batches).build();
@@ -75,7 +94,15 @@ public abstract class BaseBatchResource<SubmissionDto, ResponseDto, Service> {
 
     @GET
     @Path("/{batchId}")
-    public Response getBatchById(@PathParam("batchId") Long batchId) {
+    @Operation(summary = "Get batch by ID", description = "Retrieves a specific batch by its ID")
+    @APIResponses(
+            value = {
+                @APIResponse(responseCode = "200", description = "Batch retrieved successfully"),
+                @APIResponse(responseCode = "404", description = "Batch not found"),
+                @APIResponse(responseCode = "500", description = "Internal server error")
+            })
+    public Response getBatchById(
+            @Parameter(description = "Batch ID", required = true) @PathParam("batchId") Long batchId) {
         try {
             ResponseDto batch = getBatchByIdFromService(batchId);
             if (batch == null) {

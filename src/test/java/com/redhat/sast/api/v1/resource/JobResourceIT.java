@@ -142,7 +142,11 @@ class JobResourceIT {
     @Test
     @DisplayName("Should cancel a job")
     void shouldCancelJob() {
-        JobCreationDto jobRequest = JobTestDataBuilder.treePkgJob();
+        // Create a unique job to ensure we get a new job (201) for testing cancellation
+        JobCreationDto jobRequest = JobTestDataBuilder.aJob()
+                .withPackageNvr("cancel-test-" + System.currentTimeMillis() + "-1.0.0-1.el10")
+                .build();
+
         Long jobId = given().contentType(ContentType.JSON)
                 .body(jobRequest)
                 .when()
@@ -201,9 +205,13 @@ class JobResourceIT {
     }
 
     @Test
-    @DisplayName("Should handle job with known false positives")
-    void shouldHandleJobWithKnownFalsePositives() {
-        JobCreationDto jobRequest = JobTestDataBuilder.jobWithKnownFalsePositives();
+    @DisplayName("Should create new job with known false positives")
+    void shouldCreateNewJobWithKnownFalsePositives() {
+        // Create a unique job to ensure we get a new job (201)
+        JobCreationDto jobRequest = JobTestDataBuilder.aJob()
+                .withPackageNvr("false-positives-test-" + System.currentTimeMillis() + "-1.0.0-1.el10")
+                .withUseKnownFalsePositiveFile(true)
+                .build();
 
         given().contentType(ContentType.JSON)
                 .body(jobRequest)
@@ -213,6 +221,44 @@ class JobResourceIT {
                 .statusCode(201)
                 .body("jobId", notNullValue())
                 .body("status", equalTo("PENDING"));
+    }
+
+    @Test
+    @DisplayName("Should return cached result for duplicate job with known false positives")
+    void shouldReturnCachedResultForDuplicateJobWithKnownFalsePositives() {
+        // Create a unique job for this test to ensure clean state
+        String uniquePackage = "duplicate-test-" + System.currentTimeMillis() + "-1.0.0-1.el10";
+        JobCreationDto jobRequest = JobTestDataBuilder.aJob()
+                .withPackageNvr(uniquePackage)
+                .withUseKnownFalsePositiveFile(true)
+                .build();
+
+        // Create the first job (should return 201 for new job)
+        Long firstJobId = given().contentType(ContentType.JSON)
+                .body(jobRequest)
+                .when()
+                .post("/api/v1/jobs/simple")
+                .then()
+                .statusCode(201)
+                .body("jobId", notNullValue())
+                .extract()
+                .jsonPath()
+                .getLong("jobId");
+
+        // Create the same job again (should return 200 for cached result or existing run)
+        Long secondJobId = given().contentType(ContentType.JSON)
+                .body(jobRequest)
+                .when()
+                .post("/api/v1/jobs/simple")
+                .then()
+                .statusCode(200)
+                .body("jobId", notNullValue())
+                .extract()
+                .jsonPath()
+                .getLong("jobId");
+
+        // Verify that both calls return the same job ID (proving it's cached/existing)
+        assert firstJobId.equals(secondJobId) : "Expected same job ID for cached result";
     }
 
     @Test

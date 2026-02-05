@@ -60,7 +60,8 @@ public class PipelineParameterMapper {
     private static final String PARAM_KNOWN_NON_ISSUES_VERSION = "KNOWN_NON_ISSUES_VERSION";
     private static final String PARAM_EVALUATE_SPECIFIC_NODE = "EVALUATE_SPECIFIC_NODE";
     private static final String PARAM_S3_ENDPOINT_URL = "S3_ENDPOINT_URL";
-    private static final String PARAM_S3_BUCKET_NAME = "S3_BUCKET_NAME";
+    private static final String PARAM_S3_INPUT_BUCKET_NAME = "S3_INPUT_BUCKET_NAME";
+    private static final String PARAM_S3_OUTPUT_BUCKET_NAME = "S3_OUTPUT_BUCKET_NAME";
 
     @Inject
     TektonClient tektonClient;
@@ -89,8 +90,11 @@ public class PipelineParameterMapper {
     @ConfigProperty(name = "s3.endpoint.url")
     Optional<String> s3EndpointUrl;
 
-    @ConfigProperty(name = "s3.bucket.name")
-    Optional<String> s3BucketName;
+    @ConfigProperty(name = "s3.input.bucket.name")
+    Optional<String> s3InputBucketName;
+
+    @ConfigProperty(name = "s3.output.bucket.name")
+    Optional<String> s3OutputBucketName;
 
     /**
      * Extracts and converts Job data to pipeline parameters.
@@ -425,7 +429,8 @@ public class PipelineParameterMapper {
 
     private void addS3StorageParameters(List<Param> result) {
         result.add(createParam(PARAM_S3_ENDPOINT_URL, s3EndpointUrl.orElse("")));
-        result.add(createParam(PARAM_S3_BUCKET_NAME, s3BucketName.orElse("")));
+        result.add(createParam(PARAM_S3_INPUT_BUCKET_NAME, s3InputBucketName.orElse("")));
+        result.add(createParam(PARAM_S3_OUTPUT_BUCKET_NAME, s3OutputBucketName.orElse("")));
     }
 
     private void addLlmParameters(List<Param> result, MlOpsJob mlOpsJob) {

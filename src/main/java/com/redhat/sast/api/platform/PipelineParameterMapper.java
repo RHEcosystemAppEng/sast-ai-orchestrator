@@ -86,9 +86,11 @@ public class PipelineParameterMapper {
     @ConfigProperty(name = "gcs.bucket.name")
     Optional<String> gcsBucketName;
 
+    @Setter
     @ConfigProperty(name = "s3.endpoint.url")
     Optional<String> s3EndpointUrl;
 
+    @Setter
     @ConfigProperty(name = "s3.bucket.name")
     Optional<String> s3BucketName;
 
@@ -194,22 +196,31 @@ public class PipelineParameterMapper {
         LlmSecretValues llmSecretValues = getLlmSecretValues(secretName);
 
         // Main LLM parameters
-        params.add(createParam(PARAM_LLM_URL, llmSecretValues.llmUrl()));
-        params.add(createParam(
-                PARAM_LLM_MODEL_NAME,
-                getModelNameWithFallback(job.getJobSettings().getLlmModelName(), llmSecretValues.llmModelName())));
-        params.add(createParam(PARAM_LLM_API_KEY, llmSecretValues.llmApiKey()));
-        params.add(createParam(
-                PARAM_LLM_API_TYPE,
-                getLlmApiTypeWithFallback(job.getJobSettings().getLlmApiType(), llmSecretValues.llmApiType())));
+        String llmUrl = getUrlWithFallback(job.getJobSettings().getLlmUrl(), llmSecretValues.llmUrl());
+        params.add(createParam(PARAM_LLM_URL, llmUrl));
+
+        String modelName =
+                getModelNameWithFallback(job.getJobSettings().getLlmModelName(), llmSecretValues.llmModelName());
+        params.add(createParam(PARAM_LLM_MODEL_NAME, modelName));
+
+        String llmApiKey = getApiKeyWithFallback(job.getJobSettings().getLlmApiKey(), llmSecretValues.llmApiKey());
+        params.add(createParam(PARAM_LLM_API_KEY, llmApiKey));
+
+        String apiType = getLlmApiTypeWithFallback(job.getJobSettings().getLlmApiType(), llmSecretValues.llmApiType());
+        params.add(createParam(PARAM_LLM_API_TYPE, apiType));
 
         // Embeddings LLM parameters
-        params.add(createParam(PARAM_EMBEDDINGS_LLM_URL, llmSecretValues.embeddingsUrl()));
-        params.add(createParam(
-                PARAM_EMBEDDINGS_LLM_MODEL_NAME,
-                getModelNameWithFallback(
-                        job.getJobSettings().getEmbeddingLlmModelName(), llmSecretValues.embeddingsModelName())));
-        params.add(createParam(PARAM_EMBEDDINGS_LLM_API_KEY, llmSecretValues.embeddingsApiKey()));
+        String embeddingsUrl =
+                getUrlWithFallback(job.getJobSettings().getEmbeddingLlmUrl(), llmSecretValues.embeddingsUrl());
+        params.add(createParam(PARAM_EMBEDDINGS_LLM_URL, embeddingsUrl));
+
+        String embeddingsModelName = getModelNameWithFallback(
+                job.getJobSettings().getEmbeddingLlmModelName(), llmSecretValues.embeddingsModelName());
+        params.add(createParam(PARAM_EMBEDDINGS_LLM_MODEL_NAME, embeddingsModelName));
+
+        String embeddingsApiKey =
+                getApiKeyWithFallback(job.getJobSettings().getEmbeddingLlmApiKey(), llmSecretValues.embeddingsApiKey());
+        params.add(createParam(PARAM_EMBEDDINGS_LLM_API_KEY, embeddingsApiKey));
     }
 
     /**
@@ -315,6 +326,26 @@ public class PipelineParameterMapper {
      * Gets model name with fallback: JobSettings first, then secret value
      */
     private String getModelNameWithFallback(String jobSettingsValue, String secretValue) {
+        if (IS_NOT_NULL_AND_NOT_BLANK.test(jobSettingsValue)) {
+            return jobSettingsValue;
+        }
+        return secretValue != null ? secretValue : "";
+    }
+
+    /**
+     * Gets URL with fallback: JobSettings first, then secret value
+     */
+    private String getUrlWithFallback(String jobSettingsValue, String secretValue) {
+        if (IS_NOT_NULL_AND_NOT_BLANK.test(jobSettingsValue)) {
+            return jobSettingsValue;
+        }
+        return secretValue != null ? secretValue : "";
+    }
+
+    /**
+     * Gets API key with fallback: JobSettings first, then secret value
+     */
+    private String getApiKeyWithFallback(String jobSettingsValue, String secretValue) {
         if (IS_NOT_NULL_AND_NOT_BLANK.test(jobSettingsValue)) {
             return jobSettingsValue;
         }
@@ -445,8 +476,11 @@ public class PipelineParameterMapper {
     }
 
     private void addMainLlmParameters(List<Param> result, MlOpsJobSettings settings, LlmSecretValues secrets) {
-        result.add(createParam(PARAM_LLM_URL, secrets.llmUrl()));
-        result.add(createParam(PARAM_LLM_API_KEY, secrets.llmApiKey()));
+        String llmUrl = getUrlWithFallback(getLlmUrl(settings), secrets.llmUrl());
+        result.add(createParam(PARAM_LLM_URL, llmUrl));
+
+        String llmApiKey = getApiKeyWithFallback(getLlmApiKey(settings), secrets.llmApiKey());
+        result.add(createParam(PARAM_LLM_API_KEY, llmApiKey));
 
         String modelName = getModelNameWithFallback(getLlmModelName(settings), secrets.llmModelName());
         result.add(createParam(PARAM_LLM_MODEL_NAME, modelName));
@@ -457,8 +491,13 @@ public class PipelineParameterMapper {
 
     private void addEmbeddingsLlmParameters(
             List<Param> result, MlOpsJobSettings mlOpsJobSettings, LlmSecretValues llmSecretValues) {
-        result.add(createParam(PARAM_EMBEDDINGS_LLM_URL, llmSecretValues.embeddingsUrl()));
-        result.add(createParam(PARAM_EMBEDDINGS_LLM_API_KEY, llmSecretValues.embeddingsApiKey()));
+        String embeddingsUrl =
+                getUrlWithFallback(getEmbeddingLlmUrl(mlOpsJobSettings), llmSecretValues.embeddingsUrl());
+        result.add(createParam(PARAM_EMBEDDINGS_LLM_URL, embeddingsUrl));
+
+        String embeddingsApiKey =
+                getApiKeyWithFallback(getEmbeddingLlmApiKey(mlOpsJobSettings), llmSecretValues.embeddingsApiKey());
+        result.add(createParam(PARAM_EMBEDDINGS_LLM_API_KEY, embeddingsApiKey));
 
         String embeddingsModelName = getModelNameWithFallback(
                 getEmbeddingLlmModelName(mlOpsJobSettings), llmSecretValues.embeddingsModelName());
@@ -473,7 +512,23 @@ public class PipelineParameterMapper {
         return settings != null ? settings.getLlmApiType() : null;
     }
 
+    private String getLlmUrl(MlOpsJobSettings settings) {
+        return settings != null ? settings.getLlmUrl() : null;
+    }
+
+    private String getLlmApiKey(MlOpsJobSettings settings) {
+        return settings != null ? settings.getLlmApiKey() : null;
+    }
+
     private String getEmbeddingLlmModelName(MlOpsJobSettings settings) {
         return settings != null ? settings.getEmbeddingLlmModelName() : null;
+    }
+
+    private String getEmbeddingLlmUrl(MlOpsJobSettings settings) {
+        return settings != null ? settings.getEmbeddingLlmUrl() : null;
+    }
+
+    private String getEmbeddingLlmApiKey(MlOpsJobSettings settings) {
+        return settings != null ? settings.getEmbeddingLlmApiKey() : null;
     }
 }

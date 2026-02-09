@@ -20,11 +20,17 @@ public class JobSettingsDto {
     @JsonProperty("llmApiType")
     private String llmApiType;
 
+    @JsonProperty("llmApiKey")
+    private String llmApiKey;
+
     @JsonProperty("embeddingLlmUrl")
     private String embeddingLlmUrl;
 
     @JsonProperty("embeddingLlmModelName")
     private String embeddingLlmModelName;
+
+    @JsonProperty("embeddingLlmApiKey")
+    private String embeddingLlmApiKey;
 
     @JsonProperty("secretName")
     private String secretName;

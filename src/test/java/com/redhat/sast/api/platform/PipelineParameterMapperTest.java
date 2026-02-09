@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 
 import com.redhat.sast.api.enums.InputSourceType;
 import com.redhat.sast.api.model.Job;
+import com.redhat.sast.api.model.MlOpsJob;
+import com.redhat.sast.api.model.MlOpsJobSettings;
 
 import io.fabric8.tekton.v1.Param;
 
@@ -31,6 +33,8 @@ class PipelineParameterMapperTest {
         mapper = new PipelineParameterMapper();
         // Set required config properties using public setters
         mapper.setGcsBucketName(Optional.of("test-bucket"));
+        mapper.setS3EndpointUrl(Optional.of("http://test-s3-endpoint"));
+        mapper.setS3BucketName(Optional.of("test-s3-bucket"));
         mapper.setProfile("test");
     }
 
@@ -94,6 +98,121 @@ class PipelineParameterMapperTest {
         assertEquals("GOOGLE_SHEET", inputSourceTypeParam.get().getValue().getStringVal());
     }
 
+    // ========== MLOps LLM Override Tests ==========
+
+    @Test
+    @DisplayName("Should override LLM URL and API key from MlOpsJobSettings when provided")
+    void extractMlOpsPipelineParams_overridesLlmUrlAndApiKeyFromSettings() {
+        MlOpsJob mlOpsJob =
+                createMlOpsJobWithOverrides("https://custom-llm.example.com", "custom-api-key-123", "gpt-4", "openai");
+
+        List<Param> params = mapper.extractMlOpsPipelineParams(mlOpsJob, "v1.0.0", "v1.0.0", "quay.io/test:latest");
+
+        // Verify LLM URL override
+        Optional<Param> llmUrlParam = findParam(params, "LLM_URL");
+        assertTrue(llmUrlParam.isPresent(), "LLM_URL parameter should be present");
+        assertEquals(
+                "https://custom-llm.example.com",
+                llmUrlParam.get().getValue().getStringVal(),
+                "LLM_URL should use value from MlOpsJobSettings, not secret");
+
+        // Verify LLM API key override
+        Optional<Param> llmApiKeyParam = findParam(params, "LLM_API_KEY");
+        assertTrue(llmApiKeyParam.isPresent(), "LLM_API_KEY parameter should be present");
+        assertEquals(
+                "custom-api-key-123",
+                llmApiKeyParam.get().getValue().getStringVal(),
+                "LLM_API_KEY should use value from MlOpsJobSettings, not secret");
+
+        // Verify model name override
+        Optional<Param> llmModelNameParam = findParam(params, "LLM_MODEL_NAME");
+        assertTrue(llmModelNameParam.isPresent(), "LLM_MODEL_NAME parameter should be present");
+        assertEquals("gpt-4", llmModelNameParam.get().getValue().getStringVal());
+
+        // Verify API type override
+        Optional<Param> llmApiTypeParam = findParam(params, "LLM_API_TYPE");
+        assertTrue(llmApiTypeParam.isPresent(), "LLM_API_TYPE parameter should be present");
+        assertEquals("openai", llmApiTypeParam.get().getValue().getStringVal());
+    }
+
+    @Test
+    @DisplayName("Should fallback to secret values when MlOpsJobSettings has no LLM overrides")
+    void extractMlOpsPipelineParams_fallsBackToSecretValues() {
+        MlOpsJob mlOpsJob = createMlOpsJobWithoutOverrides();
+
+        List<Param> params = mapper.extractMlOpsPipelineParams(mlOpsJob, "v1.0.0", "v1.0.0", "quay.io/test:latest");
+
+        // In test mode, these values come from mock secret (see PipelineParameterMapper.getLlmSecretValues)
+        Optional<Param> llmUrlParam = findParam(params, "LLM_URL");
+        assertTrue(llmUrlParam.isPresent());
+        assertEquals(
+                "http://test-llm-url",
+                llmUrlParam.get().getValue().getStringVal(),
+                "LLM_URL should fallback to secret value");
+
+        Optional<Param> llmApiKeyParam = findParam(params, "LLM_API_KEY");
+        assertTrue(llmApiKeyParam.isPresent());
+        assertEquals(
+                "test-api-key",
+                llmApiKeyParam.get().getValue().getStringVal(),
+                "LLM_API_KEY should fallback to secret value");
+    }
+
+    @Test
+    @DisplayName("Should override embedding LLM URL and API key from MlOpsJobSettings when provided")
+    void extractMlOpsPipelineParams_overridesEmbeddingLlmUrlAndApiKey() {
+        MlOpsJob mlOpsJob = createMlOpsJobWithEmbeddingOverrides(
+                "https://custom-embeddings.example.com", "embedding-api-key-456", "text-embedding-3-large");
+
+        List<Param> params = mapper.extractMlOpsPipelineParams(mlOpsJob, "v1.0.0", "v1.0.0", "quay.io/test:latest");
+
+        // Verify embedding LLM URL override
+        Optional<Param> embeddingUrlParam = findParam(params, "EMBEDDINGS_LLM_URL");
+        assertTrue(embeddingUrlParam.isPresent(), "EMBEDDINGS_LLM_URL parameter should be present");
+        assertEquals(
+                "https://custom-embeddings.example.com",
+                embeddingUrlParam.get().getValue().getStringVal(),
+                "EMBEDDINGS_LLM_URL should use value from MlOpsJobSettings");
+
+        // Verify embedding LLM API key override
+        Optional<Param> embeddingApiKeyParam = findParam(params, "EMBEDDINGS_LLM_API_KEY");
+        assertTrue(embeddingApiKeyParam.isPresent(), "EMBEDDINGS_LLM_API_KEY parameter should be present");
+        assertEquals(
+                "embedding-api-key-456",
+                embeddingApiKeyParam.get().getValue().getStringVal(),
+                "EMBEDDINGS_LLM_API_KEY should use value from MlOpsJobSettings");
+
+        // Verify embedding model name override
+        Optional<Param> embeddingModelParam = findParam(params, "EMBEDDINGS_LLM_MODEL_NAME");
+        assertTrue(embeddingModelParam.isPresent(), "EMBEDDINGS_LLM_MODEL_NAME parameter should be present");
+        assertEquals(
+                "text-embedding-3-large", embeddingModelParam.get().getValue().getStringVal());
+    }
+
+    @Test
+    @DisplayName("Should handle mixed overrides - some from settings, some from secret")
+    void extractMlOpsPipelineParams_handlesMixedOverrides() {
+        // Only override URL, let API key fall back to secret
+        MlOpsJob mlOpsJob = createMlOpsJobWithPartialOverrides();
+
+        List<Param> params = mapper.extractMlOpsPipelineParams(mlOpsJob, "v1.0.0", "v1.0.0", "quay.io/test:latest");
+
+        // URL should be overridden
+        Optional<Param> llmUrlParam = findParam(params, "LLM_URL");
+        assertTrue(llmUrlParam.isPresent());
+        assertEquals(
+                "https://partial-override.example.com",
+                llmUrlParam.get().getValue().getStringVal());
+
+        // API key should fall back to secret
+        Optional<Param> llmApiKeyParam = findParam(params, "LLM_API_KEY");
+        assertTrue(llmApiKeyParam.isPresent());
+        assertEquals(
+                "test-api-key",
+                llmApiKeyParam.get().getValue().getStringVal(),
+                "LLM_API_KEY should fallback to secret when not provided in settings");
+    }
+
     // Helper methods
     private Job createOshScanJob(String oshScanId) {
         Job job = new Job();
@@ -122,5 +241,82 @@ class PipelineParameterMapperTest {
 
     private Optional<Param> findParam(List<Param> params, String name) {
         return params.stream().filter(p -> name.equals(p.getName())).findFirst();
+    }
+
+    // MLOps Job helper methods
+    private MlOpsJob createMlOpsJobWithOverrides(
+            String llmUrl, String llmApiKey, String llmModelName, String llmApiType) {
+        MlOpsJob mlOpsJob = new MlOpsJob();
+        mlOpsJob.setId(100L);
+        mlOpsJob.setPackageNvr("test-package-1.0.0-1.el9");
+        mlOpsJob.setPackageSourceCodeUrl("https://github.com/test/repo");
+        mlOpsJob.setProjectName("test-package");
+        mlOpsJob.setProjectVersion("1.0.0-1.el9");
+        mlOpsJob.setKnownFalsePositivesUrl("");
+
+        MlOpsJobSettings settings = new MlOpsJobSettings();
+        settings.setLlmUrl(llmUrl);
+        settings.setLlmApiKey(llmApiKey);
+        settings.setLlmModelName(llmModelName);
+        settings.setLlmApiType(llmApiType);
+        settings.setSecretName("test-secret");
+
+        mlOpsJob.setMlOpsJobSettings(settings);
+        return mlOpsJob;
+    }
+
+    private MlOpsJob createMlOpsJobWithoutOverrides() {
+        MlOpsJob mlOpsJob = new MlOpsJob();
+        mlOpsJob.setId(101L);
+        mlOpsJob.setPackageNvr("test-package-1.0.0-1.el9");
+        mlOpsJob.setPackageSourceCodeUrl("https://github.com/test/repo");
+        mlOpsJob.setProjectName("test-package");
+        mlOpsJob.setProjectVersion("1.0.0-1.el9");
+        mlOpsJob.setKnownFalsePositivesUrl("");
+
+        MlOpsJobSettings settings = new MlOpsJobSettings();
+        settings.setSecretName("test-secret");
+        // No overrides - all null
+
+        mlOpsJob.setMlOpsJobSettings(settings);
+        return mlOpsJob;
+    }
+
+    private MlOpsJob createMlOpsJobWithEmbeddingOverrides(
+            String embeddingUrl, String embeddingApiKey, String embeddingModelName) {
+        MlOpsJob mlOpsJob = new MlOpsJob();
+        mlOpsJob.setId(102L);
+        mlOpsJob.setPackageNvr("test-package-1.0.0-1.el9");
+        mlOpsJob.setPackageSourceCodeUrl("https://github.com/test/repo");
+        mlOpsJob.setProjectName("test-package");
+        mlOpsJob.setProjectVersion("1.0.0-1.el9");
+        mlOpsJob.setKnownFalsePositivesUrl("");
+
+        MlOpsJobSettings settings = new MlOpsJobSettings();
+        settings.setEmbeddingLlmUrl(embeddingUrl);
+        settings.setEmbeddingLlmApiKey(embeddingApiKey);
+        settings.setEmbeddingLlmModelName(embeddingModelName);
+        settings.setSecretName("test-secret");
+
+        mlOpsJob.setMlOpsJobSettings(settings);
+        return mlOpsJob;
+    }
+
+    private MlOpsJob createMlOpsJobWithPartialOverrides() {
+        MlOpsJob mlOpsJob = new MlOpsJob();
+        mlOpsJob.setId(103L);
+        mlOpsJob.setPackageNvr("test-package-1.0.0-1.el9");
+        mlOpsJob.setPackageSourceCodeUrl("https://github.com/test/repo");
+        mlOpsJob.setProjectName("test-package");
+        mlOpsJob.setProjectVersion("1.0.0-1.el9");
+        mlOpsJob.setKnownFalsePositivesUrl("");
+
+        MlOpsJobSettings settings = new MlOpsJobSettings();
+        settings.setLlmUrl("https://partial-override.example.com");
+        // llmApiKey is null - should fall back to secret
+        settings.setSecretName("test-secret");
+
+        mlOpsJob.setMlOpsJobSettings(settings);
+        return mlOpsJob;
     }
 }

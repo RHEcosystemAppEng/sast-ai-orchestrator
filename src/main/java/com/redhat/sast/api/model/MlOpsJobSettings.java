@@ -35,11 +35,17 @@ public class MlOpsJobSettings {
     @Column(name = "llm_api_type")
     private String llmApiType;
 
+    @Transient
+    private String llmApiKey;
+
     @Column(name = "embedding_llm_url")
     private String embeddingLlmUrl;
 
     @Column(name = "embedding_llm_model_name")
     private String embeddingLlmModelName;
+
+    @Transient
+    private String embeddingLlmApiKey;
 
     @Column(name = "secret_name")
     private String secretName;

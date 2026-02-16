@@ -54,6 +54,8 @@ create-secrets: check-secrets ## Create Kubernetes secrets from local files
 		--from-literal=access_key_id="$$AWS_ACCESS_KEY_ID" \
 		--from-literal=secret_access_key="$$AWS_SECRET_ACCESS_KEY" \
 		--from-literal=endpoint_url="$$AWS_S3_ENDPOINT_URL" \
+		--from-literal=input_bucket_name="$$S3_INPUT_BUCKET_NAME" \
+		--from-literal=output_bucket_name="$$S3_OUTPUT_BUCKET_NAME" \
 		--dry-run=client -o yaml | $(KUBECTL_CMD) apply -f -
 	@# Create Google Service Account secret
 	@echo "  Creating sast-ai-google-service-account secret..."

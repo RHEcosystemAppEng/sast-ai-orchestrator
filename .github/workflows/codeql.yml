@@ -32,4 +32,6 @@ jobs:
       run: |
         ./mvnw clean compile test
         ./mvnw spotless:check
-        ./mvnw spotbugs:check 
+        ./mvnw spotbugs:check
+      env:
+        TESTCONTAINERS_RYUK_DISABLED: true 

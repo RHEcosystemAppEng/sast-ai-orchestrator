@@ -16,11 +16,15 @@ Edit `s3-credentials.env` with your actual S3/MinIO credentials:
 - `AWS_ACCESS_KEY_ID`: Your S3 access key
 - `AWS_SECRET_ACCESS_KEY`: Your S3 secret key
 - `AWS_S3_ENDPOINT_URL`: S3 endpoint URL (e.g., `https://minio.example.com` for MinIO)
+- `S3_INPUT_BUCKET_NAME`: Input bucket name for scan data (default: test)
+- `S3_OUTPUT_BUCKET_NAME`: Output bucket name for Tekton results (default: tekton-results)
 
 **Note**: These environment variables will be mapped to Kubernetes secret keys:
 - `AWS_ACCESS_KEY_ID` → `access_key_id`
 - `AWS_SECRET_ACCESS_KEY` → `secret_access_key`
 - `AWS_S3_ENDPOINT_URL` → `endpoint_url`
+- `S3_INPUT_BUCKET_NAME` → `input_bucket_name`
+- `S3_OUTPUT_BUCKET_NAME` → `output_bucket_name`
 
 ### 2. Google Service Account
 

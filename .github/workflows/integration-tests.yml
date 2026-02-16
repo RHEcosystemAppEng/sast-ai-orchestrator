@@ -3,7 +3,8 @@ name: Integration Tests
 on:
   pull_request:
     paths:
-      - 'sast-ai-orchestrator/**'
+      - 'src/**'
+      - 'pom.xml'
       - '.github/workflows/integration-tests.yml'
 
 jobs:

@@ -35,7 +35,7 @@ public class JobSettings {
     @Column(name = "llm_api_type")
     private String llmApiType;
 
-    @Column(name = "llm_api_key")
+    @Transient
     private String llmApiKey;
 
     @Column(name = "embedding_llm_url")
@@ -44,7 +44,7 @@ public class JobSettings {
     @Column(name = "embedding_llm_model_name")
     private String embeddingLlmModelName;
 
-    @Column(name = "embedding_llm_api_key")
+    @Transient
     private String embeddingLlmApiKey;
 
     @Column(name = "secret_name")

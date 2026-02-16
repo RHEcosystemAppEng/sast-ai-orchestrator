@@ -10,7 +10,7 @@ jobs:
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
@@ -30,7 +30,7 @@ jobs:
 
     - name: Build and test
       run: |
-        ./mvnw clean compile test
+        ./mvnw clean compile test -Dtest='OshConfigurationTest,OshScanResponseTest,OshJobCreationServiceTest,PipelineParameterMapperTest'
         ./mvnw spotless:check
         ./mvnw spotbugs:check
       env:

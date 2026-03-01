@@ -34,7 +34,7 @@ jobs:
         TESTCONTAINERS_RYUK_DISABLED: true
 
     - name: Upload test reports
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: test-reports

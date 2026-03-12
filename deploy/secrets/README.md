@@ -52,6 +52,33 @@ make deploy-prod  # Production
 
 The Makefile will automatically create the secrets from these files.
 
+#### Overriding Bucket Names
+
+Bucket names have defaults defined in the Makefile and can be overridden:
+
+**S3 Bucket Names** (set when creating secrets):
+1. **Via s3-credentials.env file** (recommended for persistent configuration)
+2. **Via command line** when creating secrets:
+   ```bash
+   make create-secrets S3_INPUT_BUCKET_NAME=my-input-bucket S3_OUTPUT_BUCKET_NAME=my-output-bucket
+   ```
+3. **Via environment variables**:
+   ```bash
+   export S3_INPUT_BUCKET_NAME=my-input-bucket
+   export S3_OUTPUT_BUCKET_NAME=my-output-bucket
+   make create-secrets
+   ```
+
+**GCS Bucket Name** (set when deploying):
+```bash
+make deploy-dev GCS_BUCKET_NAME=my-gcs-bucket
+```
+
+Default values:
+- `S3_INPUT_BUCKET_NAME`: `test`
+- `S3_OUTPUT_BUCKET_NAME`: `tekton-results`
+- `GCS_BUCKET_NAME`: `my-gcs-bucket`
+
 ## Security Notes
 
 ⚠️ **IMPORTANT**: 

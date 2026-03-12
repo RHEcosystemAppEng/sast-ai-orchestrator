@@ -18,6 +18,13 @@ SECRETS_DIR ?= ./secrets
 S3_CREDENTIALS_FILE ?= $(SECRETS_DIR)/s3-credentials.env
 GOOGLE_SA_FILE ?= $(SECRETS_DIR)/google-service-account.json
 
+# S3/MinIO bucket configuration (can be overridden via command line or environment)
+S3_INPUT_BUCKET_NAME ?= test
+S3_OUTPUT_BUCKET_NAME ?= tekton-results
+
+# GCS bucket configuration (can be overridden via command line or environment)
+GCS_BUCKET_NAME ?= my-gcs-bucket
+
 .DEFAULT_GOAL := help
 
 ## ============================================================================
@@ -54,8 +61,8 @@ create-secrets: check-secrets ## Create Kubernetes secrets from local files
 		--from-literal=access_key_id="$$AWS_ACCESS_KEY_ID" \
 		--from-literal=secret_access_key="$$AWS_SECRET_ACCESS_KEY" \
 		--from-literal=endpoint_url="$$AWS_S3_ENDPOINT_URL" \
-		--from-literal=input_bucket_name="$$S3_INPUT_BUCKET_NAME" \
-		--from-literal=output_bucket_name="$$S3_OUTPUT_BUCKET_NAME" \
+		--from-literal=input_bucket_name="$${S3_INPUT_BUCKET_NAME:-$(S3_INPUT_BUCKET_NAME)}" \
+		--from-literal=output_bucket_name="$${S3_OUTPUT_BUCKET_NAME:-$(S3_OUTPUT_BUCKET_NAME)}" \
 		--dry-run=client -o yaml | $(KUBECTL_CMD) apply -f -
 	@# Create Google Service Account secret
 	@echo "  Creating sast-ai-google-service-account secret..."
@@ -105,7 +112,8 @@ _deploy: ## Internal deployment target
 		-n $(NAMESPACE) \
 		--create-namespace \
 		--timeout=$(HELM_TIMEOUT) \
-		--set app.env.SAST_AI_WORKFLOW_NAMESPACE=$(NAMESPACE)
+		--set app.env.SAST_AI_WORKFLOW_NAMESPACE=$(NAMESPACE) \
+		--set gcs.bucketName=$(GCS_BUCKET_NAME)
 	@echo "✅ Deployment completed!"
 	@$(MAKE) wait-pods NAMESPACE=$(NAMESPACE)
 	@echo "🔍 Checking for ArgoCD availability..."
@@ -135,7 +143,8 @@ _upgrade: ## Internal upgrade target
 		-f $(CHART_PATH)/$(VALUES_FILE) \
 		-n $(NAMESPACE) \
 		--timeout=$(HELM_TIMEOUT) \
-		--set app.env.SAST_AI_WORKFLOW_NAMESPACE=$(NAMESPACE)
+		--set app.env.SAST_AI_WORKFLOW_NAMESPACE=$(NAMESPACE) \
+		--set gcs.bucketName=$(GCS_BUCKET_NAME)
 	@echo "✅ Upgrade completed!"
 	@$(MAKE) wait-pods NAMESPACE=$(NAMESPACE)
 

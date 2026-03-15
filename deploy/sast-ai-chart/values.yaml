@@ -27,6 +27,10 @@ app:
     # OpenShift Console configuration
     OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com"
 
+    # Tekton pipeline timeout configuration (in minutes)
+    SAST_AI_PIPELINE_TIMEOUT_MINUTES: "300"
+    SAST_AI_TASK_TIMEOUT_MINUTES: "300"
+
     # OSH (Open Scan Hub) Integration - Base Configuration
     # Disabled by default. Override in values-prod.yaml to enable.
     OSH_INTEGRATION_ENABLED: "false"
@@ -145,9 +149,8 @@ rbac:
       resources: ["pipelines", "pipelineruns", "tasks", "taskruns"]
       verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
     # Additional Tekton resources (namespace-scoped)
-    - apiGroups: ["tekton.dev"]
-      resources: ["pipelineresources", "conditions", "runs"]
-      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    # NOTE: Removed deprecated v1alpha1 resources (pipelineresources, conditions)
+    # Keeping only modern Tekton resources
     # Events (for monitoring pipeline events)
     - apiGroups: [""]
       resources: ["events"]

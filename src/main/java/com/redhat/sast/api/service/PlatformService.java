@@ -13,6 +13,7 @@ import com.redhat.sast.api.platform.MlOpsPipelineRunWatcher;
 import com.redhat.sast.api.platform.PipelineRunWatcher;
 import com.redhat.sast.api.service.mlops.*;
 
+import io.fabric8.kubernetes.api.model.Duration;
 import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
 import io.fabric8.tekton.client.TektonClient;
 import io.fabric8.tekton.v1.*;
@@ -65,6 +66,12 @@ public class PlatformService {
 
     @ConfigProperty(name = "openshift.console.base.url")
     String openshiftConsoleBaseUrl;
+
+    @ConfigProperty(name = "sast.ai.pipeline.timeout.minutes", defaultValue = "300")
+    Long pipelineTimeoutMinutes;
+
+    @ConfigProperty(name = "sast.ai.task.timeout.minutes", defaultValue = "300")
+    Long taskTimeoutMinutes;
 
     public void startSastAIWorkflow(@Nonnull Long jobId, @Nonnull List<Param> pipelineParams, String llmSecretName) {
         // Skip Kubernetes operations in test mode
@@ -178,6 +185,10 @@ public class PlatformService {
                 .withNewPipelineRef()
                 .withName(PIPELINE_NAME)
                 .endPipelineRef()
+                .withNewTimeouts()
+                .withPipeline(new Duration(java.time.Duration.ofMinutes(pipelineTimeoutMinutes)))
+                .withTasks(new Duration(java.time.Duration.ofMinutes(taskTimeoutMinutes)))
+                .endTimeouts()
                 .withWorkspaces(buildWorkspaceBindings(llmSecretName))
                 .withParams(params)
                 .endSpec()

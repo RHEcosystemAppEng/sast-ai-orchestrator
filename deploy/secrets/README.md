@@ -16,11 +16,15 @@ Edit `s3-credentials.env` with your actual S3/MinIO credentials:
 - `AWS_ACCESS_KEY_ID`: Your S3 access key
 - `AWS_SECRET_ACCESS_KEY`: Your S3 secret key
 - `AWS_S3_ENDPOINT_URL`: S3 endpoint URL (e.g., `https://minio.example.com` for MinIO)
+- `S3_INPUT_BUCKET_NAME`: Input bucket name for scan data (default: test)
+- `S3_OUTPUT_BUCKET_NAME`: Output bucket name for Tekton results (default: tekton-results)
 
 **Note**: These environment variables will be mapped to Kubernetes secret keys:
 - `AWS_ACCESS_KEY_ID` → `access_key_id`
 - `AWS_SECRET_ACCESS_KEY` → `secret_access_key`
 - `AWS_S3_ENDPOINT_URL` → `endpoint_url`
+- `S3_INPUT_BUCKET_NAME` → `input_bucket_name`
+- `S3_OUTPUT_BUCKET_NAME` → `output_bucket_name`
 
 ### 2. Google Service Account
 
@@ -47,6 +51,33 @@ make deploy-prod  # Production
 ```
 
 The Makefile will automatically create the secrets from these files.
+
+#### Overriding Bucket Names
+
+Bucket names have defaults defined in the Makefile and can be overridden:
+
+**S3 Bucket Names** (set when creating secrets):
+1. **Via s3-credentials.env file** (recommended for persistent configuration)
+2. **Via command line** when creating secrets:
+   ```bash
+   make create-secrets S3_INPUT_BUCKET_NAME=my-input-bucket S3_OUTPUT_BUCKET_NAME=my-output-bucket
+   ```
+3. **Via environment variables**:
+   ```bash
+   export S3_INPUT_BUCKET_NAME=my-input-bucket
+   export S3_OUTPUT_BUCKET_NAME=my-output-bucket
+   make create-secrets
+   ```
+
+**GCS Bucket Name** (set when deploying):
+```bash
+make deploy-dev GCS_BUCKET_NAME=my-gcs-bucket
+```
+
+Default values:
+- `S3_INPUT_BUCKET_NAME`: `test`
+- `S3_OUTPUT_BUCKET_NAME`: `tekton-results`
+- `GCS_BUCKET_NAME`: `my-gcs-bucket`
 
 ## Security Notes
 

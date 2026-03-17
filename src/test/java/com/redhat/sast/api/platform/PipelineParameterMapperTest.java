@@ -34,7 +34,8 @@ class PipelineParameterMapperTest {
         // Set required config properties using public setters
         mapper.setGcsBucketName(Optional.of("test-bucket"));
         mapper.setS3EndpointUrl(Optional.of("http://test-s3-endpoint"));
-        mapper.setS3BucketName(Optional.of("test-s3-bucket"));
+        mapper.setS3InputBucketName(Optional.of("test"));
+        mapper.setS3OutputBucketName(Optional.of("tekton-results"));
         mapper.setProfile("test");
     }
 

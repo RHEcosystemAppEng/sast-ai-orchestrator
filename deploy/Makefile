@@ -16,7 +16,7 @@ HELM_TIMEOUT ?= 300s
 # Secrets configuration
 SECRETS_DIR ?= ./secrets
 S3_CREDENTIALS_FILE ?= $(SECRETS_DIR)/s3-credentials.env
-GOOGLE_SA_FILE ?= /Users/jnirosha/IdeaProjects/sast-ai/deploy/secrets/sast-ai-workflow-d43002361da3.json
+GOOGLE_SA_FILE ?= $(SECRETS_DIR)/google-service-account.json
 
 # S3/MinIO bucket configuration (can be overridden via command line or environment)
 S3_INPUT_BUCKET_NAME ?= test

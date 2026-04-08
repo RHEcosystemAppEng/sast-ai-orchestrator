@@ -5,7 +5,7 @@
 app:
   image:
     pullPolicy: Always
-    tag: "v0.0.2"  # Production uses release tags (updated by CI/CD)
+    tag: "v0.0.3"  # Production uses release tags (updated by CI/CD)
   
   # Number of replicas - multiple for HA
   replicas: 2

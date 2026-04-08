@@ -21,11 +21,11 @@ app:
     QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: update
     QUARKUS_KUBERNETES_CLIENT_TRUST_CERTS: false
     # SAST AI specific configuration
-    SAST_AI_WORKFLOW_NAMESPACE: sast-ai
+    SAST_AI_WORKFLOW_NAMESPACE: sast-ai-dev
     # Google Service Account configuration
     GOOGLE_SERVICE_ACCOUNT_SECRET_PATH: /etc/secrets/google-service-account-secret/service_account.json
     # OpenShift Console configuration
-    OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com"
+    OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng-lab01.accl-001.lab.rdu2.dc.redhat.com"
 
     # Tekton pipeline timeout configuration (in minutes)
     SAST_AI_PIPELINE_TIMEOUT_MINUTES: "300"

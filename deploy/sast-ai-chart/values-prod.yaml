@@ -19,9 +19,9 @@ app:
     # SAST AI specific configuration - prod namespace
     SAST_AI_WORKFLOW_NAMESPACE: sast-ai-prod
     # OpenShift Console URL - production
-    OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng.clusters.se-apps.redhat.com"
+    OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng-lab01.accl-001.lab.rdu2.dc.redhat.com"
     # OSH Integration - Production Configuration
-    OSH_INTEGRATION_ENABLED: "true"
+    OSH_INTEGRATION_ENABLED: "false"
     OSH_POLL_INTERVAL: "1h"
 
   # Resource limits and requests - production sizing
@@ -34,8 +34,10 @@ app:
       memory: 1Gi
 
 ## OpenShift Route configuration - production specific
+## Note: host is empty to let OpenShift auto-generate the hostname
+## To set a custom hostname, you need cluster-admin or route/custom-host permissions
+## and can override via: --set route.host=your-custom-hostname.apps.example.com
 route:
-  host: "sast-ai-orchestrator-sast-ai-prod.apps.appeng.clusters.se-apps.redhat.com"
   annotations:
     haproxy.router.openshift.io/timeout: 300s
 

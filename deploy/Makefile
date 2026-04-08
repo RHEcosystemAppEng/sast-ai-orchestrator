@@ -23,7 +23,12 @@ S3_INPUT_BUCKET_NAME ?= test
 S3_OUTPUT_BUCKET_NAME ?= tekton-results
 
 # GCS bucket configuration (can be overridden via command line or environment)
-GCS_BUCKET_NAME ?= my-gcs-bucket
+GCS_BUCKET_NAME ?= spog-extractor-rhel-sast-ai-poc
+
+# ArgoCD configuration (can be overridden via command line or environment)
+# Default namespace for ArgoCD/GitOps components (openshift-gitops for OpenShift)
+ARGOCD_NAMESPACE ?= openshift-gitops
+GITHUB_REPO_URL ?= https://github.com/RHEcosystemAppEng/sast-ai-orchestrator
 
 .DEFAULT_GOAL := help
 
@@ -51,15 +56,13 @@ check-secrets: ## Verify that required secret files exist
 .PHONY: create-secrets
 create-secrets: check-secrets ## Create Kubernetes secrets from local files
 	@echo "🔐 Creating secrets in namespace: $(NAMESPACE)"
-	@# Create namespace if it doesn't exist
-	@$(KUBECTL_CMD) create namespace $(NAMESPACE) 2>/dev/null || true
 	@# Create S3 credentials secret with properly mapped keys
 	@echo "  Creating sast-ai-s3-credentials secret..."
 	@set -a; . $(S3_CREDENTIALS_FILE); set +a; \
 	$(KUBECTL_CMD) create secret generic sast-ai-s3-credentials \
 		-n $(NAMESPACE) \
-		--from-literal=access_key_id="$$AWS_ACCESS_KEY_ID" \
-		--from-literal=secret_access_key="$$AWS_SECRET_ACCESS_KEY" \
+		--from-literal=aws_access_key_id="$$AWS_ACCESS_KEY_ID" \
+		--from-literal=aws_secret_access_key="$$AWS_SECRET_ACCESS_KEY" \
 		--from-literal=endpoint_url="$$AWS_S3_ENDPOINT_URL" \
 		--from-literal=input_bucket_name="$${S3_INPUT_BUCKET_NAME:-$(S3_INPUT_BUCKET_NAME)}" \
 		--from-literal=output_bucket_name="$${S3_OUTPUT_BUCKET_NAME:-$(S3_OUTPUT_BUCKET_NAME)}" \
@@ -94,6 +97,7 @@ deploy-dev: ## Deploy to development environment (sast-ai-dev namespace)
 	@echo "Release: $(RELEASE_NAME)-dev"
 	@echo "Using: $(KUBECTL_CMD)"
 	@$(MAKE) _deploy NAMESPACE=$(DEV_NAMESPACE) RELEASE_NAME=$(RELEASE_NAME)-dev VALUES_FILE=values-dev.yaml
+	@$(MAKE) argocd-deploy-dev
 
 .PHONY: deploy-prod
 deploy-prod: ## Deploy to production environment (sast-ai-prod namespace)
@@ -102,6 +106,7 @@ deploy-prod: ## Deploy to production environment (sast-ai-prod namespace)
 	@echo "Release: $(RELEASE_NAME)-prod"
 	@echo "Using: $(KUBECTL_CMD)"
 	@$(MAKE) _deploy NAMESPACE=$(PROD_NAMESPACE) RELEASE_NAME=$(RELEASE_NAME)-prod VALUES_FILE=values-prod.yaml
+	@$(MAKE) argocd-deploy-prod
 
 .PHONY: _deploy
 _deploy: ## Internal deployment target
@@ -110,19 +115,11 @@ _deploy: ## Internal deployment target
 		-f $(CHART_PATH)/values.yaml \
 		-f $(CHART_PATH)/$(VALUES_FILE) \
 		-n $(NAMESPACE) \
-		--create-namespace \
 		--timeout=$(HELM_TIMEOUT) \
 		--set app.env.SAST_AI_WORKFLOW_NAMESPACE=$(NAMESPACE) \
 		--set gcs.bucketName=$(GCS_BUCKET_NAME)
 	@echo "✅ Deployment completed!"
 	@$(MAKE) wait-pods NAMESPACE=$(NAMESPACE)
-	@echo "🔍 Checking for ArgoCD availability..."
-	@if $(KUBECTL_CMD) get crd applications.argoproj.io >/dev/null 2>&1; then \
-		echo "📦 ArgoCD detected! Creating ArgoCD Application..."; \
-		$(MAKE) argocd NAMESPACE=$(NAMESPACE); \
-	else \
-		echo "⚠️  ArgoCD not available in cluster, skipping ArgoCD Application creation."; \
-	fi
 	@$(MAKE) show-access NAMESPACE=$(NAMESPACE)
 
 .PHONY: upgrade-dev
@@ -152,11 +149,13 @@ _upgrade: ## Internal upgrade target
 clean-dev: ## Remove development deployment
 	@echo "🧹 Removing SAST AI DEVELOPMENT deployment..."
 	@$(MAKE) _clean NAMESPACE=$(DEV_NAMESPACE) RELEASE_NAME=$(RELEASE_NAME)-dev
+	@$(MAKE) argocd-clean-dev
 
 .PHONY: clean-prod
 clean-prod: ## Remove production deployment
 	@echo "🧹 Removing SAST AI PRODUCTION deployment..."
 	@$(MAKE) _clean NAMESPACE=$(PROD_NAMESPACE) RELEASE_NAME=$(RELEASE_NAME)-prod
+	@$(MAKE) argocd-clean-prod
 
 .PHONY: _clean
 _clean: ## Internal clean target
@@ -244,11 +243,85 @@ lint: ## Lint the Helm chart
 	@echo "Linting Helm chart"
 	@helm lint $(CHART_PATH)
 
-.PHONY: argocd
-argocd: ## Deploy ArgoCD Application to current namespace
-	@echo "Deploying ArgoCD Application..."
-	@NAMESPACE=$(NAMESPACE) envsubst < argocd/application.yaml | $(KUBECTL_CMD) apply -f -
-	@echo "ArgoCD Application deployed to namespace: $(NAMESPACE)"
+.PHONY: argocd-deploy-dev
+argocd-deploy-dev: ## Deploy ArgoCD Application for development
+	@echo "🔄 Deploying ArgoCD Application (Dev)..."
+	@if $(KUBECTL_CMD) get crd applications.argoproj.io >/dev/null 2>&1; then \
+		echo "   📦 ArgoCD detected, setting up permissions..."; \
+		sed \
+			-e 's|TARGET_NAMESPACE_PLACEHOLDER|$(DEV_NAMESPACE)|g' \
+			-e 's|ARGOCD_NAMESPACE_PLACEHOLDER|$(ARGOCD_NAMESPACE)|g' \
+			argocd/argocd-rbac.yaml > argocd/argocd-rbac-dev-temp.yaml; \
+		$(KUBECTL_CMD) apply -f argocd/argocd-rbac-dev-temp.yaml; \
+		rm -f argocd/argocd-rbac-dev-temp.yaml; \
+		echo "   ✓ ArgoCD RBAC permissions configured for $(DEV_NAMESPACE)"; \
+		echo "   📦 Creating ArgoCD Application..."; \
+		sed \
+			-e 's|ARGOCD_NAMESPACE_PLACEHOLDER|$(ARGOCD_NAMESPACE)|g' \
+			-e 's|GITHUB_REPO_URL_PLACEHOLDER|$(GITHUB_REPO_URL)|g' \
+			-e 's|TARGET_NAMESPACE_PLACEHOLDER|$(DEV_NAMESPACE)|g' \
+			argocd/application-dev.yaml > argocd/application-dev-temp.yaml; \
+		$(KUBECTL_CMD) apply -f argocd/application-dev-temp.yaml; \
+		rm -f argocd/application-dev-temp.yaml; \
+		echo "   ✓ ArgoCD Application (dev) deployed to $(ARGOCD_NAMESPACE) namespace"; \
+		echo "   ✓ Managing namespace: $(DEV_NAMESPACE)"; \
+	else \
+		echo "   ⚠️  ArgoCD not available in cluster, skipping ArgoCD Application creation"; \
+	fi
+
+.PHONY: argocd-deploy-prod
+argocd-deploy-prod: ## Deploy ArgoCD Application for production
+	@echo "🔄 Deploying ArgoCD Application (Prod)..."
+	@if $(KUBECTL_CMD) get crd applications.argoproj.io >/dev/null 2>&1; then \
+		echo "   📦 ArgoCD detected, setting up permissions..."; \
+		sed \
+			-e 's|TARGET_NAMESPACE_PLACEHOLDER|$(PROD_NAMESPACE)|g' \
+			-e 's|ARGOCD_NAMESPACE_PLACEHOLDER|$(ARGOCD_NAMESPACE)|g' \
+			argocd/argocd-rbac.yaml > argocd/argocd-rbac-prod-temp.yaml; \
+		$(KUBECTL_CMD) apply -f argocd/argocd-rbac-prod-temp.yaml; \
+		rm -f argocd/argocd-rbac-prod-temp.yaml; \
+		echo "   ✓ ArgoCD RBAC permissions configured for $(PROD_NAMESPACE)"; \
+		echo "   📦 Creating ArgoCD Application..."; \
+		sed \
+			-e 's|ARGOCD_NAMESPACE_PLACEHOLDER|$(ARGOCD_NAMESPACE)|g' \
+			-e 's|GITHUB_REPO_URL_PLACEHOLDER|$(GITHUB_REPO_URL)|g' \
+			-e 's|TARGET_NAMESPACE_PLACEHOLDER|$(PROD_NAMESPACE)|g' \
+			argocd/application-prod.yaml > argocd/application-prod-temp.yaml; \
+		$(KUBECTL_CMD) apply -f argocd/application-prod-temp.yaml; \
+		rm -f argocd/application-prod-temp.yaml; \
+		echo "   ✓ ArgoCD Application (prod) deployed to $(ARGOCD_NAMESPACE) namespace"; \
+		echo "   ✓ Managing namespace: $(PROD_NAMESPACE)"; \
+	else \
+		echo "   ⚠️  ArgoCD not available in cluster, skipping ArgoCD Application creation"; \
+	fi
+
+.PHONY: argocd-clean-dev
+argocd-clean-dev: ## Remove ArgoCD Application and RBAC for development
+	@echo "🧹 Removing ArgoCD resources (Dev)..."
+	@if $(KUBECTL_CMD) get crd applications.argoproj.io >/dev/null 2>&1; then \
+		echo "   🗑️  Removing ArgoCD Application..."; \
+		$(KUBECTL_CMD) delete application sast-ai-orchestrator-dev -n $(ARGOCD_NAMESPACE) --ignore-not-found=true; \
+		echo "   🗑️  Removing ArgoCD RBAC permissions..."; \
+		$(KUBECTL_CMD) delete role argocd-sast-ai-manager -n $(DEV_NAMESPACE) --ignore-not-found=true; \
+		$(KUBECTL_CMD) delete rolebinding argocd-sast-ai-manager-binding -n $(DEV_NAMESPACE) --ignore-not-found=true; \
+		echo "   ✓ ArgoCD resources removed for $(DEV_NAMESPACE)"; \
+	else \
+		echo "   ⚠️  ArgoCD not available in cluster, skipping"; \
+	fi
+
+.PHONY: argocd-clean-prod
+argocd-clean-prod: ## Remove ArgoCD Application and RBAC for production
+	@echo "🧹 Removing ArgoCD resources (Prod)..."
+	@if $(KUBECTL_CMD) get crd applications.argoproj.io >/dev/null 2>&1; then \
+		echo "   🗑️  Removing ArgoCD Application..."; \
+		$(KUBECTL_CMD) delete application sast-ai-orchestrator-prod -n $(ARGOCD_NAMESPACE) --ignore-not-found=true; \
+		echo "   🗑️  Removing ArgoCD RBAC permissions..."; \
+		$(KUBECTL_CMD) delete role argocd-sast-ai-manager -n $(PROD_NAMESPACE) --ignore-not-found=true; \
+		$(KUBECTL_CMD) delete rolebinding argocd-sast-ai-manager-binding -n $(PROD_NAMESPACE) --ignore-not-found=true; \
+		echo "   ✓ ArgoCD resources removed for $(PROD_NAMESPACE)"; \
+	else \
+		echo "   ⚠️  ArgoCD not available in cluster, skipping"; \
+	fi
 
 .PHONY: help
 help: ## Show this help message
@@ -270,8 +343,20 @@ help: ## Show this help message
 	@echo "  rotate-secrets    Rotate secrets (delete and recreate)"
 	@echo ""
 	@echo "Utility commands:"
-	@echo "  status            Show deployment status for both environments"
-	@echo "  argocd            Deploy ArgoCD Application"
+	@echo "  status                 Show deployment status for both environments"
+	@echo "  argocd-deploy-dev      Deploy ArgoCD Application for development"
+	@echo "  argocd-deploy-prod     Deploy ArgoCD Application for production"
+	@echo "  argocd-clean-dev       Remove ArgoCD Application and RBAC for development"
+	@echo "  argocd-clean-prod      Remove ArgoCD Application and RBAC for production"
+	@echo ""
+	@echo "Configuration variables (can be overridden):"
+	@echo "  ARGOCD_NAMESPACE       Namespace for ArgoCD components (default: openshift-gitops)"
+	@echo "  GITHUB_REPO_URL        GitHub repository URL (default: RHEcosystemAppEng/sast-ai-orchestrator)"
+	@echo "  GCS_BUCKET_NAME        GCS bucket for SARIF uploads (default: spog-extractor-rhel-sast-ai-poc)"
+	@echo "  S3_INPUT_BUCKET_NAME   S3 input bucket name (default: test)"
+	@echo "  S3_OUTPUT_BUCKET_NAME  S3 output bucket name (default: tekton-results)"
+	@echo ""
+	@echo "Example: make deploy-dev ARGOCD_NAMESPACE=argocd"
 	@echo ""
 	@echo "Other commands:"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)

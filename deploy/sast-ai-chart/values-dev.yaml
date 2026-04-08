@@ -21,7 +21,7 @@ app:
     # OpenShift Console URL - development
     OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng-lab01.accl-001.lab.rdu2.dc.redhat.com"
     # OSH Integration - enabled for dev
-    OSH_INTEGRATION_ENABLED: "false"
+    OSH_INTEGRATION_ENABLED: "true"
     OSH_POLL_INTERVAL: "1h"
 
   # Resource limits and requests - lower for dev

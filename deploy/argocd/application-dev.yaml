@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: sast-ai-orchestrator-dev
-  namespace: argocd
+  namespace: openshift-gitops
   labels:
     app.kubernetes.io/name: sast-ai-orchestrator-dev
     app.kubernetes.io/part-of: sast-ai
@@ -12,8 +12,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/RHEcosystemAppEng/sast-ai-orchestrator
-    targetRevision: HEAD
+    repoURL: GITHUB_REPO_URL_PLACEHOLDER
+    targetRevision: main  # Track main branch for dev (use specific tag for prod)
     path: deploy/sast-ai-chart
     helm:
       releaseName: sast-ai-orchestrator-dev
@@ -22,17 +22,16 @@ spec:
         - values-dev.yaml
       parameters:
         - name: app.env.SAST_AI_WORKFLOW_NAMESPACE
-          value: sast-ai-dev
+          value: TARGET_NAMESPACE_PLACEHOLDER
   destination:
     server: https://kubernetes.default.svc
-    namespace: sast-ai-dev
+    namespace: TARGET_NAMESPACE_PLACEHOLDER
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
       allowEmpty: false
     syncOptions:
-      - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
     retry:

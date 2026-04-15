@@ -22,7 +22,9 @@ app:
     OPENSHIFT_CONSOLE_BASE_URL: "https://console-openshift-console.apps.appeng-lab01.accl-001.lab.rdu2.dc.redhat.com"
     # OSH Integration - enabled for dev
     OSH_INTEGRATION_ENABLED: "true"
-    OSH_POLL_INTERVAL: "1h"
+    OSH_POLL_INTERVAL: "5m"
+    OSH_BATCH_SIZE: "100"
+    OSH_SCAN_MAX_PER_CYCLE: "100"
 
   # Resource limits and requests - lower for dev
   resources:

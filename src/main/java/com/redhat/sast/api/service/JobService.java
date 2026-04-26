@@ -223,11 +223,15 @@ public class JobService {
         Job job = getJobFromDto(jobCreationDto);
         jobRepository.persist(job);
 
-        LOGGER.debug("Creating JobSettings with default secretName: '{}'", ApplicationConstants.DEFAULT_SECRET_NAME);
+        String secretName = (jobCreationDto.getSecretName() != null
+                        && !jobCreationDto.getSecretName().isBlank())
+                ? jobCreationDto.getSecretName()
+                : ApplicationConstants.DEFAULT_SECRET_NAME;
+        LOGGER.debug("Creating JobSettings with secretName: '{}'", secretName);
 
         JobSettings settings = new JobSettings();
         settings.setJob(job);
-        settings.setSecretName(ApplicationConstants.DEFAULT_SECRET_NAME);
+        settings.setSecretName(secretName);
 
         boolean shouldUseFile = shouldUseFalsePositiveFile(jobCreationDto);
 

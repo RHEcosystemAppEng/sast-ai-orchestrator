@@ -43,10 +43,23 @@ Orchestrator REST API that manages [SAST-AI-Workflow](https://github.com/RHEcosy
 {
   "packageNvr": "package-name-version-release",
   "inputSourceUrl": "https://example.com/source.zip",
-  "submittedBy": "user@example.com", # (optional, defaults to "unknown")
-  "useKnownFalsePositiveFile": false # (optional)
+  "submittedBy": "user@example.com",
+  "useKnownFalsePositiveFile": false,
+  "secretName": "my-custom-llm-creds",
+  "forceRescan": false
 }
 ```
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `packageNvr` | Yes | — | Package Name-Version-Release |
+| `inputSourceUrl` | No | — | URL to input source (Google Sheet, SARIF, or OSH report) |
+| `submittedBy` | No | `"unknown"` | Who submitted the job |
+| `useKnownFalsePositiveFile` | No | `true` | Whether to use the known false positive file |
+| `secretName` | No | `sast-ai-default-llm-creds` | Kubernetes secret name containing LLM credentials |
+| `oshScanId` | No | — | OSH scan ID to associate with the job |
+| `aggregateResultsGSheet` | No | — | Google Sheet URL for aggregating results |
+| `forceRescan` | No | `false` | Force a new scan even if a cached result exists |
 
 **Response:** `201 Created`
 ```json

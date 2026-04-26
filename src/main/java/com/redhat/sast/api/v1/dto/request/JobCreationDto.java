@@ -39,6 +39,13 @@ public class JobCreationDto {
     private Boolean forceRescan = false;
 
     /**
+     * Name of the Kubernetes secret containing LLM credentials.
+     * If not provided, defaults to the platform default secret.
+     */
+    @JsonProperty("secretName")
+    private String secretName;
+
+    /**
      * Constructor for URL-based input sources (Google Sheets, SARIF, OSH URLs).
      *
      * @param packageNvr package NVR

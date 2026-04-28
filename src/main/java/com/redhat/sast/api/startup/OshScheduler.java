@@ -361,7 +361,7 @@ public class OshScheduler {
 
     /**
      * Determines the starting scan ID for the current polling cycle.
-     * Uses cursor from database, or falls back to configured start ID.
+     * Uses cursor from database, or discovers recent scan, or falls back to configured start ID.
      */
     private int getStartScanId() {
         try {
@@ -375,6 +375,21 @@ public class OshScheduler {
             LOGGER.warn("Error reading cursor. Reason: {}", e.getMessage());
         }
 
+        // No cursor exists - try discovery if enabled
+        if (oshConfiguration.isDiscoveryEnabled()) {
+            LOGGER.info("No cursor found, attempting scan discovery");
+            Optional<Integer> discovered = oshClientService.discoverStartScanId();
+            if (discovered.isPresent()) {
+                LOGGER.info("Using discovered start scan ID: {}", discovered.get());
+                return discovered.get();
+            } else {
+                LOGGER.warn(
+                        "Scan discovery failed, falling back to configured start ID: {}",
+                        oshConfiguration.getStartScanId());
+            }
+        }
+
+        // Fallback to configured default
         int defaultStartId = oshConfiguration.getStartScanId();
         LOGGER.info("Using configured start scan ID: {}", defaultStartId);
         return defaultStartId;

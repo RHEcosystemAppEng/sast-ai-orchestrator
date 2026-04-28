@@ -101,6 +101,40 @@ public class OshConfiguration {
     @ConfigProperty(name = "osh.scan.max-per-cycle", defaultValue = "50")
     int maxScansPerCycle;
 
+    // ==================== Scan Discovery Configuration ====================
+
+    /**
+     * Enable automatic discovery of start scan ID on first startup.
+     * When enabled and no cursor exists in database, the system will probe OSH
+     * to find a recent scan ID instead of using the hardcoded start-id.
+     */
+    @ConfigProperty(name = "osh.scan.discovery.enabled", defaultValue = "true")
+    boolean discoveryEnabled;
+
+    /**
+     * High-water estimate for backward search.
+     * Should be set higher than the expected current OSH scan ID.
+     * Discovery will probe backward from this value.
+     */
+    @ConfigProperty(name = "osh.scan.discovery.high-water-estimate", defaultValue = "2000000")
+    int discoveryHighWaterEstimate;
+
+    /**
+     * Step size for backward scan during discovery.
+     * Larger values = faster discovery but coarser granularity.
+     * E.g., step-size=1000 means we probe 2000000, 1999000, 1998000, etc.
+     */
+    @ConfigProperty(name = "osh.scan.discovery.step-size", defaultValue = "1000")
+    int discoveryStepSize;
+
+    /**
+     * Maximum number of backward steps to probe during discovery.
+     * Total backward range = step-size × max-probes.
+     * E.g., max-probes=50 and step-size=1000 = search up to 50,000 scans back.
+     */
+    @ConfigProperty(name = "osh.scan.discovery.max-probes", defaultValue = "50")
+    int discoveryMaxProbes;
+
     // ==================== Retry Configuration ====================
 
     /**
@@ -189,6 +223,30 @@ public class OshConfiguration {
         if (maxScansPerCycle <= 0) {
             throw new IllegalStateException(
                     "Invalid osh.scan.max-per-cycle: " + maxScansPerCycle + " (must be positive)");
+        }
+
+        // Validate discovery configuration
+        if (discoveryEnabled) {
+            if (discoveryHighWaterEstimate <= 0) {
+                throw new IllegalStateException("Invalid osh.scan.discovery.high-water-estimate: "
+                        + discoveryHighWaterEstimate + " (must be positive)");
+            }
+
+            if (discoveryStepSize <= 0) {
+                throw new IllegalStateException(
+                        "Invalid osh.scan.discovery.step-size: " + discoveryStepSize + " (must be positive)");
+            }
+
+            if (discoveryMaxProbes <= 0) {
+                throw new IllegalStateException(
+                        "Invalid osh.scan.discovery.max-probes: " + discoveryMaxProbes + " (must be positive)");
+            }
+
+            LOGGER.debug("OSH scan discovery configuration:");
+            LOGGER.debug("  Enabled: {}", discoveryEnabled);
+            LOGGER.debug("  High-water estimate: {}", discoveryHighWaterEstimate);
+            LOGGER.debug("  Step size: {}", discoveryStepSize);
+            LOGGER.debug("  Max probes: {}", discoveryMaxProbes);
         }
 
         // Validate retry configuration

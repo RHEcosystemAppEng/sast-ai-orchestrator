@@ -44,6 +44,9 @@ public class OshClientService {
     @Inject
     NvrParser nvrParser;
 
+    @Inject
+    com.redhat.sast.api.config.OshConfiguration oshConfiguration;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -89,6 +92,49 @@ public class OshClientService {
         } catch (Exception e) {
             LOGGER.error("Failed to fetch scan {}: {}", oshScanId, e.getMessage());
         }
+        return Optional.empty();
+    }
+
+    /**
+     * Discovers a recent start scan ID by probing OSH API backward from high-water estimate.
+     *
+     * Algorithm:
+     * - Start from configured high-water estimate (e.g., 2000000)
+     * - Step backward by configured step size (e.g., 1000)
+     * - Stop at first valid scan found
+     * - Return empty if no scans found or max probes reached
+     *
+     * Note: This may miss scans between probe steps, which is acceptable.
+     * The goal is to find a recent-ish scan, not the absolute latest.
+     *
+     * @return discovered start scan ID, or empty if discovery failed
+     */
+    public Optional<Integer> discoverStartScanId() {
+        LOGGER.info(
+                "Starting OSH scan discovery from high-water estimate: {}",
+                oshConfiguration.getDiscoveryHighWaterEstimate());
+
+        for (int i = 0; i < oshConfiguration.getDiscoveryMaxProbes(); i++) {
+            int scanId =
+                    oshConfiguration.getDiscoveryHighWaterEstimate() - (i * oshConfiguration.getDiscoveryStepSize());
+
+            if (scanId <= 0) {
+                LOGGER.debug("Reached non-positive scan ID, stopping discovery");
+                break;
+            }
+
+            LOGGER.debug("Probing scan ID: {}", scanId);
+            Optional<OshScanDto> scan = fetchOshScanData(scanId);
+
+            if (scan.isPresent()) {
+                LOGGER.info("Discovered start scan ID: {}", scanId);
+                return Optional.of(scanId);
+            }
+
+            LOGGER.debug("No scan found at ID {}", scanId);
+        }
+
+        LOGGER.warn("No valid scan found after {} probes, discovery failed", oshConfiguration.getDiscoveryMaxProbes());
         return Optional.empty();
     }
 

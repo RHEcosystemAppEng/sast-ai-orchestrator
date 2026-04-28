@@ -198,7 +198,14 @@ public class OshConfiguration {
 
         LOGGER.info("OSH integration is enabled - validating configuration");
 
-        // Load packages from file (skip if already set for testing)
+        loadPackages();
+        validateScanParameters();
+        validateDiscoveryConfiguration();
+        validateRetryConfiguration();
+        logValidatedConfiguration();
+    }
+
+    private void loadPackages() {
         if (!packageNameSetOverridden) {
             packageNameSet = loadPackageListFromFile();
         } else {
@@ -211,7 +218,9 @@ public class OshConfiguration {
             LOGGER.info("Loaded {} packages for monitoring", packageNameSet.size());
             LOGGER.debug("Packages to monitor: {}", packageNameSet);
         }
+    }
 
+    private void validateScanParameters() {
         if (batchSize <= 0) {
             throw new IllegalStateException("Invalid osh.batch.size: " + batchSize + " (must be positive)");
         }
@@ -224,32 +233,36 @@ public class OshConfiguration {
             throw new IllegalStateException(
                     "Invalid osh.scan.max-per-cycle: " + maxScansPerCycle + " (must be positive)");
         }
+    }
 
-        // Validate discovery configuration
-        if (discoveryEnabled) {
-            if (discoveryHighWaterEstimate <= 0) {
-                throw new IllegalStateException("Invalid osh.scan.discovery.high-water-estimate: "
-                        + discoveryHighWaterEstimate + " (must be positive)");
-            }
-
-            if (discoveryStepSize <= 0) {
-                throw new IllegalStateException(
-                        "Invalid osh.scan.discovery.step-size: " + discoveryStepSize + " (must be positive)");
-            }
-
-            if (discoveryMaxProbes <= 0) {
-                throw new IllegalStateException(
-                        "Invalid osh.scan.discovery.max-probes: " + discoveryMaxProbes + " (must be positive)");
-            }
-
-            LOGGER.debug("OSH scan discovery configuration:");
-            LOGGER.debug("  Enabled: {}", discoveryEnabled);
-            LOGGER.debug("  High-water estimate: {}", discoveryHighWaterEstimate);
-            LOGGER.debug("  Step size: {}", discoveryStepSize);
-            LOGGER.debug("  Max probes: {}", discoveryMaxProbes);
+    private void validateDiscoveryConfiguration() {
+        if (!discoveryEnabled) {
+            return;
         }
 
-        // Validate retry configuration
+        if (discoveryHighWaterEstimate <= 0) {
+            throw new IllegalStateException("Invalid osh.scan.discovery.high-water-estimate: "
+                    + discoveryHighWaterEstimate + " (must be positive)");
+        }
+
+        if (discoveryStepSize <= 0) {
+            throw new IllegalStateException(
+                    "Invalid osh.scan.discovery.step-size: " + discoveryStepSize + " (must be positive)");
+        }
+
+        if (discoveryMaxProbes <= 0) {
+            throw new IllegalStateException(
+                    "Invalid osh.scan.discovery.max-probes: " + discoveryMaxProbes + " (must be positive)");
+        }
+
+        LOGGER.debug("OSH scan discovery configuration:");
+        LOGGER.debug("  Enabled: {}", discoveryEnabled);
+        LOGGER.debug("  High-water estimate: {}", discoveryHighWaterEstimate);
+        LOGGER.debug("  Step size: {}", discoveryStepSize);
+        LOGGER.debug("  Max probes: {}", discoveryMaxProbes);
+    }
+
+    private void validateRetryConfiguration() {
         if (retryMaxAttempts < -1) {
             throw new IllegalStateException(
                     "Invalid osh.retry.max-attempts: " + retryMaxAttempts + " (must be >= -1, where -1 = unlimited)");
@@ -278,7 +291,9 @@ public class OshConfiguration {
             throw new IllegalStateException("Invalid osh.retry.cleanup-interval: " + retryCleanupInterval
                     + " (must be valid duration like '1h', '30m', '24h')");
         }
+    }
 
+    private void logValidatedConfiguration() {
         LOGGER.debug("OSH configuration validated successfully:");
         LOGGER.debug("  Base URL: {}", baseUrl);
         LOGGER.debug("  Packages: {}", packageNameSet.isEmpty() ? "none (monitoring disabled)" : packageNameSet);

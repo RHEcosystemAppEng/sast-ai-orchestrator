@@ -44,10 +44,14 @@ public class OshClientService {
     @Inject
     NvrParser nvrParser;
 
-    @Inject
-    com.redhat.sast.api.config.OshConfiguration oshConfiguration;
+    private final com.redhat.sast.api.config.OshConfiguration oshConfiguration;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Inject
+    public OshClientService(com.redhat.sast.api.config.OshConfiguration oshConfiguration) {
+        this.oshConfiguration = oshConfiguration;
+    }
 
     /**
      * Discovers finished scans in a batch using sequential scan ID iteration.

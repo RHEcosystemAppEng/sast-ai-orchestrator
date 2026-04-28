@@ -100,46 +100,43 @@ public class OshClientService {
     }
 
     /**
-     * Discovers a recent start scan ID by probing OSH API backward from high-water estimate.
+     * Discovers the latest scan ID by fetching the OSH task listing page.
+     * Parses the HTML to extract the first (latest) task ID.
      *
-     * Algorithm:
-     * - Start from configured high-water estimate (e.g., 2000000)
-     * - Step backward by configured step size (e.g., 1000)
-     * - Stop at first valid scan found
-     * - Return empty if no scans found or max probes reached
-     *
-     * Note: This may miss scans between probe steps, which is acceptable.
-     * The goal is to find a recent-ish scan, not the absolute latest.
-     *
-     * @return discovered start scan ID, or empty if discovery failed
+     * @return discovered latest scan ID, or empty if discovery fails
      */
     public Optional<Integer> discoverStartScanId() {
-        LOGGER.info(
-                "Starting OSH scan discovery from high-water estimate: {}",
-                oshConfiguration.getDiscoveryHighWaterEstimate());
+        LOGGER.info("Fetching OSH task list to discover latest scan ID");
 
-        for (int i = 0; i < oshConfiguration.getDiscoveryMaxProbes(); i++) {
-            int scanId =
-                    oshConfiguration.getDiscoveryHighWaterEstimate() - (i * oshConfiguration.getDiscoveryStepSize());
-
-            if (scanId <= 0) {
-                LOGGER.debug("Reached non-positive scan ID, stopping discovery");
-                break;
+        try (var httpResp = oshClient.fetchTaskListPage()) {
+            if (httpResp.getStatus() != 200) {
+                LOGGER.warn("Failed to fetch task list, status: {}", httpResp.getStatus());
+                return Optional.empty();
             }
 
-            LOGGER.debug("Probing scan ID: {}", scanId);
-            Optional<OshScanDto> scan = fetchOshScanData(scanId);
+            String html = httpResp.readEntity(String.class);
+            Document doc = Jsoup.parse(html);
 
-            if (scan.isPresent()) {
-                LOGGER.info("Discovered start scan ID: {}", scanId);
-                return Optional.of(scanId);
+            // Extract first task ID from the table (latest task in descending order)
+            Elements taskLinks = doc.select("a[href^=/osh/task/]");
+            if (!taskLinks.isEmpty()) {
+                String firstLink = taskLinks.first().attr("href");
+                // Extract ID from "/osh/task/1066822/"
+                String idStr = firstLink.replaceAll("[^0-9]", "");
+                if (!idStr.isEmpty()) {
+                    int latestId = Integer.parseInt(idStr);
+                    LOGGER.info("Discovered latest scan ID: {}", latestId);
+                    return Optional.of(latestId);
+                }
             }
 
-            LOGGER.debug("No scan found at ID {}", scanId);
+            LOGGER.warn("No task IDs found in task list page");
+            return Optional.empty();
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to discover latest scan ID: {}", e.getMessage());
+            return Optional.empty();
         }
-
-        LOGGER.warn("No valid scan found after {} probes, discovery failed", oshConfiguration.getDiscoveryMaxProbes());
-        return Optional.empty();
     }
 
     private Optional<OshScanDto> parseHttpResponse(String content, int scanId) {

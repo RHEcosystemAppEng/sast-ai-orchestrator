@@ -122,7 +122,7 @@ public class OshClientService {
             if (!taskLinks.isEmpty()) {
                 String firstLink = taskLinks.first().attr("href");
                 // Extract ID from "/osh/task/1066822/"
-                String idStr = firstLink.replaceAll("[^0-9]", "");
+                String idStr = firstLink.replaceAll("\\D", "");
                 if (!idStr.isEmpty()) {
                     int latestId = Integer.parseInt(idStr);
                     LOGGER.info("Discovered latest scan ID: {}", latestId);

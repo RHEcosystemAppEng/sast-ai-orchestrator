@@ -119,7 +119,7 @@ public class OshClientService {
 
             Elements taskLinks = doc.select("a[href^=/osh/task/]");
 
-            // Find the first link that contains a task ID (has digits - Skip the task list page self-reference (/osh/task/))
+            // Find the first link that contains a task ID
             for (Element link : taskLinks) {
                 String href = link.attr("href");
                 String idStr = href.replaceAll("\\D", "");

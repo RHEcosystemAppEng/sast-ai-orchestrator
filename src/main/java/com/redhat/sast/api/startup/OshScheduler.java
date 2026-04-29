@@ -361,7 +361,7 @@ public class OshScheduler {
 
     /**
      * Determines the starting scan ID for the current polling cycle.
-     * Uses cursor from database, or falls back to configured start ID.
+     * Uses cursor from database, or discovers recent scan, or falls back to configured start ID.
      */
     private int getStartScanId() {
         try {
@@ -370,13 +370,28 @@ public class OshScheduler {
                 return Integer.parseInt(cursor.get().getLastSeenToken());
             }
         } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid cursor token format, fallback to configured start ID. Reason: {}", e.getMessage());
+            LOGGER.warn(
+                    "Invalid cursor token format, fallback to configured start ID: {}. Reason: {}",
+                    oshConfiguration.getStartScanId(),
+                    e.getMessage());
         } catch (Exception e) {
-            LOGGER.warn("Error reading cursor. Reason: {}", e.getMessage());
+            LOGGER.warn(
+                    "Error reading cursor, fallback to configured start ID: {}. Reason: {}",
+                    oshConfiguration.getStartScanId(),
+                    e.getMessage());
         }
 
+        // no cursor exists - try discovery
+        LOGGER.info("No cursor found, attempting scan discovery");
+        Optional<Integer> discovered = oshClientService.discoverStartScanId();
+        if (discovered.isPresent()) {
+            LOGGER.info("Using discovered start scan ID: {}", discovered.get());
+            return discovered.get();
+        }
+
+        // Fallback to configured default
         int defaultStartId = oshConfiguration.getStartScanId();
-        LOGGER.info("Using configured start scan ID: {}", defaultStartId);
+        LOGGER.warn("Scan discovery failed, falling back to configured start ID: {}", defaultStartId);
         return defaultStartId;
     }
 

@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jsoup.Jsoup;
@@ -44,7 +46,14 @@ public class OshClientService {
     @Inject
     NvrParser nvrParser;
 
+    private final com.redhat.sast.api.config.OshConfiguration oshConfiguration;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Inject
+    public OshClientService(com.redhat.sast.api.config.OshConfiguration oshConfiguration) {
+        this.oshConfiguration = oshConfiguration;
+    }
 
     /**
      * Discovers finished scans in a batch using sequential scan ID iteration.
@@ -90,6 +99,48 @@ public class OshClientService {
             LOGGER.error("Failed to fetch scan {}: {}", oshScanId, e.getMessage());
         }
         return Optional.empty();
+    }
+
+    /**
+     * Discovers the latest scan ID by fetching the OSH task listing page.
+     * Parses the HTML to extract the first (latest) task ID.
+     *
+     * @return discovered latest scan ID, or empty if discovery fails
+     */
+    public Optional<Integer> discoverStartScanId() {
+        LOGGER.info("Fetching OSH task list to discover latest scan ID");
+
+        try (var httpResp = oshClient.fetchTaskListPage()) {
+            if (httpResp.getStatus() != 200) {
+                LOGGER.error("Failed to fetch task list, status: {}", httpResp.getStatus());
+                return Optional.empty();
+            }
+
+            String html = httpResp.readEntity(String.class);
+            Document doc = Jsoup.parse(html);
+
+            Elements taskLinks = doc.select("a[href^=/osh/task/]");
+
+            // Find the first link that contains a task ID
+            // Use precise regex to extract only digits after /osh/task/
+            Pattern pattern = Pattern.compile("/osh/task/(\\d+)");
+            for (Element link : taskLinks) {
+                String href = link.attr("href");
+                Matcher matcher = pattern.matcher(href);
+                if (matcher.find()) {
+                    int latestId = Integer.parseInt(matcher.group(1));
+                    LOGGER.info("Discovered latest scan ID: {}", latestId);
+                    return Optional.of(latestId);
+                }
+            }
+
+            LOGGER.warn("No task IDs found in task list page");
+            return Optional.empty();
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to discover latest scan ID: {}", e.getMessage());
+            return Optional.empty();
+        }
     }
 
     private Optional<OshScanDto> parseHttpResponse(String content, int scanId) {

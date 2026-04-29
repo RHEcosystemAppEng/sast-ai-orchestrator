@@ -36,4 +36,15 @@ public interface OshRestClient {
     @Path("/task/{scanId}")
     @Produces(MediaType.WILDCARD) // Accept both JSON and HTML responses
     Response fetchScanDetailsRaw(@PathParam("scanId") int scanId);
+
+    /**
+     * Fetches the task listing page (HTML).
+     * Used to discover the latest scan ID from the first page.
+     *
+     * @return raw HTTP response containing HTML task list
+     */
+    @GET
+    @Path("/task/")
+    @Produces(MediaType.TEXT_HTML)
+    Response fetchTaskListPage();
 }

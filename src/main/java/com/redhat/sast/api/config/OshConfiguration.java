@@ -164,13 +164,7 @@ public class OshConfiguration {
 
         LOGGER.info("OSH integration is enabled - validating configuration");
 
-        loadPackages();
-        validateScanParameters();
-        validateRetryConfiguration();
-        logValidatedConfiguration();
-    }
-
-    private void loadPackages() {
+        // Load packages from file (skip if already set for testing)
         if (!packageNameSetOverridden) {
             packageNameSet = loadPackageListFromFile();
         } else {
@@ -183,9 +177,7 @@ public class OshConfiguration {
             LOGGER.info("Loaded {} packages for monitoring", packageNameSet.size());
             LOGGER.debug("Packages to monitor: {}", packageNameSet);
         }
-    }
 
-    private void validateScanParameters() {
         if (batchSize <= 0) {
             throw new IllegalStateException("Invalid osh.batch.size: " + batchSize + " (must be positive)");
         }
@@ -198,9 +190,7 @@ public class OshConfiguration {
             throw new IllegalStateException(
                     "Invalid osh.scan.max-per-cycle: " + maxScansPerCycle + " (must be positive)");
         }
-    }
-
-    private void validateRetryConfiguration() {
+        // Validate retry configuration
         if (retryMaxAttempts < -1) {
             throw new IllegalStateException(
                     "Invalid osh.retry.max-attempts: " + retryMaxAttempts + " (must be >= -1, where -1 = unlimited)");
@@ -229,9 +219,7 @@ public class OshConfiguration {
             throw new IllegalStateException("Invalid osh.retry.cleanup-interval: " + retryCleanupInterval
                     + " (must be valid duration like '1h', '30m', '24h')");
         }
-    }
 
-    private void logValidatedConfiguration() {
         LOGGER.debug("OSH configuration validated successfully:");
         LOGGER.debug("  Base URL: {}", baseUrl);
         LOGGER.debug("  Packages: {}", packageNameSet.isEmpty() ? "none (monitoring disabled)" : packageNameSet);

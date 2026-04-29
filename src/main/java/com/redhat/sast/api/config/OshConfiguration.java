@@ -101,16 +101,6 @@ public class OshConfiguration {
     @ConfigProperty(name = "osh.scan.max-per-cycle", defaultValue = "50")
     int maxScansPerCycle;
 
-    // ==================== Scan Discovery Configuration ====================
-
-    /**
-     * Enable automatic discovery of latest scan ID on first startup.
-     * When enabled and no cursor exists in database, fetches the OSH task listing
-     * page to discover the latest scan ID instead of using the hardcoded start-id.
-     */
-    @ConfigProperty(name = "osh.scan.discovery.enabled", defaultValue = "true")
-    boolean discoveryEnabled;
-
     // ==================== Retry Configuration ====================
 
     /**
@@ -176,7 +166,6 @@ public class OshConfiguration {
 
         loadPackages();
         validateScanParameters();
-        validateDiscoveryConfiguration();
         validateRetryConfiguration();
         logValidatedConfiguration();
     }
@@ -209,14 +198,6 @@ public class OshConfiguration {
             throw new IllegalStateException(
                     "Invalid osh.scan.max-per-cycle: " + maxScansPerCycle + " (must be positive)");
         }
-    }
-
-    private void validateDiscoveryConfiguration() {
-        if (!discoveryEnabled) {
-            return;
-        }
-
-        LOGGER.debug("OSH scan discovery enabled - will fetch latest scan ID from task listing page");
     }
 
     private void validateRetryConfiguration() {

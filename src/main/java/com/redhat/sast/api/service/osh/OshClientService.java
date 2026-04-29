@@ -110,7 +110,7 @@ public class OshClientService {
 
         try (var httpResp = oshClient.fetchTaskListPage()) {
             if (httpResp.getStatus() != 200) {
-                LOGGER.warn("Failed to fetch task list, status: {}", httpResp.getStatus());
+                LOGGER.error("Failed to fetch task list, status: {}", httpResp.getStatus());
                 return Optional.empty();
             }
 

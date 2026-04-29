@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jsoup.Jsoup;
@@ -120,11 +122,13 @@ public class OshClientService {
             Elements taskLinks = doc.select("a[href^=/osh/task/]");
 
             // Find the first link that contains a task ID
+            // Use precise regex to extract only digits after /osh/task/
+            Pattern pattern = Pattern.compile("/osh/task/(\\d+)");
             for (Element link : taskLinks) {
                 String href = link.attr("href");
-                String idStr = href.replaceAll("\\D", "");
-                if (!idStr.isEmpty()) {
-                    int latestId = Integer.parseInt(idStr);
+                Matcher matcher = pattern.matcher(href);
+                if (matcher.find()) {
+                    int latestId = Integer.parseInt(matcher.group(1));
                     LOGGER.info("Discovered latest scan ID: {}", latestId);
                     return Optional.of(latestId);
                 }

@@ -190,6 +190,7 @@ public class OshConfiguration {
             throw new IllegalStateException(
                     "Invalid osh.scan.max-per-cycle: " + maxScansPerCycle + " (must be positive)");
         }
+
         // Validate retry configuration
         if (retryMaxAttempts < -1) {
             throw new IllegalStateException(

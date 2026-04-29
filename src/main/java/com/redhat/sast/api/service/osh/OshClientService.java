@@ -117,12 +117,12 @@ public class OshClientService {
             String html = httpResp.readEntity(String.class);
             Document doc = Jsoup.parse(html);
 
-            // Extract first task ID from the table (latest task in descending order)
             Elements taskLinks = doc.select("a[href^=/osh/task/]");
-            if (!taskLinks.isEmpty()) {
-                String firstLink = taskLinks.first().attr("href");
-                // Extract ID from "/osh/task/1066822/"
-                String idStr = firstLink.replaceAll("\\D", "");
+
+            // Find the first link that contains a task ID (has digits - Skip the task list page self-reference (/osh/task/))
+            for (Element link : taskLinks) {
+                String href = link.attr("href");
+                String idStr = href.replaceAll("\\D", "");
                 if (!idStr.isEmpty()) {
                     int latestId = Integer.parseInt(idStr);
                     LOGGER.info("Discovered latest scan ID: {}", latestId);

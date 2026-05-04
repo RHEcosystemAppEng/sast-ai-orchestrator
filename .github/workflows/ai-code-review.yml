@@ -43,7 +43,7 @@ jobs:
           } >> $GITHUB_OUTPUT
       - name: "Comment on skipped review"
         if: steps.get_diff.outputs.skip_review == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

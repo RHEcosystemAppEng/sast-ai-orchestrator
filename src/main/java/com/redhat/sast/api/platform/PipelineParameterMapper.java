@@ -442,7 +442,7 @@ public class PipelineParameterMapper {
 
     private String buildGroundTruthUrl(String packageNvr) {
         return String.format(
-                "http://minio-api-minio.apps.appeng.clusters.se-apps.redhat.com/test/ground_truth_sheets/%s.xlsx",
+                "http://sast-ai-minio-api-sast-ai-mlops.apps.appeng-lab01.accl-001.lab.rdu2.dc.redhat.com/test/ground_truth_sheets/%s.xlsx",
                 packageNvr);
     }
 

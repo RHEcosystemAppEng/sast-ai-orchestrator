@@ -3,5 +3,6 @@ package com.redhat.sast.api.enums;
 public enum InputSourceType {
     SARIF,
     GOOGLE_SHEET,
-    OSH_SCAN
+    OSH_SCAN,
+    KONFLUX_SCAN
 }

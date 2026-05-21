@@ -62,6 +62,8 @@ public class PipelineParameterMapper {
     private static final String PARAM_S3_ENDPOINT_URL = "S3_ENDPOINT_URL";
     private static final String PARAM_S3_INPUT_BUCKET_NAME = "S3_INPUT_BUCKET_NAME";
     private static final String PARAM_S3_OUTPUT_BUCKET_NAME = "S3_OUTPUT_BUCKET_NAME";
+    // Konflux Trusted Artifacts parameter names
+    private static final String PARAM_IMAGE_DIGEST = "IMAGE_DIGEST";
 
     @Inject
     TektonClient tektonClient;
@@ -162,21 +164,35 @@ public class PipelineParameterMapper {
 
         params.add(createParam(PARAM_INPUT_SOURCE_TYPE, inputSourceType.toString()));
 
-        // Common parameters for all input source types
-        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+        // Set INPUT_REPORT_FILE_PATH based on input source type
+        // Konflux: SARIF downloaded by workflow to /shared-data/input-report.sarif
+        // Others: Use URL/path from gSheetUrl field
+        String inputReportPath = inputSourceType == InputSourceType.KONFLUX_SCAN
+                ? "/shared-data/input-report.sarif"
+                : job.getGSheetUrl();
+        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, inputReportPath));
         params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
 
-        // OSH-specific: inject task ID for pipeline traceability
-        if (inputSourceType == InputSourceType.OSH_SCAN) {
-            String oshTaskId = job.getOshScanId() != null ? job.getOshScanId() : "";
-            params.add(createParam(PARAM_OSH_TASK_ID, oshTaskId));
-            LOGGER.debug(
-                    "Job {} using OSH_SCAN input with URL: {}, OSH task ID: {}",
-                    job.getId(),
-                    job.getGSheetUrl(),
-                    oshTaskId);
-        } else {
-            LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
+        // Add input-source-specific parameters
+        switch (inputSourceType) {
+            case OSH_SCAN -> {
+                // OSH-specific: inject task ID for pipeline traceability
+                String oshTaskId = job.getOshScanId() != null ? job.getOshScanId() : "";
+                params.add(createParam(PARAM_OSH_TASK_ID, oshTaskId));
+                LOGGER.debug(
+                        "Job {} using OSH_SCAN input with URL: {}, OSH task ID: {}",
+                        job.getId(),
+                        job.getGSheetUrl(),
+                        oshTaskId);
+            }
+            case KONFLUX_SCAN -> {
+                // Konflux-specific: inject image digest for ORAS-based artifact discovery
+                String imageDigest = job.getGSheetUrl() != null ? job.getGSheetUrl() : "";
+                params.add(createParam(PARAM_IMAGE_DIGEST, imageDigest));
+                LOGGER.debug("Job {} using KONFLUX_SCAN input with imageDigest: {}", job.getId(), imageDigest);
+            }
+            default ->
+                LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
         }
     }
 

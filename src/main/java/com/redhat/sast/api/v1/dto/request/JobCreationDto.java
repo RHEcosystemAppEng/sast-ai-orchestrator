@@ -28,6 +28,9 @@ public class JobCreationDto {
     @JsonProperty("oshScanId")
     private String oshScanId;
 
+    @JsonProperty("imageDigest")
+    private String imageDigest;
+
     @JsonProperty("aggregateResultsGSheet")
     private String aggregateResultsGSheet;
 

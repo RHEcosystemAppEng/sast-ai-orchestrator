@@ -164,8 +164,13 @@ public class PipelineParameterMapper {
 
         params.add(createParam(PARAM_INPUT_SOURCE_TYPE, inputSourceType.toString()));
 
-        // Common parameters for all input source types
-        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+        // Set INPUT_REPORT_FILE_PATH based on input source type
+        // Konflux: SARIF downloaded by workflow to /shared-data/input-report.sarif
+        // Others: Use URL/path from gSheetUrl field
+        String inputReportPath = inputSourceType == InputSourceType.KONFLUX_SCAN
+                ? "/shared-data/input-report.sarif"
+                : job.getGSheetUrl();
+        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, inputReportPath));
         params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
 
         // Add input-source-specific parameters

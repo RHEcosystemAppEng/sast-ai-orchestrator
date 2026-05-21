@@ -43,9 +43,10 @@ public class JobService {
         String packageNvr = jobCreationDto.getPackageNvr();
         String oshScanId = jobCreationDto.getOshScanId();
         String inputSourceUrl = jobCreationDto.getInputSourceUrl();
+        String imageDigest = jobCreationDto.getImageDigest();
         boolean forceRescan = jobCreationDto.getForceRescan();
 
-        InputSourceType inputSourceType = determineInputSourceType(oshScanId, inputSourceUrl);
+        InputSourceType inputSourceType = determineInputSourceType(oshScanId, inputSourceUrl, imageDigest);
 
         // Check for existing scans only if not forcing a rescan
         if (!forceRescan) {
@@ -91,9 +92,14 @@ public class JobService {
 
     /**
      * Determines the input source type based on the request parameters.
-     * OSH scans have both oshScanId and inputSourceUrl, Google Sheets only have inputSourceUrl.
+     * - Konflux scans have imageDigest
+     * - OSH scans have both oshScanId and inputSourceUrl
+     * - Google Sheets/SARIF only have inputSourceUrl
      */
-    private InputSourceType determineInputSourceType(String oshScanId, String inputSourceUrl) {
+    private InputSourceType determineInputSourceType(String oshScanId, String inputSourceUrl, String imageDigest) {
+        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(imageDigest)) {
+            return InputSourceType.KONFLUX_SCAN;
+        }
         if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(oshScanId)
                 && ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(inputSourceUrl)) {
             return InputSourceType.OSH_SCAN;
@@ -264,11 +270,23 @@ public class JobService {
 
     /**
      * Configures the job's input source type and related fields based on the JobCreationDto content.
-     * Handles OSH scan jobs (URL-based) and Google Sheet jobs.
+     * Handles Konflux scans (imageDigest-based), OSH scan jobs (URL-based) and Google Sheet jobs.
      */
     private void configureInputSource(Job job, JobCreationDto jobCreationDto) {
         String oshScanId = jobCreationDto.getOshScanId();
         String inputSourceUrl = jobCreationDto.getInputSourceUrl();
+        String imageDigest = jobCreationDto.getImageDigest();
+
+        // Konflux scan with image digest
+        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(imageDigest)) {
+            job.setInputSourceType(InputSourceType.KONFLUX_SCAN);
+            job.setGSheetUrl(imageDigest);  // Reuse gSheetUrl field to store imageDigest
+            LOGGER.debug(
+                    "Configured job as KONFLUX_SCAN - imageDigest: {}, package NVR: {}",
+                    imageDigest,
+                    job.getPackageNvr());
+            return;
+        }
 
         // OSH scan with URL
         if (oshScanId != null
@@ -295,7 +313,7 @@ public class JobService {
         }
 
         throw new IllegalArgumentException(
-                "Job creation requires either (oshScanId + inputSourceUrl) for OSH scans or inputSourceUrl for Google Sheets. "
+                "Job creation requires either imageDigest for Konflux scans, (oshScanId + inputSourceUrl) for OSH scans, or inputSourceUrl for Google Sheets. "
                         + "Package NVR: " + jobCreationDto.getPackageNvr());
     }
 

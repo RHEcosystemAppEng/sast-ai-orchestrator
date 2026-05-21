@@ -168,22 +168,26 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
         params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
 
-        // OSH-specific: inject task ID for pipeline traceability
-        if (inputSourceType == InputSourceType.OSH_SCAN) {
-            String oshTaskId = job.getOshScanId() != null ? job.getOshScanId() : "";
-            params.add(createParam(PARAM_OSH_TASK_ID, oshTaskId));
-            LOGGER.debug(
-                    "Job {} using OSH_SCAN input with URL: {}, OSH task ID: {}",
-                    job.getId(),
-                    job.getGSheetUrl(),
-                    oshTaskId);
-        } else if (inputSourceType == InputSourceType.KONFLUX_SCAN) {
-            // Konflux-specific: inject image digest for ORAS-based artifact discovery
-            String imageDigest = job.getGSheetUrl() != null ? job.getGSheetUrl() : "";
-            params.add(createParam(PARAM_IMAGE_DIGEST, imageDigest));
-            LOGGER.debug("Job {} using KONFLUX_SCAN input with imageDigest: {}", job.getId(), imageDigest);
-        } else {
-            LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
+        // Add input-source-specific parameters
+        switch (inputSourceType) {
+            case OSH_SCAN -> {
+                // OSH-specific: inject task ID for pipeline traceability
+                String oshTaskId = job.getOshScanId() != null ? job.getOshScanId() : "";
+                params.add(createParam(PARAM_OSH_TASK_ID, oshTaskId));
+                LOGGER.debug(
+                        "Job {} using OSH_SCAN input with URL: {}, OSH task ID: {}",
+                        job.getId(),
+                        job.getGSheetUrl(),
+                        oshTaskId);
+            }
+            case KONFLUX_SCAN -> {
+                // Konflux-specific: inject image digest for ORAS-based artifact discovery
+                String imageDigest = job.getGSheetUrl() != null ? job.getGSheetUrl() : "";
+                params.add(createParam(PARAM_IMAGE_DIGEST, imageDigest));
+                LOGGER.debug("Job {} using KONFLUX_SCAN input with imageDigest: {}", job.getId(), imageDigest);
+            }
+            default ->
+                LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
         }
     }
 

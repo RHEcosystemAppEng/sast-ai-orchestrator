@@ -280,7 +280,7 @@ public class JobService {
         // Konflux scan with image digest
         if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(imageDigest)) {
             job.setInputSourceType(InputSourceType.KONFLUX_SCAN);
-            job.setGSheetUrl(imageDigest);  // Reuse gSheetUrl field to store imageDigest
+            job.setGSheetUrl(imageDigest); // Reuse gSheetUrl field to store imageDigest
             LOGGER.debug(
                     "Configured job as KONFLUX_SCAN - imageDigest: {}, package NVR: {}",
                     imageDigest,

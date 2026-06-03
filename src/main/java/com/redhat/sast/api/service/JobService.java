@@ -253,12 +253,17 @@ public class JobService {
         job.setProjectName(nvrResolutionService.resolveProjectName(jobCreationDto.getPackageNvr()));
         job.setProjectVersion(nvrResolutionService.resolveProjectVersion(jobCreationDto.getPackageNvr()));
         job.setPackageName(nvrResolutionService.resolvePackageName(jobCreationDto.getPackageNvr()));
-        job.setPackageSourceCodeUrl(nvrResolutionService.resolveSourceCodeUrl(jobCreationDto.getPackageNvr()));
-        job.setKnownFalsePositivesUrl(
-                nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
 
         // Handle different input source types based on DTO content
         configureInputSource(job, jobCreationDto);
+
+        // Only set package source URL for non-KONFLUX scans
+        // KONFLUX_SCAN jobs get their source from imageDigest, not Brew/Koji
+        if (job.getInputSourceType() != InputSourceType.KONFLUX_SCAN) {
+            job.setPackageSourceCodeUrl(nvrResolutionService.resolveSourceCodeUrl(jobCreationDto.getPackageNvr()));
+            job.setKnownFalsePositivesUrl(
+                    nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
+        }
 
         job.setSubmittedBy(jobCreationDto.getSubmittedBy() != null ? jobCreationDto.getSubmittedBy() : "unknown");
 

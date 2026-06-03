@@ -64,6 +64,7 @@ public class PipelineParameterMapper {
     private static final String PARAM_S3_OUTPUT_BUCKET_NAME = "S3_OUTPUT_BUCKET_NAME";
     // Konflux Trusted Artifacts parameter names
     private static final String PARAM_IMAGE_DIGEST = "IMAGE_DIGEST";
+    private static final String PARAM_GIT_REVISION = "GIT_REVISION";
 
     @Inject
     TektonClient tektonClient;
@@ -189,7 +190,16 @@ public class PipelineParameterMapper {
                 // Konflux-specific: inject image digest for ORAS-based artifact discovery
                 String imageDigest = job.getGSheetUrl() != null ? job.getGSheetUrl() : "";
                 params.add(createParam(PARAM_IMAGE_DIGEST, imageDigest));
-                LOGGER.debug("Job {} using KONFLUX_SCAN input with imageDigest: {}", job.getId(), imageDigest);
+
+                // Add git revision for source code checkout
+                String gitRevision = job.getGitRevision() != null ? job.getGitRevision() : "";
+                params.add(createParam(PARAM_GIT_REVISION, gitRevision));
+
+                LOGGER.debug(
+                        "Job {} using KONFLUX_SCAN input with imageDigest: {}, gitRevision: {}",
+                        job.getId(),
+                        imageDigest,
+                        gitRevision);
             }
             default ->
                 LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());

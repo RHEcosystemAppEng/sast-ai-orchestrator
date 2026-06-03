@@ -258,11 +258,15 @@ public class JobService {
         configureInputSource(job, jobCreationDto);
 
         // Only set package source URL for non-KONFLUX scans
-        // KONFLUX_SCAN jobs get their source from imageDigest, not Brew/Koji
+        // KONFLUX_SCAN jobs get their source from inputSourceUrl (git URL) + gitRevision
         if (job.getInputSourceType() != InputSourceType.KONFLUX_SCAN) {
             job.setPackageSourceCodeUrl(nvrResolutionService.resolveSourceCodeUrl(jobCreationDto.getPackageNvr()));
             job.setKnownFalsePositivesUrl(
                     nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
+        } else {
+            // For KONFLUX_SCAN, use inputSourceUrl as git URL and set git revision
+            job.setPackageSourceCodeUrl(jobCreationDto.getInputSourceUrl());
+            job.setGitRevision(jobCreationDto.getGitRevision());
         }
 
         job.setSubmittedBy(jobCreationDto.getSubmittedBy() != null ? jobCreationDto.getSubmittedBy() : "unknown");

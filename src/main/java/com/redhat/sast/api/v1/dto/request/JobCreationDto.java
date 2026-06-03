@@ -31,6 +31,9 @@ public class JobCreationDto {
     @JsonProperty("imageDigest")
     private String imageDigest;
 
+    @JsonProperty("gitRevision")
+    private String gitRevision;
+
     @JsonProperty("aggregateResultsGSheet")
     private String aggregateResultsGSheet;
 

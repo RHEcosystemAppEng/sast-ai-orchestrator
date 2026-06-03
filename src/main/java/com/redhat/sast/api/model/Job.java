@@ -61,6 +61,9 @@ public class Job {
     @Column(name = "google_sheet_url")
     private String gSheetUrl;
 
+    @Column(name = "git_revision")
+    private String gitRevision;
+
     @Column(name = "aggregate_results_g_sheet")
     private String aggregateResultsGSheet;
 

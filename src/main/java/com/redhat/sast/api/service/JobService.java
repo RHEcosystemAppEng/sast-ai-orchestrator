@@ -49,7 +49,9 @@ public class JobService {
         InputSourceType inputSourceType = determineInputSourceType(oshScanId, inputSourceUrl, imageDigest);
 
         // Check for existing scans only if not forcing a rescan
-        if (!forceRescan) {
+        if (forceRescan) {
+            LOGGER.info("Force rescan requested for NVR: {}, bypassing cache check", packageNvr);
+        } else {
             // Check for existing completed scan (return cached result)
             var cachedJobResult = checkForCompletedScan(packageNvr, inputSourceType);
             if (cachedJobResult != null) {
@@ -61,10 +63,7 @@ public class JobService {
             if (existingRunResult != null) {
                 return existingRunResult;
             }
-        } else {
-            LOGGER.info("Force rescan requested for NVR: {}, bypassing cache check", packageNvr);
         }
-
         // No cached result found or force rescan requested - create new job
         final Job job = createJobEntity(jobCreationDto);
 

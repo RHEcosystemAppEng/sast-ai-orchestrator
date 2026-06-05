@@ -125,21 +125,16 @@ public class PipelineParameterMapper {
      * Adds basic job-related pipeline parameters.
      */
     private void addBasicJobParameters(List<Param> params, Job job) {
+        boolean useKnownFpFile = getUseKnownFalsePositiveFileValue(job);
+
         params.add(createParam(PARAM_REPO_REMOTE_URL, job.getPackageSourceCodeUrl()));
-
-        Boolean useKnownFalsePositiveFile = getUseKnownFalsePositiveFileValue(job);
-        String falsePositivesUrl =
-                Boolean.TRUE.equals(useKnownFalsePositiveFile) ? job.getKnownFalsePositivesUrl() : "";
-        params.add(createParam(PARAM_FALSE_POSITIVES_URL, falsePositivesUrl));
-
-        addInputSourceParameters(params, job);
-
+        params.add(createParam(PARAM_FALSE_POSITIVES_URL, useKnownFpFile ? job.getKnownFalsePositivesUrl() : ""));
         params.add(createParam(PARAM_PROJECT_NAME, job.getProjectName()));
         params.add(createParam(PARAM_PROJECT_VERSION, job.getProjectVersion()));
-
-        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
-
+        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, String.valueOf(useKnownFpFile)));
         params.add(createParam(PARAM_AGGREGATE_RESULTS_G_SHEET, job.getAggregateResultsGSheet()));
+
+        addSpecialParameters(params, job);
     }
 
     /**
@@ -150,59 +145,22 @@ public class PipelineParameterMapper {
         params.add(createParam(PARAM_GCS_SA_FILE_NAME, "gcs_service_account.json"));
     }
 
-    /**
-     * Adds input source parameters based on the job's input source type.
-     * For OSH scans: passes OSH URL and OSH task ID
-     * For Google Sheets/SARIF: passes input source URL
-     */
-    private void addInputSourceParameters(List<Param> params, Job job) {
+    private void addSpecialParameters(List<Param> params, Job job) {
         InputSourceType inputSourceType = job.getInputSourceType();
-
-        if (inputSourceType == null) {
-            LOGGER.warn("Job {} has null input source type, defaulting to GOOGLE_SHEET", job.getId());
-            inputSourceType = InputSourceType.GOOGLE_SHEET;
-        }
-
         params.add(createParam(PARAM_INPUT_SOURCE_TYPE, inputSourceType.toString()));
-
-        // Set INPUT_REPORT_FILE_PATH based on input source type
-        // Konflux: SARIF downloaded by workflow to /shared-data/input-report.sarif
-        // Others: Use URL/path from gSheetUrl field
-        String inputReportPath = inputSourceType == InputSourceType.KONFLUX_SCAN
-                ? "/shared-data/input-report.sarif"
-                : job.getGSheetUrl();
-        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, inputReportPath));
         params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
 
-        // Add input-source-specific parameters
         switch (inputSourceType) {
             case OSH_SCAN -> {
-                // OSH-specific: inject task ID for pipeline traceability
-                String oshTaskId = job.getOshScanId() != null ? job.getOshScanId() : "";
-                params.add(createParam(PARAM_OSH_TASK_ID, oshTaskId));
-                LOGGER.debug(
-                        "Job {} using OSH_SCAN input with URL: {}, OSH task ID: {}",
-                        job.getId(),
-                        job.getGSheetUrl(),
-                        oshTaskId);
+                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+                params.add(createParam(PARAM_OSH_TASK_ID, job.getOshScanId()));
             }
             case KONFLUX_SCAN -> {
-                // Konflux-specific: inject image digest for ORAS-based artifact discovery
-                String imageDigest = job.getGSheetUrl() != null ? job.getGSheetUrl() : "";
-                params.add(createParam(PARAM_IMAGE_DIGEST, imageDigest));
-
-                // Add git revision for source code checkout
-                String gitRevision = job.getGitRevision() != null ? job.getGitRevision() : "";
-                params.add(createParam(PARAM_GIT_REVISION, gitRevision));
-
-                LOGGER.debug(
-                        "Job {} using KONFLUX_SCAN input with imageDigest: {}, gitRevision: {}",
-                        job.getId(),
-                        imageDigest,
-                        gitRevision);
+                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, "/shared-data/input-report.sarif"));
+                params.add(createParam(PARAM_IMAGE_DIGEST, job.getGSheetUrl()));
+                params.add(createParam(PARAM_GIT_REVISION, job.getGitRevision()));
             }
-            default ->
-                LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
+            default -> params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
         }
     }
 

@@ -95,7 +95,7 @@ public class JobService {
      * - OSH scans have both oshScanId and inputSourceUrl
      * - Google Sheets/SARIF only have inputSourceUrl
      */
-    private InputSourceType determineInputSourceType(String oshScanId, String inputSourceUrl, String imageDigest) {
+    private InputSourceType determineInputSourceType(JobCreationDto jobCreationDto) {
         if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(imageDigest)) {
             return InputSourceType.KONFLUX_SCAN;
         }

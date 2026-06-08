@@ -64,6 +64,9 @@ public class Job {
     @Column(name = "git_revision")
     private String gitRevision;
 
+    @Column(name = "sarif_digest", length = 512)
+    private String sarifDigest;
+
     @Column(name = "aggregate_results_g_sheet")
     private String aggregateResultsGSheet;
 

@@ -34,6 +34,9 @@ public class JobCreationDto {
     @JsonProperty("gitRevision")
     private String gitRevision;
 
+    @JsonProperty("sarifDigest")
+    private String sarifDigest;
+
     @JsonProperty("aggregateResultsGSheet")
     private String aggregateResultsGSheet;
 

@@ -63,7 +63,7 @@ public class PipelineParameterMapper {
     private static final String PARAM_S3_INPUT_BUCKET_NAME = "S3_INPUT_BUCKET_NAME";
     private static final String PARAM_S3_OUTPUT_BUCKET_NAME = "S3_OUTPUT_BUCKET_NAME";
     // Konflux Trusted Artifacts parameter names
-    private static final String PARAM_CONTAINER_IMAGE_DIGEST = "CONTAINER_IMAGE_DIGEST";
+    private static final String PARAM_SARIF_TA_DIGEST = "SARIF_TA_DIGEST";
     private static final String PARAM_GIT_REVISION = "GIT_REVISION";
 
     @Inject
@@ -147,8 +147,7 @@ public class PipelineParameterMapper {
             }
             case KONFLUX_SCAN -> {
                 params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, "/shared-data/input-report.sarif"));
-                params.add(createParam(
-                        PARAM_CONTAINER_IMAGE_DIGEST, job.getGSheetUrl())); // Container image digest (not SARIF digest)
+                params.add(createParam(PARAM_SARIF_TA_DIGEST, job.getGSheetUrl())); // SARIF Trusted Artifacts digest
                 params.add(createParam(PARAM_GIT_REVISION, job.getGitRevision()));
             }
             default -> params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));

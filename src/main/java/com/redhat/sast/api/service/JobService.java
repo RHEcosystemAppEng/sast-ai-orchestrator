@@ -278,13 +278,13 @@ public class JobService {
             // For KONFLUX_SCAN, use inputSourceUrl as git URL and set git revision
             job.setPackageSourceCodeUrl(jobCreationDto.getInputSourceUrl());
             job.setGitRevision(jobCreationDto.getGitRevision());
-            job.setSarifDigest(jobCreationDto.getSarifDigest());
+            job.setSarifUri(jobCreationDto.getSarifUri());
 
             LOGGER.debug(
-                    "Configured job as KONFLUX_SCAN - imageDigest: {}, gitRevision: {}, sarifDigest: {}, package NVR: {}",
+                    "Configured job as KONFLUX_SCAN - imageDigest: {}, gitRevision: {}, sarifUri: {}, package NVR: {}",
                     imageDigest,
                     jobCreationDto.getGitRevision(),
-                    jobCreationDto.getSarifDigest(),
+                    jobCreationDto.getSarifUri(),
                     job.getPackageNvr());
             return;
         }

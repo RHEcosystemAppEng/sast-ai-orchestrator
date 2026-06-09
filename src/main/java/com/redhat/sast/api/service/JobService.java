@@ -40,6 +40,8 @@ public class JobService {
     private final EventBroadcastService eventBroadcastService;
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
+        validateAndPrepare(jobCreationDto);
+
         String packageNvr = jobCreationDto.getPackageNvr();
         boolean forceRescan = jobCreationDto.getForceRescan();
 
@@ -84,6 +86,35 @@ public class JobService {
         });
 
         return convertToResponseDto(job);
+    }
+
+    private void validateAndPrepare(JobCreationDto jobCreationDto) {
+        boolean hasSourceCodeUrl =
+                ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getSourceCodeUrl());
+        boolean hasCommitId = ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getCommitId());
+
+        if (hasSourceCodeUrl) {
+            if (!hasCommitId) {
+                throw new IllegalArgumentException("commitId is required when sourceCodeUrl is provided");
+            }
+            if (!ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getPackageNvr())) {
+                String orgRepo = extractOrgAndRepo(jobCreationDto.getSourceCodeUrl());
+                String shortCommit = jobCreationDto.getCommitId().substring(0, 7);
+                jobCreationDto.setPackageNvr(orgRepo + "-" + shortCommit);
+            }
+        } else {
+            if (!ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getPackageNvr())) {
+                throw new IllegalArgumentException("packageNvr is required when sourceCodeUrl is not provided");
+            }
+        }
+    }
+
+    private String extractOrgAndRepo(String sourceCodeUrl) {
+        String path = sourceCodeUrl.replaceFirst("https?://[^/]+/", "");
+        if (path.endsWith(".git")) {
+            path = path.substring(0, path.length() - 4);
+        }
+        return path;
     }
 
     /**
@@ -246,19 +277,33 @@ public class JobService {
 
         job.setPackageNvr(jobCreationDto.getPackageNvr());
 
-        job.setProjectName(nvrResolutionService.resolveProjectName(jobCreationDto.getPackageNvr()));
-        job.setProjectVersion(nvrResolutionService.resolveProjectVersion(jobCreationDto.getPackageNvr()));
-        job.setPackageName(nvrResolutionService.resolvePackageName(jobCreationDto.getPackageNvr()));
+        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getSourceCodeUrl())) {
+            String repoName = extractRepoName(jobCreationDto.getSourceCodeUrl());
+            String shortCommit = jobCreationDto.getCommitId().substring(0, 7);
+            job.setProjectName(repoName);
+            job.setProjectVersion(shortCommit);
+            job.setPackageName(repoName);
+        } else {
+            job.setProjectName(nvrResolutionService.resolveProjectName(jobCreationDto.getPackageNvr()));
+            job.setProjectVersion(nvrResolutionService.resolveProjectVersion(jobCreationDto.getPackageNvr()));
+            job.setPackageName(nvrResolutionService.resolvePackageName(jobCreationDto.getPackageNvr()));
+        }
 
-        // Handle different input source types based on DTO content
         configureInputSource(job, jobCreationDto);
 
         job.setSubmittedBy(jobCreationDto.getSubmittedBy() != null ? jobCreationDto.getSubmittedBy() : "unknown");
-
         job.setAggregateResultsGSheet(jobCreationDto.getAggregateResultsGSheet());
-
         job.setStatus(JobStatus.PENDING);
         return job;
+    }
+
+    private String extractRepoName(String sourceCodeUrl) {
+        String path = sourceCodeUrl.replaceFirst("https?://[^/]+/", "");
+        if (path.endsWith(".git")) {
+            path = path.substring(0, path.length() - 4);
+        }
+        int lastSlash = path.lastIndexOf('/');
+        return lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
     }
 
     /**
@@ -314,12 +359,19 @@ public class JobService {
             job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
             job.setGSheetUrl(inputSourceUrl);
 
-            // Resolve package source and known FP URLs using NVR
-            job.setPackageSourceCodeUrl(nvrResolutionService.resolveSourceCodeUrl(jobCreationDto.getPackageNvr()));
-            job.setKnownFalsePositivesUrl(
-                    nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
-
-            LOGGER.debug("Configured job as GOOGLE_SHEET with URL: {}", inputSourceUrl);
+            if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getSourceCodeUrl())) {
+                job.setPackageSourceCodeUrl(jobCreationDto.getSourceCodeUrl());
+                job.setGitRevision(jobCreationDto.getCommitId());
+                LOGGER.debug(
+                        "Configured job as GOOGLE_SHEET with sourceCodeUrl: {}, commitId: {}",
+                        jobCreationDto.getSourceCodeUrl(),
+                        jobCreationDto.getCommitId());
+            } else {
+                job.setPackageSourceCodeUrl(nvrResolutionService.resolveSourceCodeUrl(jobCreationDto.getPackageNvr()));
+                job.setKnownFalsePositivesUrl(
+                        nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
+                LOGGER.debug("Configured job as GOOGLE_SHEET with URL: {}", inputSourceUrl);
+            }
             return;
         }
 
@@ -371,8 +423,11 @@ public class JobService {
     }
 
     private boolean shouldUseFalsePositiveFile(JobCreationDto jobCreationDto) {
-        Boolean useFromDto = jobCreationDto.getUseKnownFalsePositiveFile();
+        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getSourceCodeUrl())) {
+            return false;
+        }
 
+        Boolean useFromDto = jobCreationDto.getUseKnownFalsePositiveFile();
         if (useFromDto != null) {
             return useFromDto;
         }

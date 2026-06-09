@@ -150,7 +150,12 @@ public class PipelineParameterMapper {
                 params.add(createParam(PARAM_SARIF_URI, job.getSarifUri())); // Full OCI artifact URI for Konflux SARIF
                 params.add(createParam(PARAM_GIT_REVISION, job.getGitRevision()));
             }
-            default -> params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+            default -> {
+                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+                if (job.getGitRevision() != null) {
+                    params.add(createParam(PARAM_GIT_REVISION, job.getGitRevision()));
+                }
+            }
         }
     }
 

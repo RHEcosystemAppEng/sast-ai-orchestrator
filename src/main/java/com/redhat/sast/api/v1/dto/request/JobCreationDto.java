@@ -2,7 +2,6 @@ package com.redhat.sast.api.v1.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,7 +12,6 @@ import lombok.NoArgsConstructor;
 public class JobCreationDto {
 
     @JsonProperty("packageNvr")
-    @NotBlank(message = "Package NVR cannot be null or empty.")
     private String packageNvr;
 
     @JsonProperty("inputSourceUrl")
@@ -33,6 +31,12 @@ public class JobCreationDto {
 
     @JsonProperty("sarifUri")
     private String sarifUri;
+
+    @JsonProperty("sourceCodeUrl")
+    private String sourceCodeUrl;
+
+    @JsonProperty("commitId")
+    private String commitId;
 
     @JsonProperty("aggregateResultsGSheet")
     private String aggregateResultsGSheet;

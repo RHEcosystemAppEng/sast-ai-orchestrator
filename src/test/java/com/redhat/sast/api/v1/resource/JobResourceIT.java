@@ -262,6 +262,44 @@ class JobResourceIT {
     }
 
     @Test
+    @DisplayName("Should create job with sourceCodeUrl and commitId, auto-generating packageNvr")
+    void shouldCreateJobWithSourceCodeUrlAndCommitId() {
+        JobCreationDto jobRequest = JobTestDataBuilder.aJob()
+                .withPackageNvr(null)
+                .withSourceCodeUrl("https://github.com/NVIDIA/OpenShell")
+                .withCommitId("f4184049abdec74e699361fb344036931db70035")
+                .withForceRescan(true)
+                .build();
+
+        given().contentType(ContentType.JSON)
+                .body(jobRequest)
+                .when()
+                .post("/api/v1/jobs/simple")
+                .then()
+                .statusCode(201)
+                .body("jobId", notNullValue())
+                .body("packageNvr", equalTo("NVIDIA/OpenShell-f418404"))
+                .body("projectName", equalTo("OpenShell"))
+                .body("status", equalTo("PENDING"));
+    }
+
+    @Test
+    @DisplayName("Should return 400 when sourceCodeUrl is provided without commitId")
+    void shouldReturn400WhenSourceCodeUrlWithoutCommitId() {
+        JobCreationDto jobRequest = JobTestDataBuilder.aJob()
+                .withPackageNvr(null)
+                .withSourceCodeUrl("https://github.com/NVIDIA/OpenShell")
+                .build();
+
+        given().contentType(ContentType.JSON)
+                .body(jobRequest)
+                .when()
+                .post("/api/v1/jobs/simple")
+                .then()
+                .statusCode(400);
+    }
+
+    @Test
     @DisplayName("Should create simple job with aggregate results Google Sheet URL")
     void shouldCreateSimpleJobWithAggregateResultsGSheet() {
         JobCreationDto jobRequest = JobTestDataBuilder.aJob()

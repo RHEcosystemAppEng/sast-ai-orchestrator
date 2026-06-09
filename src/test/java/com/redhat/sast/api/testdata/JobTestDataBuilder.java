@@ -9,6 +9,9 @@ public class JobTestDataBuilder {
             "https://docs.google.com/spreadsheets/d/1Emi-AtukrJ53rVKDsll3ZNdExykkZoX7HlLzZX1tHJ4/edit?usp=sharing";
     private Boolean useKnownFalsePositiveFile = false;
     private String aggregateResultsGSheet = null;
+    private String sourceCodeUrl = null;
+    private String commitId = null;
+    private Boolean forceRescan = null;
 
     public static JobTestDataBuilder aJob() {
         return new JobTestDataBuilder();
@@ -34,10 +37,30 @@ public class JobTestDataBuilder {
         return this;
     }
 
+    public JobTestDataBuilder withSourceCodeUrl(String sourceCodeUrl) {
+        this.sourceCodeUrl = sourceCodeUrl;
+        return this;
+    }
+
+    public JobTestDataBuilder withCommitId(String commitId) {
+        this.commitId = commitId;
+        return this;
+    }
+
+    public JobTestDataBuilder withForceRescan(Boolean forceRescan) {
+        this.forceRescan = forceRescan;
+        return this;
+    }
+
     public JobCreationDto build() {
         JobCreationDto dto = new JobCreationDto(packageNvr, inputSourceUrl);
         dto.setUseKnownFalsePositiveFile(useKnownFalsePositiveFile);
         dto.setAggregateResultsGSheet(aggregateResultsGSheet);
+        dto.setSourceCodeUrl(sourceCodeUrl);
+        dto.setCommitId(commitId);
+        if (forceRescan != null) {
+            dto.setForceRescan(forceRescan);
+        }
         return dto;
     }
 

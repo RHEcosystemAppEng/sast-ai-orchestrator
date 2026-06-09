@@ -64,7 +64,7 @@ public class Job {
     @Column(name = "git_revision")
     private String gitRevision;
 
-    @Column(name = "sarif_uri", length = 512)
+    @Column(name = "sarif_uri")
     private String sarifUri;
 
     @Column(name = "aggregate_results_g_sheet")

@@ -28,9 +28,6 @@ public class JobCreationDto {
     @JsonProperty("oshScanId")
     private String oshScanId;
 
-    @JsonProperty("imageDigest")
-    private String imageDigest;
-
     @JsonProperty("gitRevision")
     private String gitRevision;
 

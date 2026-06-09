@@ -88,12 +88,12 @@ public class JobService {
 
     /**
      * Determines the input source type based on the request parameters.
-     * - Konflux scans have imageDigest
+     * - Konflux scans have sarifUri
      * - OSH scans have both oshScanId and inputSourceUrl
      * - Google Sheets/SARIF only have inputSourceUrl
      */
     private InputSourceType determineInputSourceType(JobCreationDto jobCreationDto) {
-        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getImageDigest())) {
+        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getSarifUri())) {
             return InputSourceType.KONFLUX_SCAN;
         }
         if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getOshScanId())
@@ -263,17 +263,16 @@ public class JobService {
 
     /**
      * Configures the job's input source type and related fields based on the JobCreationDto content.
-     * Handles Konflux scans (imageDigest-based), OSH scan jobs (URL-based) and Google Sheet jobs.
+     * Handles Konflux scans (sarifUri-based), OSH scan jobs (URL-based) and Google Sheet jobs.
      */
     private void configureInputSource(Job job, JobCreationDto jobCreationDto) {
         String oshScanId = jobCreationDto.getOshScanId();
         String inputSourceUrl = jobCreationDto.getInputSourceUrl();
-        String imageDigest = jobCreationDto.getImageDigest();
+        String sarifUri = jobCreationDto.getSarifUri();
 
-        // Konflux scan with image digest
-        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(imageDigest)) {
+        // Konflux scan with SARIF URI
+        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(sarifUri)) {
             job.setInputSourceType(InputSourceType.KONFLUX_SCAN);
-            job.setGSheetUrl(imageDigest); // Reuse gSheetUrl field to store imageDigest
 
             // For KONFLUX_SCAN, use inputSourceUrl as git URL and set git revision
             job.setPackageSourceCodeUrl(jobCreationDto.getInputSourceUrl());
@@ -281,10 +280,9 @@ public class JobService {
             job.setSarifUri(jobCreationDto.getSarifUri());
 
             LOGGER.debug(
-                    "Configured job as KONFLUX_SCAN - imageDigest: {}, gitRevision: {}, sarifUri: {}, package NVR: {}",
-                    imageDigest,
+                    "Configured job as KONFLUX_SCAN - sarifUri: {}, gitRevision: {}, package NVR: {}",
+                    sarifUri,
                     jobCreationDto.getGitRevision(),
-                    jobCreationDto.getSarifUri(),
                     job.getPackageNvr());
             return;
         }
@@ -326,7 +324,7 @@ public class JobService {
         }
 
         throw new IllegalArgumentException(
-                "Job creation requires either imageDigest for Konflux scans, (oshScanId + inputSourceUrl) for OSH scans, or inputSourceUrl for Google Sheets. "
+                "Job creation requires either sarifUri for Konflux scans, (oshScanId + inputSourceUrl) for OSH scans, or inputSourceUrl for Google Sheets. "
                         + "Package NVR: " + jobCreationDto.getPackageNvr());
     }
 

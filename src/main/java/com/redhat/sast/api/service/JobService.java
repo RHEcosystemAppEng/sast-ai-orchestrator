@@ -41,14 +41,14 @@ public class JobService {
 
     public JobResponseDto createJob(JobCreationDto jobCreationDto) {
         String packageNvr = jobCreationDto.getPackageNvr();
-        String oshScanId = jobCreationDto.getOshScanId();
-        String inputSourceUrl = jobCreationDto.getInputSourceUrl();
         boolean forceRescan = jobCreationDto.getForceRescan();
 
-        InputSourceType inputSourceType = determineInputSourceType(oshScanId, inputSourceUrl);
+        InputSourceType inputSourceType = determineInputSourceType(jobCreationDto);
 
         // Check for existing scans only if not forcing a rescan
-        if (!forceRescan) {
+        if (forceRescan) {
+            LOGGER.info("Force rescan requested for NVR: {}, bypassing cache check", packageNvr);
+        } else {
             // Check for existing completed scan (return cached result)
             var cachedJobResult = checkForCompletedScan(packageNvr, inputSourceType);
             if (cachedJobResult != null) {
@@ -60,10 +60,7 @@ public class JobService {
             if (existingRunResult != null) {
                 return existingRunResult;
             }
-        } else {
-            LOGGER.info("Force rescan requested for NVR: {}, bypassing cache check", packageNvr);
         }
-
         // No cached result found or force rescan requested - create new job
         final Job job = createJobEntity(jobCreationDto);
 
@@ -91,11 +88,16 @@ public class JobService {
 
     /**
      * Determines the input source type based on the request parameters.
-     * OSH scans have both oshScanId and inputSourceUrl, Google Sheets only have inputSourceUrl.
+     * - Konflux scans have sarifUri
+     * - OSH scans have both oshScanId and inputSourceUrl
+     * - Google Sheets/SARIF only have inputSourceUrl
      */
-    private InputSourceType determineInputSourceType(String oshScanId, String inputSourceUrl) {
-        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(oshScanId)
-                && ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(inputSourceUrl)) {
+    private InputSourceType determineInputSourceType(JobCreationDto jobCreationDto) {
+        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getSarifUri())) {
+            return InputSourceType.KONFLUX_SCAN;
+        }
+        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getOshScanId())
+                && ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getInputSourceUrl())) {
             return InputSourceType.OSH_SCAN;
         }
         return InputSourceType.GOOGLE_SHEET;
@@ -247,9 +249,6 @@ public class JobService {
         job.setProjectName(nvrResolutionService.resolveProjectName(jobCreationDto.getPackageNvr()));
         job.setProjectVersion(nvrResolutionService.resolveProjectVersion(jobCreationDto.getPackageNvr()));
         job.setPackageName(nvrResolutionService.resolvePackageName(jobCreationDto.getPackageNvr()));
-        job.setPackageSourceCodeUrl(nvrResolutionService.resolveSourceCodeUrl(jobCreationDto.getPackageNvr()));
-        job.setKnownFalsePositivesUrl(
-                nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
 
         // Handle different input source types based on DTO content
         configureInputSource(job, jobCreationDto);
@@ -264,11 +263,29 @@ public class JobService {
 
     /**
      * Configures the job's input source type and related fields based on the JobCreationDto content.
-     * Handles OSH scan jobs (URL-based) and Google Sheet jobs.
+     * Handles Konflux scans (sarifUri-based), OSH scan jobs (URL-based) and Google Sheet jobs.
      */
     private void configureInputSource(Job job, JobCreationDto jobCreationDto) {
         String oshScanId = jobCreationDto.getOshScanId();
         String inputSourceUrl = jobCreationDto.getInputSourceUrl();
+        String sarifUri = jobCreationDto.getSarifUri();
+
+        // Konflux scan with SARIF URI
+        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(sarifUri)) {
+            job.setInputSourceType(InputSourceType.KONFLUX_SCAN);
+
+            // For KONFLUX_SCAN, use inputSourceUrl as git URL and set git revision
+            job.setPackageSourceCodeUrl(jobCreationDto.getInputSourceUrl());
+            job.setGitRevision(jobCreationDto.getGitRevision());
+            job.setSarifUri(jobCreationDto.getSarifUri());
+
+            LOGGER.debug(
+                    "Configured job as KONFLUX_SCAN - sarifUri: {}, gitRevision: {}, package NVR: {}",
+                    sarifUri,
+                    jobCreationDto.getGitRevision(),
+                    job.getPackageNvr());
+            return;
+        }
 
         // OSH scan with URL
         if (oshScanId != null
@@ -278,6 +295,12 @@ public class JobService {
             job.setInputSourceType(InputSourceType.OSH_SCAN);
             job.setOshScanId(oshScanId);
             job.setGSheetUrl(inputSourceUrl);
+
+            // Resolve package source and known FP URLs using NVR
+            job.setPackageSourceCodeUrl(nvrResolutionService.resolveSourceCodeUrl(jobCreationDto.getPackageNvr()));
+            job.setKnownFalsePositivesUrl(
+                    nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
+
             LOGGER.debug(
                     "Configured job as OSH_SCAN - oshScanId: {}, OSH report URL: {}, package source URL: {}",
                     oshScanId,
@@ -290,12 +313,18 @@ public class JobService {
         if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(inputSourceUrl)) {
             job.setInputSourceType(InputSourceType.GOOGLE_SHEET);
             job.setGSheetUrl(inputSourceUrl);
+
+            // Resolve package source and known FP URLs using NVR
+            job.setPackageSourceCodeUrl(nvrResolutionService.resolveSourceCodeUrl(jobCreationDto.getPackageNvr()));
+            job.setKnownFalsePositivesUrl(
+                    nvrResolutionService.resolveKnownFalsePositivesUrl(jobCreationDto.getPackageNvr()));
+
             LOGGER.debug("Configured job as GOOGLE_SHEET with URL: {}", inputSourceUrl);
             return;
         }
 
         throw new IllegalArgumentException(
-                "Job creation requires either (oshScanId + inputSourceUrl) for OSH scans or inputSourceUrl for Google Sheets. "
+                "Job creation requires either sarifUri for Konflux scans, (oshScanId + inputSourceUrl) for OSH scans, or inputSourceUrl for Google Sheets. "
                         + "Package NVR: " + jobCreationDto.getPackageNvr());
     }
 

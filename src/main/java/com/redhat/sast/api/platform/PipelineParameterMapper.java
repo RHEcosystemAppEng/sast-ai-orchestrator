@@ -62,6 +62,9 @@ public class PipelineParameterMapper {
     private static final String PARAM_S3_ENDPOINT_URL = "S3_ENDPOINT_URL";
     private static final String PARAM_S3_INPUT_BUCKET_NAME = "S3_INPUT_BUCKET_NAME";
     private static final String PARAM_S3_OUTPUT_BUCKET_NAME = "S3_OUTPUT_BUCKET_NAME";
+    // Konflux Trusted Artifacts parameter names
+    private static final String PARAM_SARIF_URI = "SARIF_URI";
+    private static final String PARAM_GIT_REVISION = "GIT_REVISION";
 
     @Inject
     TektonClient tektonClient;
@@ -111,10 +114,6 @@ public class PipelineParameterMapper {
         addBasicJobParameters(params, job);
         addLlmParameters(params, job);
 
-        if (job.getInputSourceType() == InputSourceType.OSH_SCAN) {
-            addGcsParameters(params);
-        }
-
         return params;
     }
 
@@ -122,61 +121,36 @@ public class PipelineParameterMapper {
      * Adds basic job-related pipeline parameters.
      */
     private void addBasicJobParameters(List<Param> params, Job job) {
+        boolean useKnownFpFile = getUseKnownFalsePositiveFileValue(job);
+
         params.add(createParam(PARAM_REPO_REMOTE_URL, job.getPackageSourceCodeUrl()));
-
-        Boolean useKnownFalsePositiveFile = getUseKnownFalsePositiveFileValue(job);
-        String falsePositivesUrl =
-                Boolean.TRUE.equals(useKnownFalsePositiveFile) ? job.getKnownFalsePositivesUrl() : "";
-        params.add(createParam(PARAM_FALSE_POSITIVES_URL, falsePositivesUrl));
-
-        addInputSourceParameters(params, job);
-
+        params.add(createParam(PARAM_FALSE_POSITIVES_URL, useKnownFpFile ? job.getKnownFalsePositivesUrl() : ""));
         params.add(createParam(PARAM_PROJECT_NAME, job.getProjectName()));
         params.add(createParam(PARAM_PROJECT_VERSION, job.getProjectVersion()));
-
-        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, useKnownFalsePositiveFile.toString()));
-
+        params.add(createParam(PARAM_USE_KNOWN_FALSE_POSITIVE_FILE, String.valueOf(useKnownFpFile)));
         params.add(createParam(PARAM_AGGREGATE_RESULTS_G_SHEET, job.getAggregateResultsGSheet()));
+
+        addDynamicParameters(params, job);
     }
 
-    /**
-     * Adds GCS parameters for OSH scan jobs only.
-     */
-    private void addGcsParameters(List<Param> params) {
-        params.add(createParam(PARAM_GCS_BUCKET_NAME, gcsBucketName.orElse("")));
-        params.add(createParam(PARAM_GCS_SA_FILE_NAME, "gcs_service_account.json"));
-    }
-
-    /**
-     * Adds input source parameters based on the job's input source type.
-     * For OSH scans: passes OSH URL and OSH task ID
-     * For Google Sheets/SARIF: passes input source URL
-     */
-    private void addInputSourceParameters(List<Param> params, Job job) {
+    private void addDynamicParameters(List<Param> params, Job job) {
         InputSourceType inputSourceType = job.getInputSourceType();
-
-        if (inputSourceType == null) {
-            LOGGER.warn("Job {} has null input source type, defaulting to GOOGLE_SHEET", job.getId());
-            inputSourceType = InputSourceType.GOOGLE_SHEET;
-        }
-
         params.add(createParam(PARAM_INPUT_SOURCE_TYPE, inputSourceType.toString()));
-
-        // Common parameters for all input source types
-        params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
         params.add(createParam(PARAM_INPUT_REPORT_CONTENT, ""));
 
-        // OSH-specific: inject task ID for pipeline traceability
-        if (inputSourceType == InputSourceType.OSH_SCAN) {
-            String oshTaskId = job.getOshScanId() != null ? job.getOshScanId() : "";
-            params.add(createParam(PARAM_OSH_TASK_ID, oshTaskId));
-            LOGGER.debug(
-                    "Job {} using OSH_SCAN input with URL: {}, OSH task ID: {}",
-                    job.getId(),
-                    job.getGSheetUrl(),
-                    oshTaskId);
-        } else {
-            LOGGER.debug("Job {} using {} input with URL: {}", job.getId(), inputSourceType, job.getGSheetUrl());
+        switch (inputSourceType) {
+            case OSH_SCAN -> {
+                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
+                params.add(createParam(PARAM_OSH_TASK_ID, job.getOshScanId()));
+                params.add(createParam(PARAM_GCS_BUCKET_NAME, gcsBucketName.orElse("")));
+                params.add(createParam(PARAM_GCS_SA_FILE_NAME, "gcs_service_account.json"));
+            }
+            case KONFLUX_SCAN -> {
+                params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, "/shared-data/input-report.sarif"));
+                params.add(createParam(PARAM_SARIF_URI, job.getSarifUri())); // Full OCI artifact URI for Konflux SARIF
+                params.add(createParam(PARAM_GIT_REVISION, job.getGitRevision()));
+            }
+            default -> params.add(createParam(PARAM_INPUT_REPORT_FILE_PATH, job.getGSheetUrl()));
         }
     }
 

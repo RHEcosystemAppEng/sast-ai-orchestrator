@@ -79,18 +79,8 @@ public class JobResource {
                         content = @Content(schema = @Schema(implementation = JobResponseDto.class))),
                 @APIResponse(responseCode = "400", description = "Invalid request")
             })
-    public Response createJobSimple(
-            @Valid JobCreationDto jobCreationDto,
-            @Parameter(description = "Force rescan even if cached result exists")
-                    @QueryParam("forceRescan")
-                    @DefaultValue("false")
-                    boolean forceRescan) {
+    public Response createJobSimple(@Valid JobCreationDto jobCreationDto) {
         try {
-            // Allow forceRescan via query param as well as request body
-            if (forceRescan && !Boolean.TRUE.equals(jobCreationDto.getForceRescan())) {
-                jobCreationDto.setForceRescan(true);
-            }
-
             JobResponseDto response = jobService.createJob(jobCreationDto);
 
             // Return appropriate HTTP status based on result type:

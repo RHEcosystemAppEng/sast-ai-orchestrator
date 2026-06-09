@@ -28,6 +28,12 @@ public class JobCreationDto {
     @JsonProperty("oshScanId")
     private String oshScanId;
 
+    @JsonProperty("gitRevision")
+    private String gitRevision;
+
+    @JsonProperty("sarifUri")
+    private String sarifUri;
+
     @JsonProperty("aggregateResultsGSheet")
     private String aggregateResultsGSheet;
 

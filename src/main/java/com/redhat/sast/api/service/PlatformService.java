@@ -35,12 +35,14 @@ public class PlatformService {
     private static final String LLM_CREDENTIALS_WORKSPACE = "llm-credentials-ws";
     private static final String GOOGLE_SA_JSON_WORKSPACE = "google-sa-json-ws";
     private static final String GCS_SA_JSON_WORKSPACE = "gcs-sa-json-ws";
+    private static final String KONFLUX_REGISTRY_CREDS_WORKSPACE = "konflux-registry-creds-ws";
 
     // Secret names
     private static final String GITLAB_TOKEN_SECRET = "sast-ai-gitlab-token";
     private static final String DEFAULT_LLM_SECRET = "sast-ai-default-llm-creds";
     private static final String GOOGLE_SA_SECRET = "sast-ai-google-service-account";
     private static final String GCS_SA_SECRET = "sast-ai-gcs-service-account";
+    private static final String KONFLUX_REGISTRY_SECRET = "konflux-registry-token";
 
     private final TektonClient tektonClient;
     private final ManagedExecutor managedExecutor;
@@ -206,7 +208,8 @@ public class PlatformService {
             createSecretWorkspace(
                     LLM_CREDENTIALS_WORKSPACE, Objects.requireNonNullElse(llmSecretName, DEFAULT_LLM_SECRET)),
             createSecretWorkspace(GOOGLE_SA_JSON_WORKSPACE, GOOGLE_SA_SECRET),
-            createSecretWorkspace(GCS_SA_JSON_WORKSPACE, GCS_SA_SECRET)
+            createSecretWorkspace(GCS_SA_JSON_WORKSPACE, GCS_SA_SECRET),
+            createSecretWorkspace(KONFLUX_REGISTRY_CREDS_WORKSPACE, KONFLUX_REGISTRY_SECRET)
         };
     }
 

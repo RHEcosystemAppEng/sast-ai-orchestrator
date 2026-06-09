@@ -17,8 +17,11 @@ sources:
 maintainers:
   - name: SAST AI Team
     email: sast-ai@redhat.com
-# CloudNativePG is deployed via operator CRD - no Helm dependency needed
-# The CloudNativePG operator must be installed in the cluster beforehand
+dependencies:
+  - name: postgresql
+    version: "~16.4"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgres.enabled
 annotations:
   category: Developer Tools
   licenses: Apache-2.0 

@@ -188,9 +188,8 @@ status: ## Show deployment status
 .PHONY: wait-pods
 wait-pods: ## Wait for pods to be ready
 	@echo "Waiting for SAST AI to be ready..."
-	@echo "Checking CloudNativePG PostgreSQL cluster..."
-	@$(KUBECTL_CMD) wait --for=condition=ready cluster $(RELEASE_NAME)-db -n $(NAMESPACE) --timeout=300s 2>/dev/null || \
-		$(KUBECTL_CMD) wait --for=condition=ready pod -l cnpg.io/cluster=$(RELEASE_NAME)-db -n $(NAMESPACE) --timeout=300s
+	@echo "Checking PostgreSQL..."
+	@$(KUBECTL_CMD) wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n $(NAMESPACE) --timeout=300s
 	@echo "Database is ready!"
 	@echo "Checking SAST AI application..."
 	@$(KUBECTL_CMD) wait --for=condition=ready pod -l app.kubernetes.io/name=sast-ai -n $(NAMESPACE) --timeout=300s

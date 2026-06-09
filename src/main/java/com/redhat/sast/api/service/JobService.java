@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
 import com.redhat.sast.api.common.constants.ApplicationConstants;
@@ -89,28 +90,24 @@ public class JobService {
     }
 
     private void validateAndPrepare(JobCreationDto jobCreationDto) {
-        boolean hasSourceCodeUrl =
-                ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getSourceCodeUrl());
-        boolean hasCommitId = ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getCommitId());
+        boolean hasSourceCodeUrl = StringUtils.isNotBlank(jobCreationDto.getSourceCodeUrl());
+        boolean hasCommitId = StringUtils.isNotBlank(jobCreationDto.getCommitId());
 
-        if (hasSourceCodeUrl) {
-            if (!hasCommitId) {
-                throw new IllegalArgumentException("commitId is required when sourceCodeUrl is provided");
-            }
-            if (!ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getPackageNvr())) {
+        if (hasSourceCodeUrl && hasCommitId) {
+            if (StringUtils.isBlank(jobCreationDto.getPackageNvr())) {
                 String orgRepo = extractOrgAndRepo(jobCreationDto.getSourceCodeUrl());
                 String shortCommit = jobCreationDto.getCommitId().substring(0, 7);
                 jobCreationDto.setPackageNvr(orgRepo + "-" + shortCommit);
             }
-        } else {
-            if (!ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getPackageNvr())) {
-                throw new IllegalArgumentException("packageNvr is required when sourceCodeUrl is not provided");
-            }
+        } else if (hasSourceCodeUrl) {
+            throw new IllegalArgumentException("commitId is required when sourceCodeUrl is provided");
+        } else if (StringUtils.isBlank(jobCreationDto.getPackageNvr())) {
+            throw new IllegalArgumentException("packageNvr is required when sourceCodeUrl is not provided");
         }
     }
 
     private String extractOrgAndRepo(String sourceCodeUrl) {
-        String path = sourceCodeUrl.replaceFirst("https?://[^/]+/", "");
+        String path = sourceCodeUrl.trim().replaceFirst("https?://[^/]+/", "");
         if (path.endsWith(".git")) {
             path = path.substring(0, path.length() - 4);
         }

@@ -89,21 +89,36 @@ public class JobService {
         return convertToResponseDto(job);
     }
 
-    private void validateAndPrepare(JobCreationDto jobCreationDto) {
-        boolean hasSourceCodeUrl = StringUtils.isNotBlank(jobCreationDto.getSourceCodeUrl());
-        boolean hasCommitId = StringUtils.isNotBlank(jobCreationDto.getCommitId());
+    private void validateAndPrepare(JobCreationDto dto) {
+        boolean hasSourceCodeUrl = StringUtils.isNotBlank(dto.getSourceCodeUrl());
+        boolean hasCommitId = StringUtils.isNotBlank(dto.getCommitId());
+        boolean hasInputSourceUrl = StringUtils.isNotBlank(dto.getInputSourceUrl());
+        boolean hasGitRevision = StringUtils.isNotBlank(dto.getGitRevision());
 
-        if (hasSourceCodeUrl && hasCommitId) {
-            if (StringUtils.isBlank(jobCreationDto.getPackageNvr())) {
-                String orgRepo = extractOrgAndRepo(jobCreationDto.getSourceCodeUrl());
-                String shortCommit = jobCreationDto.getCommitId().substring(0, 7);
-                jobCreationDto.setPackageNvr(orgRepo + "-" + shortCommit);
+        if (hasSourceCodeUrl) {
+            if (hasCommitId) {
+                ensurePackageNvr(dto, dto.getSourceCodeUrl(), dto.getCommitId());
+                return;
             }
-        } else if (hasSourceCodeUrl) {
             throw new IllegalArgumentException("commitId is required when sourceCodeUrl is provided");
-        } else if (StringUtils.isBlank(jobCreationDto.getPackageNvr())) {
-            throw new IllegalArgumentException("packageNvr is required when sourceCodeUrl is not provided");
         }
+        if (hasInputSourceUrl && hasGitRevision) {
+            ensurePackageNvr(dto, dto.getInputSourceUrl(), dto.getGitRevision());
+            return;
+        }
+        if (StringUtils.isBlank(dto.getPackageNvr())) {
+            throw new IllegalArgumentException(
+                    "Either packageNvr, sourceCodeUrl with commitId, or inputSourceUrl with gitRevision must be provided");
+        }
+    }
+
+    private void ensurePackageNvr(JobCreationDto dto, String repoUrl, String revision) {
+        if (StringUtils.isNotBlank(dto.getPackageNvr())) {
+            return;
+        }
+        String orgRepo = extractOrgAndRepo(repoUrl);
+        String shortRevision = revision.substring(0, Math.min(7, revision.length()));
+        dto.setPackageNvr(orgRepo + "-" + shortRevision);
     }
 
     private String extractOrgAndRepo(String sourceCodeUrl) {
@@ -269,29 +284,34 @@ public class JobService {
         return job;
     }
 
-    private Job getJobFromDto(JobCreationDto jobCreationDto) {
+    private Job getJobFromDto(JobCreationDto dto) {
         Job job = new Job();
+        job.setPackageNvr(dto.getPackageNvr());
 
-        job.setPackageNvr(jobCreationDto.getPackageNvr());
-
-        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getSourceCodeUrl())) {
-            String repoName = extractRepoName(jobCreationDto.getSourceCodeUrl());
-            String shortCommit = jobCreationDto.getCommitId().substring(0, 7);
-            job.setProjectName(repoName);
-            job.setProjectVersion(shortCommit);
-            job.setPackageName(repoName);
+        if (StringUtils.isNotBlank(dto.getSourceCodeUrl())) {
+            setProjectFieldsFromUrl(job, dto.getSourceCodeUrl(), dto.getCommitId());
+        } else if (StringUtils.isNotBlank(dto.getSarifUri()) && StringUtils.isNotBlank(dto.getInputSourceUrl())) {
+            setProjectFieldsFromUrl(job, dto.getInputSourceUrl(), dto.getGitRevision());
         } else {
-            job.setProjectName(nvrResolutionService.resolveProjectName(jobCreationDto.getPackageNvr()));
-            job.setProjectVersion(nvrResolutionService.resolveProjectVersion(jobCreationDto.getPackageNvr()));
-            job.setPackageName(nvrResolutionService.resolvePackageName(jobCreationDto.getPackageNvr()));
+            String nvr = dto.getPackageNvr();
+            job.setProjectName(nvrResolutionService.resolveProjectName(nvr));
+            job.setProjectVersion(nvrResolutionService.resolveProjectVersion(nvr));
+            job.setPackageName(nvrResolutionService.resolvePackageName(nvr));
         }
 
-        configureInputSource(job, jobCreationDto);
-
-        job.setSubmittedBy(jobCreationDto.getSubmittedBy() != null ? jobCreationDto.getSubmittedBy() : "unknown");
-        job.setAggregateResultsGSheet(jobCreationDto.getAggregateResultsGSheet());
+        configureInputSource(job, dto);
+        job.setSubmittedBy(dto.getSubmittedBy() != null ? dto.getSubmittedBy() : "unknown");
+        job.setAggregateResultsGSheet(dto.getAggregateResultsGSheet());
         job.setStatus(JobStatus.PENDING);
         return job;
+    }
+
+    private void setProjectFieldsFromUrl(Job job, String repoUrl, String revision) {
+        String repoName = extractRepoName(repoUrl);
+        String shortRevision = revision != null ? revision.substring(0, Math.min(7, revision.length())) : "";
+        job.setProjectName(repoName);
+        job.setProjectVersion(shortRevision);
+        job.setPackageName(repoName);
     }
 
     private String extractRepoName(String sourceCodeUrl) {
@@ -419,17 +439,11 @@ public class JobService {
         }
     }
 
-    private boolean shouldUseFalsePositiveFile(JobCreationDto jobCreationDto) {
-        if (ApplicationConstants.IS_NOT_NULL_AND_NOT_BLANK.test(jobCreationDto.getSourceCodeUrl())) {
+    private boolean shouldUseFalsePositiveFile(JobCreationDto dto) {
+        if (StringUtils.isNotBlank(dto.getSourceCodeUrl())) {
             return false;
         }
-
-        Boolean useFromDto = jobCreationDto.getUseKnownFalsePositiveFile();
-        if (useFromDto != null) {
-            return useFromDto;
-        }
-
-        return true;
+        return dto.getUseKnownFalsePositiveFile() != null ? dto.getUseKnownFalsePositiveFile() : true;
     }
 
     private JobResponseDto convertToResponseDto(Job job) {

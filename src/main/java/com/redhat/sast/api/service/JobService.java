@@ -440,7 +440,7 @@ public class JobService {
         if (StringUtils.isNotBlank(dto.getSourceCodeUrl())) {
             return false;
         }
-        return dto.getUseKnownFalsePositiveFile() != null ? dto.getUseKnownFalsePositiveFile() : true;
+        return !Boolean.FALSE.equals(dto.getUseKnownFalsePositiveFile());
     }
 
     private JobResponseDto convertToResponseDto(Job job) {

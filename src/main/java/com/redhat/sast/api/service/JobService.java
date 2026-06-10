@@ -122,7 +122,7 @@ public class JobService {
     }
 
     private String extractOrgAndRepo(@Nonnull String sourceCodeUrl) {
-        String path = sourceCodeUrl.trim().replaceFirst("https?://[^/]+/", "");
+        String path = sourceCodeUrl.trim().replaceFirst("(https?|git)://[^/]+/", "");
         if (path.endsWith(".git")) {
             path = path.substring(0, path.length() - 4);
         }
@@ -315,10 +315,7 @@ public class JobService {
     }
 
     private String extractRepoName(String sourceCodeUrl) {
-        String path = sourceCodeUrl.replaceFirst("https?://[^/]+/", "");
-        if (path.endsWith(".git")) {
-            path = path.substring(0, path.length() - 4);
-        }
+        String path = extractOrgAndRepo(sourceCodeUrl);
         int lastSlash = path.lastIndexOf('/');
         return lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
     }

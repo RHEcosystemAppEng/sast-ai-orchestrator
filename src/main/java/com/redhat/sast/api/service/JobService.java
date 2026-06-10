@@ -112,7 +112,7 @@ public class JobService {
         }
     }
 
-    private void ensurePackageNvr(JobCreationDto dto, String repoUrl, String revision) {
+    private void ensurePackageNvr(@Nonnull JobCreationDto dto, @Nonnull String repoUrl, @Nonnull String revision) {
         if (StringUtils.isNotBlank(dto.getPackageNvr())) {
             return;
         }
@@ -121,7 +121,7 @@ public class JobService {
         dto.setPackageNvr(orgRepo + "-" + shortRevision);
     }
 
-    private String extractOrgAndRepo(String sourceCodeUrl) {
+    private String extractOrgAndRepo(@Nonnull String sourceCodeUrl) {
         String path = sourceCodeUrl.trim().replaceFirst("https?://[^/]+/", "");
         if (path.endsWith(".git")) {
             path = path.substring(0, path.length() - 4);

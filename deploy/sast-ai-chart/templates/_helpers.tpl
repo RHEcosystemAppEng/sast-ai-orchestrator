@@ -76,29 +76,11 @@ Create the name of the configmap to use
 {{- end }}
 
 {{/*
-PostgreSQL cluster name
-*/}}
-{{- define "sast-ai.postgres.clusterName" -}}
-{{- printf "%s-db" (include "sast-ai.fullname" .) }}
-{{- end }}
-
-{{/*
-PostgreSQL hostname - CloudNativePG creates a service with -rw suffix for read-write access
+PostgreSQL hostname - Bitnami subchart creates a service named {release}-postgresql
 */}}
 {{- define "sast-ai.postgresql.host" -}}
 {{- if .Values.postgres.enabled }}
-{{- printf "%s-rw" (include "sast-ai.postgres.clusterName" .) }}
-{{- else }}
-{{- .Values.externalDatabase.host }}
-{{- end }}
-{{- end }}
-
-{{/*
-PostgreSQL read-only hostname - CloudNativePG creates a service with -ro suffix for read-only access
-*/}}
-{{- define "sast-ai.postgresql.hostReadOnly" -}}
-{{- if .Values.postgres.enabled }}
-{{- printf "%s-ro" (include "sast-ai.postgres.clusterName" .) }}
+{{- printf "%s-postgresql" .Release.Name }}
 {{- else }}
 {{- .Values.externalDatabase.host }}
 {{- end }}
@@ -139,11 +121,11 @@ PostgreSQL username
 
 {{/*
 PostgreSQL password secret name
-CloudNativePG creates a secret named {cluster-name}-app with all connection details
+Bitnami subchart creates a secret named {release}-postgresql
 */}}
 {{- define "sast-ai.postgresql.secretName" -}}
 {{- if .Values.postgres.enabled }}
-{{- printf "%s-app" (include "sast-ai.postgres.clusterName" .) }}
+{{- printf "%s-postgresql" .Release.Name }}
 {{- else }}
 {{- if .Values.externalDatabase.existingSecret }}
 {{- .Values.externalDatabase.existingSecret }}
@@ -155,7 +137,7 @@ CloudNativePG creates a secret named {cluster-name}-app with all connection deta
 
 {{/*
 PostgreSQL password secret key
-CloudNativePG uses 'password' as the key in the app secret
+Bitnami uses 'password' as the key in the generated secret
 */}}
 {{- define "sast-ai.postgresql.secretKey" -}}
 {{- if .Values.postgres.enabled }}
